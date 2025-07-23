@@ -4,12 +4,8 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
 
 ## Features
 
-- 📊 **Signal Visualization**: Plot nanopore signals from POD5 files at specific genomic positions
-- 🔍 **Multi-condition Comparison**: Overlay multiple conditions/samples for direct comparison
-- 🎨 **Highly Customizable**: Extensive styling options for publication-ready figures
-- 📝 **Smart Labeling**: Automatic k-mer extraction and position labeling
-- 🚀 **Efficient Processing**: Handle large datasets with optional read filtering
-- 📈 **Flexible Output**: Interactive display or save to file
+- **Signal Visualization**: Plot nanopore signals from POD5 files at specific genomic positions
+- **Multi-condition Comparison**: Overlay multiple conditions/samples for direct comparison
 
 ## Installation
 
