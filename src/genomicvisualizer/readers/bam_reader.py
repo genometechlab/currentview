@@ -127,6 +127,7 @@ class AlignmentExtractor:
                         aligned_base = read_alignment.get_base_at_ref_pos(target_position)
                         if (
                             aligned_base is None
+                            or aligned_base.query_base is None
                             or aligned_base.query_base.upper() != target_base.upper()
                         ):
                             continue
