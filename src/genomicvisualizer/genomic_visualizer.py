@@ -105,6 +105,7 @@ class GenomicPositionVisualizer:
                       pod5_path: Union[str, Path],
                       contig: str,
                       target_position: int,
+                      target_base: str = None,
                       read_ids: Optional[Union[Set[str], List[str]]] = None,
                       max_reads: Optional[int] = None,
                       exclude_reads_with_indels: bool = False,
@@ -130,7 +131,7 @@ class GenomicPositionVisualizer:
         self.logger.info(f"Processing reads from {Path(bam_path).name} for condition '{label}'")
         
         aligned_reads = self.processor.process_reads(
-            bam_path, pod5_path, label, contig, target_position,
+            bam_path, pod5_path, label, contig, target_position, target_base,
             read_ids, max_reads,
             exclude_reads_with_indels
         )

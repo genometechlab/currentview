@@ -25,6 +25,7 @@ class AlignmentExtractor:
         self,
         contig: str,
         target_position: int,
+        target_base: str = None,
         window_size: int = 9,
         exclude_reads_with_indels: bool = True,
         read_ids: Optional[Union[Set[str], List[str]]] = None,
@@ -51,7 +52,7 @@ class AlignmentExtractor:
 
         # Collect alignment data
         read_alignments = self._collect_read_alignments(
-            contig, target_position, window_size, exclude_reads_with_indels, read_ids, max_reads
+            contig, target_position, target_base, window_size, exclude_reads_with_indels, read_ids, max_reads
         )
 
         return read_alignments
@@ -60,6 +61,7 @@ class AlignmentExtractor:
         self,
         contig: str,
         target_position: int,
+        target_base: str,
         window_size: int,
         exclude_reads_with_indels: bool,
         read_ids: Optional[Set[str]],
@@ -93,10 +95,15 @@ class AlignmentExtractor:
                     continue
 
                 try:
+
                     # Extract aligned bases with signal mapping
                     aligned_bases = self._extract_aligned_bases(
                         read, start_pos, end_pos
                     )
+
+                    # Only fetch reads with the specified target base if target base is provided
+                    if target_base is not None:
+                        self._check_target_base(aligned_bases)
 
                     # Only include reads that have some coverage of the region
                     if aligned_bases:
@@ -220,6 +227,9 @@ class AlignmentExtractor:
             aligned_bases.append(aligned_base)
 
         return aligned_bases
+    
+    def _check_target_base(self, aligned_bases: List[AlignedBase]):
+        pass
 
     def _extract_timestamp(self, read: pysam.AlignedSegment) -> int:
         """Extract the TS from read tags."""

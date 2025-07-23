@@ -49,6 +49,7 @@ class DataProcessor:
                       label: str,
                       contig: str,
                       target_position: int,
+                      target_base: str = None,
                       read_ids: Optional[Union[Set[str], List[str]]] = None,
                       max_reads: Optional[int] = None,
                       require_perfect_match: bool = False) -> List[ReadAlignment]:
@@ -85,7 +86,7 @@ class DataProcessor:
         
         # Extract alignments
         alignments = self._extract_alignments(
-            bam_path, contig, target_position, 
+            bam_path, contig, target_position, target_base,
             require_perfect_match, read_ids, max_reads
         )
         
@@ -165,6 +166,7 @@ class DataProcessor:
                            bam_path: Path,
                            contig: str,
                            target_position: int,
+                           target_base: str,
                            exclude_reads_with_indels: bool,
                            read_ids: Optional[Union[Set[str], List[str]]],
                            max_reads: Optional[int]) -> List[ReadAlignment]:
@@ -185,6 +187,7 @@ class DataProcessor:
             alignments = self._alignment_cache[bam_path].extract_alignments(
                 contig=contig,
                 target_position=target_position,
+                target_base=target_base,
                 window_size=self.K,
                 exclude_reads_with_indels=exclude_reads_with_indels,
                 read_ids=read_ids,
