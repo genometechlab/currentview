@@ -9,6 +9,7 @@ from uuid import UUID
 
 from ..utils.data_classes import ReadAlignment, AlignedBase, BaseType, SignalRange
 
+
 class AlignmentExtractor:
     """API for extracting nanopore signal data aligned to genomic positions."""
 
@@ -52,7 +53,13 @@ class AlignmentExtractor:
 
         # Collect alignment data
         read_alignments = self._collect_read_alignments(
-            contig, target_position, target_base, window_size, exclude_reads_with_indels, read_ids, max_reads
+            contig,
+            target_position,
+            target_base,
+            window_size,
+            exclude_reads_with_indels,
+            read_ids,
+            max_reads,
         )
 
         return read_alignments
@@ -70,7 +77,7 @@ class AlignmentExtractor:
         """Collect alignment information for reads covering the target region."""
 
         # Increasing window size for search to cinsider early insertions
-        search_window = window_size*3
+        search_window = window_size * 3
 
         half_window = (search_window - 1) // 2
         start_pos = target_position - half_window
@@ -84,9 +91,11 @@ class AlignmentExtractor:
             if contig not in bam.references:
                 raise KeyError(f"Contig not found in the bam file")
 
-            region = {'contig':contig,
-                        'start':target_position-half_window,
-                        'stop': target_position+half_window+1}
+            region = {
+                "contig": contig,
+                "start": target_position - half_window,
+                "stop": target_position + half_window + 1,
+            }
 
             # Fetching reads
             for read in bam.fetch(**region):
@@ -103,7 +112,11 @@ class AlignmentExtractor:
 
                     # Only fetch reads with the specified target base if target base is provided
                     if target_base is not None:
-                        self._check_target_base(aligned_bases)
+                        aligned_base = self._get_aligned_base_to_ref_pos(
+                            aligned_bases, target_position
+                        )
+                        if aligned_base is None or aligned_base.query_base != target_base:
+                            continue
 
                     # Only include reads that have some coverage of the region
                     if aligned_bases:
@@ -148,7 +161,7 @@ class AlignmentExtractor:
         )
 
         # Determining the direction of alignment
-        is_reversed = True#read.is_reverse
+        is_reversed = True  # read.is_reverse
 
         # Map base positions to signal ranges
         base_to_signal_range = self._base_indices_to_signal_ranges(
@@ -178,20 +191,22 @@ class AlignmentExtractor:
             if ref_pos is not None:
                 if ref_pos < start_pos:
                     # Not yet in the target region, continue with the next pair
-                    continue 
+                    continue
                 if start_pos <= ref_pos <= end_pos:
                     # Now we are inside the region of interest
                     # A flag will be enabled to capture insertions
                     in_target_region = True
-                    pass # Just for consistency with continue and break
+                    pass  # Just for consistency with continue and break
                 elif ref_pos > end_pos:
-                    in_target_region = False # Not required due to break. Included for consistency
+                    in_target_region = (
+                        False  # Not required due to break. Included for consistency
+                    )
                     # Breaking out of pairs loop
-                    break 
+                    break
             else:
                 if in_target_region:
                     # Will fall into insertion logic below
-                    pass # Just for consistency with continue and break
+                    pass  # Just for consistency with continue and break
                 else:
                     continue
 
@@ -207,7 +222,7 @@ class AlignmentExtractor:
             else:
                 continue
 
-            # Get signal range 
+            # Get signal range
             if query_pos is not None:
                 signal_range = base_to_signal_range.get(query_pos)
                 query_base = read.query_sequence[query_pos]
@@ -215,7 +230,7 @@ class AlignmentExtractor:
                 # None because of deletion
                 signal_range = None
                 query_base = None
-                
+
             aligned_base = AlignedBase(
                 reference_pos=ref_pos,
                 query_pos=query_pos,
@@ -227,9 +242,14 @@ class AlignmentExtractor:
             aligned_bases.append(aligned_base)
 
         return aligned_bases
-    
-    def _check_target_base(self, aligned_bases: List[AlignedBase]):
-        pass
+
+    def _get_aligned_base_to_ref_pos(self, aligned_bases: List[AlignedBase], ref_pos: int) -> Optional[AlignedBase]:
+        """Get the aligned base corresponding to a specific reference position."""
+        for base in aligned_bases:
+            if base.reference_pos == ref_pos:
+                return base
+        return None
+        
 
     def _extract_timestamp(self, read: pysam.AlignedSegment) -> int:
         """Extract the TS from read tags."""
@@ -257,7 +277,6 @@ class AlignmentExtractor:
         move_positions = np.where(moves_array == 1)[0] * stride + timestamp_start
         return np.append(move_positions, num_samples)
 
-
     def _base_indices_to_signal_ranges(
         self, base_indices: np.ndarray, sequence_length: int, is_reversed: bool
     ) -> Dict[int, Tuple[int, int]]:
@@ -270,6 +289,6 @@ class AlignmentExtractor:
                 base_to_range[i] = SignalRange(start_idx, end_idx)
             else:
                 start_idx = base_indices[i].item()
-                end_idx = base_indices[i+1].item()
+                end_idx = base_indices[i + 1].item()
                 base_to_range[i] = SignalRange(start_idx, end_idx)
         return base_to_range
