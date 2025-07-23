@@ -115,7 +115,10 @@ class AlignmentExtractor:
                         aligned_base = self._get_aligned_base_to_ref_pos(
                             aligned_bases, target_position
                         )
-                        if aligned_base is None or aligned_base.query_base != target_base:
+                        if (
+                            aligned_base is None
+                            or aligned_base.query_base != target_base
+                        ):
                             continue
 
                     # Only include reads that have some coverage of the region
@@ -150,15 +153,13 @@ class AlignmentExtractor:
     ) -> List[AlignedBase]:
         """Extract aligned bases including insertions and deletions."""
         # Extract nanopore-specific tags
-        timestamp_start = self._extract_timestamp(read)
-        num_samples = read.get_tag("ns")
+        ts = self._extract_ts_tag(read)
+        ns = read.get_tag("ns")
         move_table = read.get_tag("mv")
         stride, moves = move_table[0], move_table[1:]
 
         # Convert moves to base indices
-        base_indices = self._moves_to_base_indices(
-            moves, stride, timestamp_start, num_samples
-        )
+        base_indices = self._moves_to_base_indices(moves, stride, ts, ns)
 
         # Determining the direction of alignment
         is_reversed = True  # read.is_reverse
@@ -243,15 +244,16 @@ class AlignmentExtractor:
 
         return aligned_bases
 
-    def _get_aligned_base_to_ref_pos(self, aligned_bases: List[AlignedBase], ref_pos: int) -> Optional[AlignedBase]:
+    def _get_aligned_base_to_ref_pos(
+        self, aligned_bases: List[AlignedBase], ref_pos: int
+    ) -> Optional[AlignedBase]:
         """Get the aligned base corresponding to a specific reference position."""
         for base in aligned_bases:
             if base.reference_pos == ref_pos:
                 return base
         return None
-        
 
-    def _extract_timestamp(self, read: pysam.AlignedSegment) -> int:
+    def _extract_ts_tag(self, read: pysam.AlignedSegment) -> int:
         """Extract the TS from read tags."""
         # Try direct tag access
         for tag, val, dtype in read.get_tags(with_value_type=True):
