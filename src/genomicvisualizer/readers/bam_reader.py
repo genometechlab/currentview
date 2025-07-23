@@ -117,7 +117,7 @@ class AlignmentExtractor:
                         )
                         if (
                             aligned_base is None
-                            or aligned_base.query_base != target_base
+                            or aligned_base.query_base.upper() != target_base.upper()
                         ):
                             continue
 
@@ -128,7 +128,7 @@ class AlignmentExtractor:
                             aligned_bases=aligned_bases,
                             target_position=target_position,
                             window_size=window_size,
-                            is_reversed=read.is_reverse,
+                            is_reversed=True,
                         )
                         if exclude_reads_with_indels:
                             if read_alignment.has_no_indels(window_size=window_size):
