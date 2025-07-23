@@ -1,4 +1,4 @@
-# Genomic Position Visualizer
+# Genomic Visualizer
 
 A Python package for visualizing nanopore sequencing signals at specific genomic positions. This tool enables researchers to plot and compare signal patterns from POD5 files aligned to reference genomes via BAM files.
 
@@ -6,6 +6,14 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
 
 - **Signal Visualization**: Plot nanopore signals from POD5 files at specific genomic positions
 - **Multi-condition Comparison**: Overlay multiple conditions/samples for direct comparison
+
+## Table of Contents
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Core API](#core-api)
+  - [GenomicPositionVisualizer](#genomicpositionvisualizer)
+  - [Styling and Customization using PlotStyle](#styling-and-customization-using-plotstyle)
+- [Practical considerations](#practical-considerations)
 
 ## Installation
 
@@ -24,7 +32,7 @@ pip install -e .
 ## Quick Start
 
 ```python
-from genomic_position_visualizer import GenomicPositionVisualizer
+from genomicvisualizer import GenomicPositionVisualizer, PlotStyle
 
 # Create visualizer for a 9-base window
 viz = GenomicPositionVisualizer(K=9)
@@ -56,7 +64,7 @@ viz.show()
 
 ### GenomicPositionVisualizer
 
-The main class that handles all visualization tasks.
+The main class that initiate the visualization.
 
 ```python
 GenomicPositionVisualizer(
@@ -72,8 +80,8 @@ GenomicPositionVisualizer(
 
 **Parameters:**
 - `K`: Window size (will be made odd if even). Default: 9
-- `kmer`: Optional custom k-mer labels for x-axis
-- `plot_style`: PlotStyle object for customization
+- `kmer`: Optional custom k-mer labels for x-axis. Should be an iterable with size `K`
+- `plot_style`: PlotStyle object for customization. Please refer to `PlotStyle` section
 - `title`: Plot title
 - `figsize`: Figure size (width, height) in inches
 - `verbosity`: Logging level (0-4):
@@ -84,9 +92,9 @@ GenomicPositionVisualizer(
   - 4 = DEBUG: Everything including debug messages
 - `logger`: Optional custom logger instance
 
-### Main Methods
+#### Main Methods
 
-#### plot_condition()
+##### plot_condition()
 
 Plot reads from specified BAM and POD5 files at a genomic position.
 
@@ -151,9 +159,7 @@ viz.print_summary()
 viz.set_verbosity(3)  # Set to INFO level
 ```
 
-## Styling and Customization
-
-### Using PlotStyle
+### Styling and Customization using PlotStyle
 
 The appearance of plots can be extensively customized using the `PlotStyle` class:
 
@@ -176,7 +182,7 @@ style = PlotStyle(
 viz = GenomicPositionVisualizer(K=9, plot_style=style)
 ```
 
-### Available PlotStyle Parameters
+#### Available PlotStyle Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -213,7 +219,7 @@ viz = GenomicPositionVisualizer(K=9, plot_style=style)
 | `xlabel_margin_base` | float | 20.0 | Base margin between tick labels and x-label |
 | `xlabel_margin_per_row` | float | 15.0 | Additional margin per row of stacked labels |
 
-### Color Schemes
+##### Color Schemes
 
 Available color schemes via `ColorScheme` enum:
 - `DEFAULT`: General purpose (matplotlib 'tab10')
@@ -224,9 +230,9 @@ Available color schemes via `ColorScheme` enum:
 - `PASTEL`: Soft colors (Pastel1)
 - `DARK`: High contrast colors (Dark2)
 
-## Examples
+#### Examples
 
-### Example 1: Basic Single Condition
+**Example 1: Basic Single Condition**
 
 ```python
 from genomic_position_visualizer import GenomicPositionVisualizer
@@ -245,7 +251,7 @@ viz.set_title("Nanopore Signals at chr1:1000000")
 viz.show()
 ```
 
-### Example 2: Comparing Multiple Conditions
+**Example 2: Comparing Multiple Conditions**
 
 ```python
 # Create visualizer with custom style
@@ -282,7 +288,7 @@ viz.set_title("Signal Comparison at chr1:1000000")
 viz.save("comparison.png", dpi=300)
 ```
 
-### Example 3: Filtering Specific Reads
+**Example 3: Filtering Specific Reads**
 
 ```python
 # Only plot specific reads
@@ -305,9 +311,13 @@ viz.print_summary()
 viz.show()
 ```
 
-## Tips and Best Practices
+## Practical Considerations
 
 ### Performance Optimization
+
+This tool will extract aligned reads to a specific genmoc position from a BAM file, and extract their corresponding read record from pod5 files.        
+Both BAM and pod5 files can be large and indexing and iterating them can be computationaly expensive. It may take up to several minutes for the output to be displayed.     
+For a better performance, consider:
 
 1. **Limit reads for large datasets**:
    ```python
@@ -347,8 +357,6 @@ viz.show()
 3. **Limit window size for clarity**:
    - K=9 or K=11 work well for most cases
    - Larger windows may require bigger figures
-
-## Troubleshooting
 
 ### Common Issues
 
