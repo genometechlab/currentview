@@ -1,0 +1,434 @@
+# Genomic Position Visualizer
+
+A Python package for visualizing nanopore sequencing signals at specific genomic positions. This tool enables researchers to plot and compare signal patterns from POD5 files aligned to reference genomes via BAM files.
+
+## Features
+
+- 📊 **Signal Visualization**: Plot nanopore signals from POD5 files at specific genomic positions
+- 🔍 **Multi-condition Comparison**: Overlay multiple conditions/samples for direct comparison
+- 🎨 **Highly Customizable**: Extensive styling options for publication-ready figures
+- 📝 **Smart Labeling**: Automatic k-mer extraction and position labeling
+- 🚀 **Efficient Processing**: Handle large datasets with optional read filtering
+- 📈 **Flexible Output**: Interactive display or save to file
+
+## Installation
+
+```bash
+pip install genomic-position-visualizer
+```
+
+### Dependencies
+- numpy >= 1.20.0
+- matplotlib >= 3.5.0
+- pysam >= 0.19.0 (for BAM file reading)
+- pod5 >= 0.2.0 (for POD5 file reading)
+
+## Quick Start
+
+```python
+from genomic_position_visualizer import GenomicPositionVisualizer
+
+# Create visualizer for a 9-base window
+viz = GenomicPositionVisualizer(K=9)
+
+# Plot signals from a genomic position
+viz.plot_condition(
+    bam_path="sample1.bam",
+    pod5_path="sample1.pod5",
+    contig="chr1",
+    target_position=1000000,
+    label="Control"
+)
+
+# Add another condition for comparison
+viz.plot_condition(
+    bam_path="sample2.bam",
+    pod5_path="sample2.pod5",
+    contig="chr1",
+    target_position=1000000,
+    label="Treatment",
+    color="red"
+)
+
+# Display the plot
+viz.show()
+```
+
+## Core API
+
+### GenomicPositionVisualizer
+
+The main class that handles all visualization tasks.
+
+```python
+GenomicPositionVisualizer(
+    K: int = 9,
+    kmer: Optional[List[Union[str, int]]] = None,
+    plot_style: Optional[PlotStyle] = None,
+    title: Optional[str] = None,
+    figsize: Optional[Tuple[float, float]] = None,
+    verbosity: VerbosityLevel = VerbosityLevel.SILENT,
+    logger: Optional[logging.Logger] = None
+)
+```
+
+**Parameters:**
+- `K`: Window size (will be made odd if even). Default: 9
+- `kmer`: Optional custom k-mer labels for x-axis
+- `plot_style`: PlotStyle object for customization
+- `title`: Plot title
+- `figsize`: Figure size (width, height) in inches
+- `verbosity`: Logging level (0-4):
+  - 0 = SILENT: No output
+  - 1 = ERROR: Only errors
+  - 2 = WARNING: Errors and warnings
+  - 3 = INFO: Errors, warnings, and info
+  - 4 = DEBUG: Everything including debug messages
+- `logger`: Optional custom logger instance
+
+### Main Methods
+
+#### plot_condition()
+
+Plot reads from specified BAM and POD5 files at a genomic position.
+
+```python
+viz.plot_condition(
+    bam_path: Union[str, Path],
+    pod5_path: Union[str, Path],
+    contig: str,
+    target_position: int,
+    read_ids: Optional[Union[Set[str], List[str]]] = None,
+    max_reads: Optional[int] = None,
+    exclude_reads_with_indels: bool = False,
+    label: Optional[str] = None,
+    color: Optional[Union[str, Tuple[float, float, float]]] = None,
+    alpha: Optional[float] = None,
+    line_width: Optional[float] = None,
+    line_style: Optional[str] = None
+) -> GenomicPositionVisualizer
+```
+
+**Parameters:**
+- `bam_path`: Path to BAM alignment file
+- `pod5_path`: Path to POD5 signal file
+- `contig`: Chromosome/contig name (e.g., "chr1")
+- `target_position`: 1-based genomic position
+- `read_ids`: Specific read IDs to include (default: all reads)
+- `max_reads`: Maximum number of reads to plot
+- `exclude_reads_with_indels`: Skip reads with insertions/deletions
+- `label`: Condition label for legend
+- `color`: Line color (matplotlib color)
+- `alpha`: Line transparency (0-1)
+- `line_width`: Line thickness
+- `line_style`: Line style ('-', '--', ':', etc.)
+
+#### Other Methods
+
+```python
+# Highlight a position in the window
+viz.highlight_position(window_idx=4, color='red', alpha=0.2)
+
+# Add text annotation
+viz.add_annotation(window_idx=4, text="SNP", y_position=150)
+
+# Set plot title
+viz.set_title("Nanopore Signal Comparison at chr1:1000000")
+
+# Set y-axis limits
+viz.set_ylim(bottom=50, top=200)
+
+# Show interactive plot
+viz.show()
+
+# Save to file
+viz.save("output.png", dpi=300)
+viz.save("output.pdf", dpi=300)
+
+# Get summary statistics
+summary = viz.get_summary()
+viz.print_summary()
+
+# Change verbosity
+viz.set_verbosity(3)  # Set to INFO level
+```
+
+## Styling and Customization
+
+### Using PlotStyle
+
+The appearance of plots can be extensively customized using the `PlotStyle` class:
+
+```python
+from genomic_position_visualizer.utils.visualization_utils import PlotStyle, ColorScheme
+
+# Create custom style
+style = PlotStyle(
+    figsize=(12, 8),
+    dpi=300,  # High resolution
+    line_width=1.5,
+    show_grid=True,
+    grid_alpha=0.3,
+    color_scheme=ColorScheme.COLORBLIND,
+    title_fontsize=16,
+    label_fontsize=14,
+    show_legend=True
+)
+
+viz = GenomicPositionVisualizer(K=9, plot_style=style)
+```
+
+### Available PlotStyle Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| **Figure Settings** | | | |
+| `figsize` | tuple | (12, 8) | Figure size in inches (width, height) |
+| `dpi` | int | 100 | Resolution (dots per inch) |
+| `padding` | float | 0.025 | Padding between genomic positions |
+| **Line Styling** | | | |
+| `line_width` | float | 1.0 | Default line thickness |
+| `line_style` | str | '-' | Default line style ('-', '--', ':', '-.') |
+| `alpha_mode` | 'auto'/'fixed' | 'auto' | Alpha calculation mode |
+| `fixed_alpha` | float | 0.8 | Alpha value when mode is 'fixed' |
+| **Grid and Axes** | | | |
+| `show_grid` | bool | False | Show background grid |
+| `grid_alpha` | float | 0.3 | Grid line transparency |
+| `show_spines` | list | ['left', 'bottom'] | Which plot borders to show |
+| **Position Barriers** | | | |
+| `position_barrier_color` | str | 'gray' | Color of vertical position separators |
+| `position_barrier_style` | str | '--' | Line style for position barriers |
+| `position_barrier_alpha` | float | 0.3 | Transparency of position barriers |
+| **Colors** | | | |
+| `color_scheme` | ColorScheme | DEFAULT | Color palette for multiple conditions |
+| **Text and Labels** | | | |
+| `title_fontsize` | int | 14 | Plot title font size |
+| `label_fontsize` | int | 12 | Axis label font size |
+| `tick_labelsize` | int | 10 | Tick label font size |
+| **Legend** | | | |
+| `show_legend` | bool | True | Display legend |
+| `legend_location` | str | 'best' | Legend position (currently not used) |
+| `legend_fontsize` | int | 10 | Legend text font size |
+| **X-axis Label Positioning** | | | |
+| `xtick_label_y_start` | float | -0.02 | Starting y-position for x-tick labels |
+| `xtick_label_row_spacing` | float | -0.03 | Spacing between stacked label rows |
+| `xlabel_margin_base` | float | 20.0 | Base margin between tick labels and x-label |
+| `xlabel_margin_per_row` | float | 15.0 | Additional margin per row of stacked labels |
+
+### Color Schemes
+
+Available color schemes via `ColorScheme` enum:
+- `DEFAULT`: General purpose (matplotlib 'tab10')
+- `COLORBLIND`: Optimized for color vision deficiency (same as DEFAULT)
+- `VIRIDIS`, `PLASMA`, `INFERNO`: Sequential, perceptually uniform
+- `SEABORN`: Aesthetic palette (Set2)
+- `CATEGORICAL`: Many distinct colors (Set3)
+- `PASTEL`: Soft colors (Pastel1)
+- `DARK`: High contrast colors (Dark2)
+
+## Examples
+
+### Example 1: Basic Single Condition
+
+```python
+from genomic_position_visualizer import GenomicPositionVisualizer
+
+# Visualize a 9-base window around position 1000000
+viz = GenomicPositionVisualizer(K=9, verbosity=3)  # INFO level logging
+
+viz.plot_condition(
+    bam_path="aligned_reads.bam",
+    pod5_path="signals.pod5",
+    contig="chr1",
+    target_position=1000000
+)
+
+viz.set_title("Nanopore Signals at chr1:1000000")
+viz.show()
+```
+
+### Example 2: Comparing Multiple Conditions
+
+```python
+# Create visualizer with custom style
+style = PlotStyle(
+    figsize=(14, 8),
+    color_scheme=ColorScheme.CATEGORICAL,
+    show_grid=True
+)
+viz = GenomicPositionVisualizer(K=9, plot_style=style)
+
+# Plot multiple conditions
+conditions = [
+    ("control.bam", "control.pod5", "Control", "blue"),
+    ("treatment1.bam", "treatment1.pod5", "Treatment 1", "red"),
+    ("treatment2.bam", "treatment2.pod5", "Treatment 2", "green")
+]
+
+for bam, pod5, label, color in conditions:
+    viz.plot_condition(
+        bam_path=bam,
+        pod5_path=pod5,
+        contig="chr1",
+        target_position=1000000,
+        label=label,
+        color=color,
+        max_reads=50  # Limit reads for clarity
+    )
+
+# Highlight the center position
+viz.highlight_position(window_idx=4, color='yellow', alpha=0.3)
+viz.add_annotation(window_idx=4, text="Target", y_position=None)
+
+viz.set_title("Signal Comparison at chr1:1000000")
+viz.save("comparison.png", dpi=300)
+```
+
+### Example 3: Filtering Specific Reads
+
+```python
+# Only plot specific reads
+target_reads = ["read_001", "read_002", "read_003"]
+
+viz = GenomicPositionVisualizer(K=11)  # 11-base window
+
+viz.plot_condition(
+    bam_path="sample.bam",
+    pod5_path="sample.pod5",
+    contig="chr2",
+    target_position=5000000,
+    read_ids=target_reads,  # Only these reads
+    exclude_reads_with_indels=True,  # Skip reads with indels
+    label="Selected Reads"
+)
+
+# Get summary of what was plotted
+viz.print_summary()
+viz.show()
+```
+
+### Example 4: Custom K-mer Labels
+
+```python
+# Use custom labels instead of extracting from reference
+custom_labels = ["A", "T", "G", "C", "A", "T", "G", "C", "A"]
+
+viz = GenomicPositionVisualizer(
+    K=9,
+    kmer=custom_labels,
+    title="Custom K-mer Visualization"
+)
+
+viz.plot_condition(
+    bam_path="sample.bam",
+    pod5_path="sample.pod5",
+    contig="chr3",
+    target_position=10000000
+)
+
+viz.show()
+```
+
+## Tips and Best Practices
+
+### Performance Optimization
+
+1. **Limit reads for large datasets**:
+   ```python
+   viz.plot_condition(..., max_reads=100)
+   ```
+
+2. **Filter out noisy reads**:
+   ```python
+   viz.plot_condition(..., exclude_reads_with_indels=True)
+   ```
+
+3. **Use appropriate verbosity**:
+   ```python
+   # Silent for production
+   viz = GenomicPositionVisualizer(K=9, verbosity=0)
+   
+   # Debug for troubleshooting
+   viz.set_verbosity(4)
+   ```
+
+### Visual Clarity
+
+1. **Adjust alpha for overlapping signals**:
+   ```python
+   # Auto mode adjusts based on read count
+   style = PlotStyle(alpha_mode='auto')
+   
+   # Or set manually per condition
+   viz.plot_condition(..., alpha=0.5)
+   ```
+
+2. **Use contrasting colors**:
+   ```python
+   style = PlotStyle(color_scheme=ColorScheme.COLORBLIND)
+   ```
+
+3. **Limit window size for clarity**:
+   - K=9 or K=11 work well for most cases
+   - Larger windows may require bigger figures
+
+### Publication-Ready Figures
+
+```python
+# High-quality settings
+pub_style = PlotStyle(
+    figsize=(7, 5),          # Journal single column
+    dpi=300,                 # High resolution
+    line_width=1.5,          # Clear lines
+    show_grid=True,          # Subtle grid
+    grid_alpha=0.15,
+    color_scheme=ColorScheme.COLORBLIND,
+    title_fontsize=14,
+    label_fontsize=12,
+    show_legend=True
+)
+
+viz = GenomicPositionVisualizer(K=9, plot_style=pub_style)
+
+# Plot your data...
+
+# Save in multiple formats
+viz.save("figure.pdf", dpi=300, bbox_inches='tight')
+viz.save("figure.png", dpi=300, bbox_inches='tight')
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **No reads found at position**:
+   - Check BAM file is indexed (.bai file exists)
+   - Verify correct contig name (e.g., "chr1" vs "1")
+   - Ensure position is 1-based
+   - Increase verbosity to see detailed logs
+
+2. **Memory issues with large files**:
+   - Use `max_reads` parameter
+   - Process files in chunks
+   - Filter reads by ID
+
+3. **Overlapping signals hard to see**:
+   - Adjust alpha transparency
+   - Reduce number of reads
+   - Use different colors
+   - Increase figure size
+
+4. **Label "already exists" error**:
+   - Each condition needs a unique label
+   - Specify custom labels for each `plot_condition()` call
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Citation
+
+If you use this tool in your research, please cite:
+```
+[Your citation information here]
+```
