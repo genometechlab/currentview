@@ -110,36 +110,37 @@ class AlignmentExtractor:
                         read, start_pos, end_pos
                     )
 
+                    # ignorereads that don't have any coverage of the region
+                    if not aligned_bases:
+                        continue
+
+                    read_alignment = ReadAlignment(
+                        read_id=read.query_name,
+                        aligned_bases=aligned_bases,
+                        target_position=target_position,
+                        window_size=window_size,
+                        is_reversed=True,
+                    )
+
                     # Only fetch reads with the specified target base if target base is provided
                     if target_base is not None:
-                        aligned_base = self._get_aligned_base_to_ref_pos(
-                            aligned_bases, target_position
-                        )
+                        aligned_base = read_alignment.get_base_at_ref_pos(target_position)
                         if (
                             aligned_base is None
                             or aligned_base.query_base.upper() != target_base.upper()
                         ):
                             continue
 
-                    # Only include reads that have some coverage of the region
-                    if aligned_bases:
-                        read_alignment = ReadAlignment(
-                            read_id=read.query_name,
-                            aligned_bases=aligned_bases,
-                            target_position=target_position,
-                            window_size=window_size,
-                            is_reversed=True,
-                        )
-                        if exclude_reads_with_indels:
-                            if read_alignment.has_no_indels(window_size=window_size):
-                                read_alignments.append(read_alignment)
-                                read_count += 1
-                        else:
+                    if exclude_reads_with_indels:
+                        if read_alignment.has_no_indels(window_size=window_size):
                             read_alignments.append(read_alignment)
                             read_count += 1
+                    else:
+                        read_alignments.append(read_alignment)
+                        read_count += 1
 
-                        if max_reads is not None and read_count >= max_reads:
-                            break
+                    if max_reads is not None and read_count >= max_reads:
+                        break
 
                 except Exception as e:
                     print(f"Skipping read {read.query_name}: {e}")

@@ -485,10 +485,7 @@ class SignalVisualizer:
         
         # Plot each read
         for read_idx, read_alignment in enumerate(reads):
-            bases_dict = {
-                base.reference_pos: base 
-                for base in read_alignment.aligned_bases
-            }
+            bases_dict = read_alignment.bases_by_ref_pos
             
             # Plot signal for each position
             for pos_idx, genomic_pos in enumerate(positions):

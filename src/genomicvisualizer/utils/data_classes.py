@@ -69,41 +69,44 @@ class ReadAlignment:
     target_position: int
     window_size: int
     is_reversed: bool
-
+    
+    @property
+    def bases_by_ref_pos(self) -> Dict[int, AlignedBase]:
+        """Get dictionary mapping reference positions to aligned bases."""
+        if not hasattr(self, '_bases_by_ref_pos'):
+            self._bases_by_ref_pos = {
+                base.reference_pos: base 
+                for base in self.aligned_bases 
+                if base.reference_pos is not None
+            }
+        return self._bases_by_ref_pos
+    
+    def get_base_at_ref_pos(self, ref_pos: int) -> Optional[AlignedBase]:
+        """Convenience method to get base at specific reference position."""
+        return self.bases_by_ref_pos.get(ref_pos)
+    
     def has_no_indels(self, window_size: int = 3) -> bool:
         """Check if there's a contiguous window of matches (no indels) around the target position."""
         if window_size % 2 == 0:
             raise ValueError(f"window_size must be odd, got {window_size}")
-            
-        # Build dictionary of reference positions to query positions
-        aligned_dict = {}
-        matched_query_pos_to_target = None
-        
-        for aligned_base in self.aligned_bases:
-            if aligned_base.reference_pos is not None:  # Skip insertions
-                aligned_dict[aligned_base.reference_pos] = aligned_base.query_pos
-            if aligned_base.reference_pos == self.target_position:
-                matched_query_pos_to_target = aligned_base.query_pos
 
-        if matched_query_pos_to_target is None:
+        # Now using the property instead of building dict each time
+        matched_base = self.get_base_at_ref_pos(self.target_position)
+        if matched_base is None or matched_base.query_pos is None:
             return False
-
-        # Define the window range
-        half_window = window_size // 2
         
+        matched_query_pos_to_target = matched_base.query_pos
+        half_window = window_size // 2
+
         # Check all positions in the window
         for idx in range(-half_window, half_window + 1):
             ref_pos = self.target_position + idx
             expected_query_pos = matched_query_pos_to_target + idx
-            
-            # Check if position exists (no deletion)
-            if ref_pos not in aligned_dict:
+
+            base = self.get_base_at_ref_pos(ref_pos)
+            if base is None or base.query_pos != expected_query_pos:
                 return False
-                
-            # Check if query position is consecutive (no insertion)
-            if aligned_dict[ref_pos] != expected_query_pos:
-                return False
-                
+
         return True
     
 @dataclass
