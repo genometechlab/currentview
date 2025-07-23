@@ -110,18 +110,18 @@ viz.plot_condition(
 ```
 
 **Parameters:**
-- `bam_path`: Path to BAM alignment file
-- `pod5_path`: Path to POD5 signal file
-- `contig`: Chromosome/contig name (e.g., "chr1")
+- `bam_path`: (Required)Path to BAM alignment file (Required) 
+- `pod5_path`: Path to POD5 signal file (Required) 
+- `contig`: Chromosome/contig name (e.g., "chr1") (Required) 
 - `target_position`: 1-based genomic position
-- `read_ids`: Specific read IDs to include (default: all reads)
-- `max_reads`: Maximum number of reads to plot
-- `exclude_reads_with_indels`: Skip reads with insertions/deletions
-- `label`: Condition label for legend
-- `color`: Line color (matplotlib color)
-- `alpha`: Line transparency (0-1)
-- `line_width`: Line thickness
-- `line_style`: Line style ('-', '--', ':', etc.)
+- `read_ids`: Specific read IDs to include (default: None - fetched all aligned reads)
+- `max_reads`: Maximum number of reads to plot(default: None - No limitation of the fetched reads)
+- `exclude_reads_with_indels`: Skip reads with insertions/deletions (default: False)
+- `label`: Condition label for legend (default: {contig}:{target-position})
+- `color`: Line color (matplotlib color) (default: style.color_scheme - please refer to plot style below)
+- `alpha`: Line transparency (0-1) (default: based on style.alpha_mode - please refer to plot style below)
+- `line_width`: Line thickness (default: style.line_width - please refer to plot style below)
+- `line_style`: Line style ('-', '--', ':', etc.) (default: style.line_style - please refer to plot style below)
 
 #### Other Methods
 
@@ -189,7 +189,7 @@ viz = GenomicPositionVisualizer(K=9, plot_style=style)
 | **Line Styling** | | | |
 | `line_width` | float | 1.0 | Default line thickness |
 | `line_style` | str | '-' | Default line style ('-', '--', ':', '-.') |
-| `alpha_mode` | 'auto'/'fixed' | 'auto' | Alpha calculation mode |
+| `alpha_mode` | 'auto'/'fixed' | 'auto' | Alpha calculation mode ('Auto': based on the number of plotted reads, 'fixed': fixed value provided via `fixed_alpha`) |
 | `fixed_alpha` | float | 0.8 | Alpha value when mode is 'fixed' |
 | **Grid and Axes** | | | |
 | `show_grid` | bool | False | Show background grid |
@@ -237,8 +237,8 @@ from genomic_position_visualizer import GenomicPositionVisualizer
 viz = GenomicPositionVisualizer(K=9, verbosity=3)  # INFO level logging
 
 viz.plot_condition(
-    bam_path="aligned_reads.bam",
-    pod5_path="signals.pod5",
+    bam_path="bam_1.bam",
+    pod5_path="pod5_1.pod5",
     contig="chr1",
     target_position=1000000
 )
@@ -260,9 +260,9 @@ viz = GenomicPositionVisualizer(K=9, plot_style=style)
 
 # Plot multiple conditions
 conditions = [
-    ("control.bam", "control.pod5", "Control", "blue"),
-    ("treatment1.bam", "treatment1.pod5", "Treatment 1", "red"),
-    ("treatment2.bam", "treatment2.pod5", "Treatment 2", "green")
+    ("bam_1.bam", "pod5_1.pod5", "contig_1", "blue"),
+    ("bam_2.bam", "pod5_2.pod5", "contig_2", "blue"),
+    ("bam_3.bam", "pod5_3.pod5", "contig_3", "blue"),
 ]
 
 for bam, pod5, label, color in conditions:
@@ -293,8 +293,8 @@ target_reads = ["read_001", "read_002", "read_003"]
 viz = GenomicPositionVisualizer(K=11)  # 11-base window
 
 viz.plot_condition(
-    bam_path="sample.bam",
-    pod5_path="sample.pod5",
+    bam_path="bam_1.bam",
+    pod5_path="pod5_1.pod5",
     contig="chr2",
     target_position=5000000,
     read_ids=target_reads,  # Only these reads
@@ -307,28 +307,6 @@ viz.print_summary()
 viz.show()
 ```
 
-### Example 4: Custom K-mer Labels
-
-```python
-# Use custom labels instead of extracting from reference
-custom_labels = ["A", "T", "G", "C", "A", "T", "G", "C", "A"]
-
-viz = GenomicPositionVisualizer(
-    K=9,
-    kmer=custom_labels,
-    title="Custom K-mer Visualization"
-)
-
-viz.plot_condition(
-    bam_path="sample.bam",
-    pod5_path="sample.pod5",
-    contig="chr3",
-    target_position=10000000
-)
-
-viz.show()
-```
-
 ## Tips and Best Practices
 
 ### Performance Optimization
@@ -338,7 +316,7 @@ viz.show()
    viz.plot_condition(..., max_reads=100)
    ```
 
-2. **Filter out noisy reads**:
+2. **Filter out reads with indels, since they distrupt the current**:
    ```python
    viz.plot_condition(..., exclude_reads_with_indels=True)
    ```
@@ -372,45 +350,18 @@ viz.show()
    - K=9 or K=11 work well for most cases
    - Larger windows may require bigger figures
 
-### Publication-Ready Figures
-
-```python
-# High-quality settings
-pub_style = PlotStyle(
-    figsize=(7, 5),          # Journal single column
-    dpi=300,                 # High resolution
-    line_width=1.5,          # Clear lines
-    show_grid=True,          # Subtle grid
-    grid_alpha=0.15,
-    color_scheme=ColorScheme.COLORBLIND,
-    title_fontsize=14,
-    label_fontsize=12,
-    show_legend=True
-)
-
-viz = GenomicPositionVisualizer(K=9, plot_style=pub_style)
-
-# Plot your data...
-
-# Save in multiple formats
-viz.save("figure.pdf", dpi=300, bbox_inches='tight')
-viz.save("figure.png", dpi=300, bbox_inches='tight')
-```
-
 ## Troubleshooting
 
 ### Common Issues
 
 1. **No reads found at position**:
-   - Check BAM file is indexed (.bai file exists)
    - Verify correct contig name (e.g., "chr1" vs "1")
-   - Ensure position is 1-based
+   - Ensure position is 0-based
    - Increase verbosity to see detailed logs
 
 2. **Memory issues with large files**:
    - Use `max_reads` parameter
-   - Process files in chunks
-   - Filter reads by ID
+   - Filter reads by previously extracted read ID
 
 3. **Overlapping signals hard to see**:
    - Adjust alpha transparency
@@ -430,5 +381,5 @@ MIT License - see LICENSE file for details.
 
 If you use this tool in your research, please cite:
 ```
-[Your citation information here]
+# TODO
 ```

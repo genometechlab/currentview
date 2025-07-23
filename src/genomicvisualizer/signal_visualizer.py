@@ -83,6 +83,12 @@ class SignalVisualizer:
         if color is None:
             color = self._get_next_color()
             self.logger.debug(f"Auto-assigned color for plot group {self._plot_count}")
+
+        if alpha is None:
+            if self.style.alpha_mode=='fixed':
+                alpha = self.style.fixed_alpha
+            elif self.style.alpha_mode=='auto':
+                alpha = self._calculate_alpha(len(reads))
         
         # Extract reference bases
         self.logger.debug("Extracting reference bases for k-mer labels")
