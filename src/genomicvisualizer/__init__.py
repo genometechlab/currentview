@@ -1,2 +1,0 @@
-from genomicvisualizer.genomic_visualizer import GenomicPositionVisualizer
-from genomicvisualizer.utils import PlotStyle

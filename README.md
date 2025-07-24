@@ -32,7 +32,7 @@ pip install -e .
 ## Quick Start
 
 ```python
-from genomicvisualizer import GenomicPositionVisualizer, PlotStyle
+from currentview import GenomicPositionVisualizer, PlotStyle
 
 # Create visualizer for a 9-base window
 viz = GenomicPositionVisualizer(K=9)
