@@ -1,4 +1,4 @@
-# Genomic Visualizer
+# Current View
 
 A Python package for visualizing nanopore sequencing signals at specific genomic positions. This tool enables researchers to plot and compare signal patterns from POD5 files aligned to reference genomes via BAM files.
 
