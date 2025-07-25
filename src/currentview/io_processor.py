@@ -8,7 +8,7 @@ from collections import OrderedDict, defaultdict
 
 from .readers import AlignmentExtractor
 from .readers import SignalExtractor
-from .utils import ReadAlignment, AlignedCondition
+from .utils import ReadAlignment
 from .utils import validate_files
 from .utils import PlotStyle, ColorScheme
 
@@ -37,9 +37,6 @@ class DataProcessor:
         self._alignment_cache: Dict[Path, AlignmentExtractor] = {}
         self._signal_cache: Dict[Path, SignalExtractor] = {}
         self.logger.debug("Initialized empty caches for extractors")
-
-        # Extracted Conditions 
-        self._extracted_conditions_map: Dict[str, AlignedCondition] = OrderedDict()
         
         self.logger.info(f"Initialized DataProcessor with window size {K}")
     
@@ -118,17 +115,6 @@ class DataProcessor:
         if not alignments:
             self.logger.warning("No reads with signals found")
             return None
-        
-        # Store the processed condition
-        self.logger.debug(f"Storing condition '{label}' in extracted conditions map")
-        self._extracted_conditions_map[label] = AlignedCondition(
-            contig=contig,
-            bam_path=bam_path,
-            pod5_path=pod5_path,
-            label=label,
-            target_position=target_position,
-            reads=alignments,
-        )
         
         self.logger.info(f"Successfully processed {len(alignments)} reads for condition '{label}'")
         

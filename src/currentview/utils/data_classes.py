@@ -108,23 +108,30 @@ class ReadAlignment:
                 return False
 
         return True
-    
-@dataclass
-class PlottedCondition:
-    """Track information about each plotted group."""
-    label: str
-    color: Any
-    alpha: Any
-    line_width: float
-    line_style: str
-    xticklabels: List[str]
+
 
 @dataclass
-class AlignedCondition:
-    """Track information about each plotted group."""
-    contig: str
-    bam_path: Union[str, Path]
-    pod5_path: Union[str, Path]
+class Condition:
+    """Store all data for a processed condition."""
     label: str
-    target_position: int
     reads: List[ReadAlignment]
+    positions: List[int]
+    contig: str
+    target_position: int
+    bam_path: Path
+    pod5_path: Path
+    stats: Optional[Dict[int, Dict[str, List[float]]]] = None
+    color: Optional[Any] = None
+    alpha: Optional[float] = None
+    line_width: Optional[float] = None
+    line_style: Optional[str] = None
+    
+    @property
+    def n_reads(self) -> int:
+        """Number of reads in this condition."""
+        return len(self.reads)
+    
+    @property
+    def genomic_location(self) -> str:
+        """Genomic location as string."""
+        return f"{self.contig}:{self.target_position}"
