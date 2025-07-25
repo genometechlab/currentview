@@ -8,9 +8,16 @@ from collections import OrderedDict
 
 from .readers import AlignmentExtractor
 from .readers import SignalExtractor
-from .utils import ReadAlignment, PlottedCondition
+from .utils import ReadAlignment, Condition
 from .utils import validate_files
 from .utils import PlotStyle, ColorScheme
+
+@dataclass
+class PlottedCondition:
+    """Track information about each plotted group."""
+    condition: Condition
+    xticklabels: List[str]
+    line_artists: List[Any] = None  # Store line objects for removal
 
 class SignalVisualizer:
     """Handles all plotting, visualization, and figure management."""
@@ -45,13 +52,16 @@ class SignalVisualizer:
             self.logger.debug(f"Overriding figsize from {self.style.figsize} to {figsize}")
             self.style.figsize = figsize
         
+        # Store initial title
+        self.title = title or 'Nanopore Signal Visualization'
+        
         # Initialize colors
         self.logger.debug("Initializing color palette")
         self._init_colors()
         
         # Create figure
         self.logger.debug(f"Creating figure with size {self.style.figsize}")
-        self.fig, self.ax = self._create_figure(title)
+        self.fig, self.ax = self._create_figure(self.title)
         
         # Add position barriers
         self.logger.debug("Adding position barriers")
@@ -66,29 +76,52 @@ class SignalVisualizer:
         self._plot_count = 0
         self._plotted_conditions_map: Dict[str, PlottedCondition] = OrderedDict()
         
+        # Store color assignments to maintain consistency
+        self._color_assignments: Dict[str, Any] = {}
+        
+        # Store additional plot elements for clean removal
+        self._highlight_patches = []
+        self._annotations = []
+        
         self.logger.info(f"Initialized SignalVisualizer with K={K}, style={self.style.color_scheme.value}")
     
-    def plot_reads(self,
-                   reads: List[ReadAlignment],
-                   positions: List[int],
-                   label: Optional[str] = None,
-                   color: Optional[Any] = None,
-                   alpha: Optional[float] = None,
-                   line_width: Optional[float] = None,
-                   line_style: Optional[str] = None):
+    def plot_condition(self, condition: Condition):
         """Plot a processed group of reads."""
-        self.logger.debug(f"plot_reads called: label='{label}', n_reads={len(reads)}, positions={positions[0]}-{positions[-1]}")
+        reads = condition.reads
+        positions = condition.positions
+        label = condition.label
+        color = condition.color
+        alpha = condition.alpha
+        line_width = condition.line_width
+        line_style = condition.line_style
+        
+        self.logger.debug(f"plot_condition called: label='{label}', n_reads={len(reads)}, positions={positions[0]}-{positions[-1]}")
+        
+        # Check if condition already plotted
+        if label in self._plotted_conditions_map:
+            self.logger.warning(f"Condition '{label}' already plotted. Updating it.")
+            self.remove_condition(label)
         
         # Assign color if not specified
         if color is None:
-            color = self._get_next_color()
-            self.logger.debug(f"Auto-assigned color for plot group {self._plot_count}")
+            # Check if we had a color for this label before
+            if label in self._color_assignments:
+                color = self._color_assignments[label]
+                self.logger.debug(f"Reusing previous color for '{label}'")
+            else:
+                color = self._get_next_color()
+                self._color_assignments[label] = color
+                self.logger.debug(f"Auto-assigned new color for '{label}'")
+            condition.color=color
+        else:
+            self._color_assignments[label] = color
 
         if alpha is None:
-            if self.style.alpha_mode=='fixed':
+            if self.style.alpha_mode == 'fixed':
                 alpha = self.style.fixed_alpha
-            elif self.style.alpha_mode=='auto':
+            elif self.style.alpha_mode == 'auto':
                 alpha = self._calculate_alpha(len(reads))
+            condition.alpha=alpha
         
         # Extract reference bases
         self.logger.debug("Extracting reference bases for k-mer labels")
@@ -102,27 +135,13 @@ class SignalVisualizer:
 
         # Use style defaults
         line_width = line_width or self.style.line_width
+        condition.line_width=line_width
         line_style = line_style or self.style.line_style
-
-        # Store plotted condition
-        self.logger.debug(f"Storing plotted condition '{label}'")
-        self._plotted_conditions_map[label] = PlottedCondition(
-            label=label,
-            color=color,
-            alpha=alpha,
-            line_width=line_width,
-            line_style=line_style,
-            xticklabels=position_labels,
-        )
+        condition.line_style=line_style
         
-        # Update x-axis labels
-        if not self.window_labels:
-            self.logger.debug("Updating position labels on x-axis")
-            self._update_position_labels()
-        
-        # Plot the reads
+        # Plot the reads and collect line artists
         self.logger.info(f"Plotting {len(reads)} reads for condition '{label}'")
-        self._plot_reads(
+        line_artists = self._plot_reads(
             reads,
             positions,
             color=color,
@@ -130,6 +149,19 @@ class SignalVisualizer:
             line_width=line_width,
             line_style=line_style
         )
+
+        # Store plotted condition with line artists
+        self.logger.debug(f"Storing plotted condition '{label}'")
+        self._plotted_conditions_map[label] = PlottedCondition(
+            condition=condition,
+            xticklabels=position_labels,
+            line_artists=line_artists
+        )
+        
+        # Update x-axis labels
+        if not self.window_labels:
+            self.logger.debug("Updating position labels on x-axis")
+            self._update_position_labels()
         
         # Update legend
         self.logger.debug("Updating legend")
@@ -137,6 +169,92 @@ class SignalVisualizer:
         
         self._plot_count += 1
         self.logger.debug(f"Plot count incremented to {self._plot_count}")
+    
+    def remove_condition(self, label: str) -> bool:
+        """
+        Remove a specific condition from the plot.
+        
+        Args:
+            label: Label of the condition to remove
+            
+        Returns:
+            True if condition was removed, False if not found
+        """
+        if label not in self._plotted_conditions_map:
+            self.logger.warning(f"Condition '{label}' not found in plot")
+            return False
+        
+        self.logger.info(f"Removing condition '{label}' from plot")
+        
+        # Get the condition
+        condition = self._plotted_conditions_map[label]
+        
+        # Remove all line artists from the plot
+        if condition.line_artists:
+            for artist in condition.line_artists:
+                artist.remove()
+        
+        # Remove from plotted conditions
+        del self._plotted_conditions_map[label]
+        
+        # Update labels and legend
+        self._update_position_labels()
+        self._update_legend()
+        
+        # Redraw the canvas
+        self.fig.canvas.draw_idle()
+        
+        self.logger.debug(f"Successfully removed condition '{label}'")
+        return True
+    
+    def clear_conditions(self):
+        """Remove all plotted conditions."""
+        self.logger.info("Clearing all conditions from plot")
+        
+        # Remove all line artists
+        for condition in self._plotted_conditions_map.values():
+            if condition.line_artists:
+                for artist in condition.line_artists:
+                    artist.remove()
+        
+        # Clear the map
+        self._plotted_conditions_map.clear()
+        
+        # Reset plot count
+        self._plot_count = 0
+        
+        # Update labels and legend
+        self._update_position_labels()
+        self._update_legend()
+        
+        # Redraw
+        self.fig.canvas.draw_idle()
+        
+        self.logger.debug("All conditions cleared")
+    
+    def update_condition(self, condition: Condition):
+        """
+        Update an existing condition or add it if it doesn't exist.
+        
+        This is more efficient than remove + add for updates.
+        """
+        if condition.label in self._plotted_conditions_map:
+            # Remove the old one
+            old_condition = self._plotted_conditions_map[condition.label]
+            if old_condition.line_artists:
+                for artist in old_condition.line_artists:
+                    artist.remove()
+        
+        # Plot the new/updated condition
+        self.plot_condition(condition)
+    
+    def get_plotted_labels(self) -> List[str]:
+        """Get list of currently plotted condition labels."""
+        return list(self._plotted_conditions_map.keys())
+    
+    def has_condition(self, label: str) -> bool:
+        """Check if a condition is currently plotted."""
+        return label in self._plotted_conditions_map
     
     def highlight_position(self,
                           window_idx: Optional[int] = None,
@@ -149,7 +267,7 @@ class SignalVisualizer:
         
         self.logger.debug(f"Highlighting position {window_idx} with color={color}, alpha={alpha}")
         
-        self.ax.axvspan(
+        patch = self.ax.axvspan(
             window_idx - self.style.padding / 2,
             window_idx + 1 - self.style.padding / 2,
             alpha=alpha,
@@ -157,8 +275,18 @@ class SignalVisualizer:
             zorder=0
         )
         
+        # Store for potential removal
+        self._highlight_patches.append(patch)
+        
         self.logger.info(f"Highlighted window position {window_idx}")
         return self
+    
+    def clear_highlights(self):
+        """Remove all position highlights."""
+        for patch in self._highlight_patches:
+            patch.remove()
+        self._highlight_patches.clear()
+        self.fig.canvas.draw_idle()
     
     def add_annotation(self,
                       window_idx: int,
@@ -187,14 +315,25 @@ class SignalVisualizer:
         }
         default_kwargs.update(kwargs)
         
-        self.ax.annotate(text, xy=(x_pos, y_position), **default_kwargs)
+        annotation = self.ax.annotate(text, xy=(x_pos, y_position), **default_kwargs)
+        
+        # Store for potential removal
+        self._annotations.append(annotation)
         
         self.logger.info(f"Added annotation '{text}' at window position {window_idx}")
         return self
     
+    def clear_annotations(self):
+        """Remove all annotations."""
+        for annotation in self._annotations:
+            annotation.remove()
+        self._annotations.clear()
+        self.fig.canvas.draw_idle()
+    
     def set_title(self, title: str) -> 'SignalVisualizer':
         """Set or update the plot title."""
         self.logger.debug(f"Setting plot title: '{title}'")
+        self.title = title
         self.ax.set_title(title, fontsize=self.style.title_fontsize, pad=10)
         return self
     
@@ -209,6 +348,24 @@ class SignalVisualizer:
             self.logger.debug(f"Actual y-axis limits: {actual_ylim}")
         
         return self
+    
+    def reset_view(self):
+        """Reset the view to default (clear highlights, annotations, reset zoom)."""
+        self.logger.info("Resetting view to default")
+        
+        # Clear highlights and annotations
+        self.clear_highlights()
+        self.clear_annotations()
+        
+        # Reset zoom
+        self.ax.autoscale()
+        
+        # Redraw
+        self.fig.canvas.draw_idle()
+    
+    def refresh(self):
+        """Force a refresh of the plot."""
+        self.fig.canvas.draw_idle()
     
     def show(self):
         """Display the plot."""
@@ -248,7 +405,7 @@ class SignalVisualizer:
     
     def _get_next_color(self):
         """Get the next color from the palette."""
-        color_index = self._plot_count % 10
+        color_index = len(self._color_assignments) % 10
         color = self.colors(color_index)
         self.logger.debug(f"Getting color {color_index} from palette")
         return color
@@ -257,12 +414,12 @@ class SignalVisualizer:
         """Create and configure the matplotlib figure."""
         self.logger.debug("Creating matplotlib figure")
         
+        plt.ioff()  # Turn off interactive mode during creation
+        
         fig = plt.figure(figsize=self.style.figsize, dpi=self.style.dpi)
         ax = fig.add_subplot(111)
         
         # Set title
-        if title is None:
-            title = 'Nanopore Signal Visualization'
         self.logger.debug(f"Setting initial title: '{title}'")
         ax.set_title(title, fontsize=self.style.title_fontsize, pad=10)
         
@@ -354,21 +511,27 @@ class SignalVisualizer:
         """Update x-axis labels with stacked position values."""
         self.logger.debug("Updating position labels on x-axis")
         
+        # First, clear any existing custom labels
+        for txt in self.ax.texts:
+            if hasattr(txt, '_is_position_label'):
+                txt.remove()
+        
         tick_positions = np.arange(self.K) + 0.5 - self.style.padding / 2
         self.ax.set_xticks(tick_positions)
         
         plotted_conditions = list(self._plotted_conditions_map.values())
         n_conditions = len(plotted_conditions)
-        self.logger.debug(f"Updating labels for {n_conditions} conditions")
         
-        if n_conditions == 1:
+        if n_conditions == 0:
+            # No conditions, just show positions
+            self.ax.set_xticklabels([str(i) for i in range(self.K)])
+        elif n_conditions == 1:
             # Single set of labels
             self.logger.debug("Single condition - applying simple labels")
             labels = self.ax.set_xticklabels(plotted_conditions[0].xticklabels)
             # Color the labels
-            if plotted_conditions:
-                for label in labels:
-                    label.set_color(plotted_conditions[-1].color)
+            for label in labels:
+                label.set_color(plotted_conditions[0].condition.color)
         else:
             # Multiple label sets - create stacked labels
             self.logger.debug(f"Multiple conditions ({n_conditions}) - creating stacked labels")
@@ -381,83 +544,92 @@ class SignalVisualizer:
                 y_offset = self.style.xtick_label_row_spacing
                 
                 for j, group in enumerate(plotted_conditions):
-                    if j < len(plotted_conditions):
-                        color = plotted_conditions[j].color
-                    else:
-                        color = 'black'
+                    color = group.condition.color
                     
                     trans = self.ax.get_xaxis_transform()
-                    self.ax.text(x_pos, y_base + j * y_offset, str(group.xticklabels[i]),
-                            transform=trans,
-                            ha='center', va='top',
-                            fontsize=self.style.tick_labelsize,
-                            color=color,
-                            clip_on=False)
+                    txt = self.ax.text(x_pos, y_base + j * y_offset, str(group.xticklabels[i]),
+                                       transform=trans,
+                                       ha='center', va='top',
+                                       fontsize=self.style.tick_labelsize,
+                                       color=color,
+                                       clip_on=False)
+                    # Mark as position label for removal
+                    txt._is_position_label = True
         
         # Always adjust x-label padding based on number of conditions
-        # This ensures xlabel is positioned correctly even for single condition
         label_padding = self.style.xlabel_margin_base + (n_conditions - 1) * self.style.xlabel_margin_per_row
         self.ax.set_xlabel('Genomic Position', fontsize=self.style.label_fontsize,
-                        labelpad=label_padding)
-        self.logger.debug(f"Set x-label padding to {label_padding} (base={self.style.xlabel_margin_base}, "
-                        f"rows={n_conditions}, per_row={self.style.xlabel_margin_per_row})")
+                          labelpad=label_padding)
+        self.logger.debug(f"Set x-label padding to {label_padding}")
 
-    
     def _update_legend(self):
         """Create custom legend on the right side."""
+        # First, remove any existing legend elements
+        for artist in self.fig.get_children():
+            if isinstance(artist, plt.Text) and hasattr(artist, '_is_legend_element'):
+                artist.remove()
+        for artist in self.fig.artists:
+            if hasattr(artist, '_is_legend_element'):
+                artist.remove()
+        
         if not self.style.show_legend:
             self.logger.debug("Legend disabled by style settings")
             return
             
         if not self._plotted_conditions_map:
             self.logger.debug("No conditions to show in legend")
+            # Reset figure margins
+            self.fig.subplots_adjust(right=0.9)
             return
         
         self.logger.debug(f"Creating legend for {len(self._plotted_conditions_map)} conditions")
         
-        # Remove default legend if exists
+        # Remove matplotlib legend if exists
         if self.ax.get_legend() is not None:
             self.ax.get_legend().remove()
-            self.logger.debug("Removed existing legend")
         
         # Adjust figure for legend
         self.fig.subplots_adjust(right=0.75)
         
         # Add title
-        self.fig.text(0.77, 0.9, 'Groups:', 
-                     fontsize=self.style.label_fontsize,
-                     weight='bold',
-                     transform=self.fig.transFigure)
+        title_text = self.fig.text(0.77, 0.9, 'Groups:', 
+                                  fontsize=self.style.label_fontsize,
+                                  weight='bold',
+                                  transform=self.fig.transFigure)
+        title_text._is_legend_element = True
         
         plotted_conditions = list(self._plotted_conditions_map.values())
         
         # Add each group
         y_pos = 0.85
         for i, group in enumerate(plotted_conditions):
-            # Draw line sample using matplotlib Line2D instead of axes
+            # Draw line sample
             from matplotlib.lines import Line2D
             line = Line2D([0.77, 0.79], [y_pos, y_pos], 
-                         color=group.color, 
-                         linewidth=group.line_width * 2,
-                         linestyle=group.line_style,
+                         color=group.condition.color, 
+                         linewidth=group.condition.line_width * 2,
+                         linestyle=group.condition.line_style,
                          transform=self.fig.transFigure)
+            line._is_legend_element = True
             self.fig.add_artist(line)
             
             # Add label text
-            self.fig.text(0.80, y_pos, group.label,
-                         fontsize=self.style.legend_fontsize,
-                         color='black',
-                         transform=self.fig.transFigure,
-                         va='center')
+            label_text = self.fig.text(0.80, y_pos, group.condition.label,
+                                      fontsize=self.style.legend_fontsize,
+                                      color='black',
+                                      transform=self.fig.transFigure,
+                                      va='center')
+            label_text._is_legend_element = True
             
             y_pos -= 0.08
             
             # Add separator
             if i < len(plotted_conditions) - 1:
-                self.fig.text(0.77, y_pos + 0.03, '─' * 20,
-                             fontsize=self.style.legend_fontsize * 0.7,
-                             color='lightgray',
-                             transform=self.fig.transFigure)
+                sep_text = self.fig.text(0.77, y_pos + 0.03, '─' * 20,
+                                        fontsize=self.style.legend_fontsize * 0.7,
+                                        color='lightgray',
+                                        transform=self.fig.transFigure)
+                sep_text._is_legend_element = True
         
         self.logger.debug("Legend created successfully")
     
@@ -467,8 +639,8 @@ class SignalVisualizer:
                    color: Any,
                    alpha: Optional[float],
                    line_width: Optional[float],
-                   line_style: Optional[str]):
-        """Plot a group of reads."""
+                   line_style: Optional[str]) -> List[Any]:
+        """Plot a group of reads and return line artists."""
         self.logger.debug(f"Starting to plot {len(reads)} reads")
         
         # Auto-calculate alpha if needed
@@ -482,6 +654,7 @@ class SignalVisualizer:
         # Statistics for logging
         signals_plotted = 0
         missing_signals = 0
+        line_artists = []
         
         # Plot each read
         for read_idx, read_alignment in enumerate(reads):
@@ -503,13 +676,14 @@ class SignalVisualizer:
                     x_coords = np.linspace(x_start, x_end, signal_length)
                     
                     # Plot the signal
-                    self.ax.plot(
+                    line = self.ax.plot(
                         x_coords, signal,
                         color=color,
                         alpha=alpha,
                         linewidth=line_width,
                         linestyle=line_style,
-                    )
+                    )[0]  # plot returns a list, we want the line object
+                    line_artists.append(line)
                     signals_plotted += 1
                 elif genomic_pos in bases_dict:
                     missing_signals += 1
@@ -518,10 +692,7 @@ class SignalVisualizer:
         if missing_signals > 0:
             self.logger.warning(f"{missing_signals} bases had no signal data")
         
-        # Log plot statistics if in debug mode
-        if self.logger.isEnabledFor(logging.DEBUG):
-            self.logger.debug(f"Plot parameters: color={color}, alpha={alpha}, "
-                            f"line_width={line_width}, line_style={line_style}")
+        return line_artists
     
     def _calculate_alpha(self, n_reads: int) -> float:
         """Calculate appropriate alpha value."""
