@@ -141,14 +141,7 @@ class SignalVisualizer:
         
         # Plot the reads and collect line artists
         self.logger.info(f"Plotting {len(reads)} reads for condition '{label}'")
-        line_artists = self._plot_reads(
-            reads,
-            positions,
-            color=color,
-            alpha=alpha,
-            line_width=line_width,
-            line_style=line_style
-        )
+        line_artists = self._plot_signals(condition)
 
         # Store plotted condition with line artists
         self.logger.debug(f"Storing plotted condition '{label}'")
@@ -370,7 +363,23 @@ class SignalVisualizer:
     def show(self):
         """Display the plot."""
         self.logger.info("Displaying plot")
-        plt.show()
+
+        try:
+            # Check if in a Jupyter notebook
+            from IPython import get_ipython
+            shell = get_ipython().__class__.__name__
+
+            if shell == 'ZMQInteractiveShell':
+                # In Jupyter notebook or JupyterLab
+                from IPython.display import display
+                display(self.fig)
+            else:
+                # In terminal/IPython shell
+                plt.show()
+        except Exception as e:
+            self.logger.debug(f"Fallback to plt.show() due to: {e}")
+            plt.show()
+
     
     def save(self, 
              path: Union[str, Path],
@@ -633,23 +642,9 @@ class SignalVisualizer:
         
         self.logger.debug("Legend created successfully")
     
-    def _plot_reads(self,
-                   reads: List[ReadAlignment],
-                   positions: List[int],
-                   color: Any,
-                   alpha: Optional[float],
-                   line_width: Optional[float],
-                   line_style: Optional[str]) -> List[Any]:
+    def _plot_signals(self, condition: Condition) -> List[Any]:
         """Plot a group of reads and return line artists."""
-        self.logger.debug(f"Starting to plot {len(reads)} reads")
-        
-        # Auto-calculate alpha if needed
-        if alpha is None and self.style.alpha_mode == 'auto':
-            alpha = self._calculate_alpha(len(reads))
-            self.logger.debug(f"Auto-calculated alpha: {alpha} for {len(reads)} reads")
-        elif alpha is None:
-            alpha = self.style.fixed_alpha
-            self.logger.debug(f"Using fixed alpha: {alpha}")
+        self.logger.debug(f"Starting to plot {len(condition.reads)} reads")
         
         # Statistics for logging
         signals_plotted = 0
@@ -657,11 +652,11 @@ class SignalVisualizer:
         line_artists = []
         
         # Plot each read
-        for read_idx, read_alignment in enumerate(reads):
+        for read_idx, read_alignment in enumerate(condition.reads):
             bases_dict = read_alignment.bases_by_ref_pos
             
             # Plot signal for each position
-            for pos_idx, genomic_pos in enumerate(positions):
+            for pos_idx, genomic_pos in enumerate(condition.positions):
                 if genomic_pos in bases_dict and bases_dict[genomic_pos].has_signal:
                     base = bases_dict[genomic_pos]
                     signal = base.signal
@@ -678,17 +673,17 @@ class SignalVisualizer:
                     # Plot the signal
                     line = self.ax.plot(
                         x_coords, signal,
-                        color=color,
-                        alpha=alpha,
-                        linewidth=line_width,
-                        linestyle=line_style,
-                    )[0]  # plot returns a list, we want the line object
-                    line_artists.append(line)
+                        color=condition.color,
+                        alpha=condition.alpha,
+                        linewidth=condition.line_width,
+                        linestyle=condition.line_style,
+                    )
+                    line_artists.extend(line)
                     signals_plotted += 1
                 elif genomic_pos in bases_dict:
                     missing_signals += 1
         
-        self.logger.info(f"Plotted {signals_plotted} signal segments from {len(reads)} reads")
+        self.logger.info(f"Plotted {signals_plotted} signal segments from {len(condition.reads)} reads")
         if missing_signals > 0:
             self.logger.warning(f"{missing_signals} bases had no signal data")
         

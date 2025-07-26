@@ -12,6 +12,7 @@ from .utils import ReadAlignment, PlotStyle, ColorScheme, Condition
 
 from .io_processor import DataProcessor
 from .signal_visualizer import SignalVisualizer
+from .stats_visualizer import StatsVisualizer
 from .stats import StatsCalculator
 
 
@@ -94,7 +95,9 @@ class GenomicPositionVisualizer:
             self.logger.debug(f"Initializing statistics with {len(stats)} functions")
             self.stats_calculator = StatsCalculator(stats)
             # Extract stat names for display
-            self._stats_names = [self.stats_calculator._get_stat_name(s) for s in stats]
+            self._stats_names = self.stats_calculator.stats_names
+            # Extract number of stats
+            self._n_stats = self.stats_calculator.num_stats
         
         # Store visualization parameters
         self.kmer = kmer
@@ -192,7 +195,7 @@ class GenomicPositionVisualizer:
             )
             
             # Step 3: Mark visualizations as needing update
-            self._invalidate_visualizations()
+            self._mark_for_update()
             
             self.logger.info(f"Successfully added condition '{processed_data['label']}' "
                            f"with {len(processed_data['reads'])} reads")
@@ -202,12 +205,6 @@ class GenomicPositionVisualizer:
     # Convenience method with cleaner name
     def add(self, *args, **kwargs) -> 'GenomicPositionVisualizer':
         """Alias for add_condition() with shorter name."""
-        return self.add_condition(*args, **kwargs)
-    
-    # Keep plot_condition for backward compatibility
-    def plot_condition(self, *args, **kwargs) -> 'GenomicPositionVisualizer':
-        """Process and plot reads from specified files (backward compatibility)."""
-        self.logger.debug("plot_condition called - redirecting to add_condition")
         return self.add_condition(*args, **kwargs)
     
     def show(self):
@@ -228,51 +225,27 @@ class GenomicPositionVisualizer:
             raise RuntimeError("No conditions to display. Use add_condition() first.")
         
         self.logger.info("Displaying signal plot")
-        
-        # Check if we need to recreate the figure
-        need_recreate = False
-        
-        if self._signal_viz is not None:
-            try:
-                # Check if figure still exists
-                import matplotlib.pyplot as plt
-                if not plt.fignum_exists(self._signal_viz.fig.number):
-                    need_recreate = True
-                    self.logger.debug("Figure was closed, need to recreate")
-            except:
-                print("we recreating")
-                need_recreate = True
-        
-        if need_recreate:
-            self._signal_viz = None
-            self._signal_viz_dirty = True
-        
         self._ensure_signal_viz()
         self._signal_viz.show()
     
-    def show_stats(self, plot_type: str = 'kde', **kwargs):
+    def show_stats(self):
         """
-        Display statistics visualization.
+        Display the stats visualization.
         
-        Args:
-            plot_type: Type of statistical plot (currently only 'kde' implemented)
-            **kwargs: Additional arguments passed to the stats visualizer
-            
+        Creates and displays a plot showing signal traces for all added conditions.
+        The plot includes position barriers, reference bases, and a legend.
+        
         Raises:
-            RuntimeError: If statistics were not enabled during initialization
             RuntimeError: If no conditions have been added
         """
         if not self._stats_enabled:
-            raise RuntimeError("Statistics not enabled. Initialize with stats parameter.")
-        
+            self.logger.warning(f"No stats is provided to the visualizer")
         if not self._conditions:
             raise RuntimeError("No conditions to display. Use add_condition() first.")
         
-        self.logger.info(f"Displaying {plot_type} statistics plot")
+        self.logger.info("Displaying stats plot")
         self._ensure_stats_viz()
-        
-        # TODO: Implement stats visualization
-        self.logger.warning("Statistics visualization not yet implemented")
+        self._stats_viz.show()
     
     def save(self, path: Union[str, Path], *, dpi: Optional[int] = None, 
              bbox_inches: str = 'tight', **kwargs):
@@ -648,7 +621,7 @@ class GenomicPositionVisualizer:
         self.logger.debug(f"Stored condition '{processed_data['label']}' with "
                          f"{condition.n_reads} reads")
     
-    def _invalidate_visualizations(self):
+    def _mark_for_update(self):
         """Mark visualizations as needing update."""
         self._signal_viz_dirty = True
         self._stats_viz_dirty = True
@@ -667,9 +640,6 @@ class GenomicPositionVisualizer:
                 self.figsize,
                 self.logger
             )
-            
-            # Track what's plotted
-            self._plotted_labels = set()
             
         if self._signal_viz_dirty:
             # Update existing visualizer
@@ -704,24 +674,49 @@ class GenomicPositionVisualizer:
     
     def _ensure_stats_viz(self):
         """Ensure statistics visualizer is created and up to date."""
-        if self._stats_viz is None or self._stats_viz_dirty:
-            self.logger.debug("Creating/updating statistics visualizer")
-            # TODO: Implement when stats visualization is added
+        if self._stats_viz is None:
+            # First time - create new visualizer
+            self.logger.debug("Creating signal visualizer")
+            
+            self._stats_viz = StatsVisualizer(
+                self.K,
+                self._n_stats,
+                self.kmer,
+                self._stats_names,
+                self.plot_style,
+                self.title,
+                self.figsize,
+                self.logger
+            )
+
+        if self._stats_viz_dirty:
+            # Update existing visualizer
+            self.logger.debug("Updating signal visualizer")
+            
+            # Get currently plotted labels
+            current_labels = self._stats_viz.get_plotted_labels()
+            desired_labels = self._conditions.keys()
+            
+            # Remove conditions that shouldn't be there
+            to_remove = [label for label in current_labels if label not in desired_labels]
+            for label in to_remove:
+                self.logger.debug(f"Removing condition '{label}' from plot")
+                self._stats_viz.remove_condition(label)
+            
+            # Add or update conditions
+            for label in desired_labels:
+                cond = self._conditions[label]
+                if label not in current_labels:
+                    self.logger.debug(f"Adding condition '{label}' to plot")
+                else:
+                    self.logger.debug(f"Updating condition '{label}' in plot")
+                self._stats_viz.plot_condition(cond)
+            
+            self._pending_modifications.clear()
             self._stats_viz_dirty = False
+
     
     # Backward compatibility properties
-    
-    @property
-    def fig(self):
-        """Get the signal figure (backward compatibility)."""
-        self._ensure_signal_viz()
-        return self._signal_viz.fig
-    
-    @property
-    def ax(self):
-        """Get the signal axes (backward compatibility)."""
-        self._ensure_signal_viz()
-        return self._signal_viz.ax
     
     @property
     def style(self):
