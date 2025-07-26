@@ -35,10 +35,10 @@ pip install -e .
 from currentview import GenomicPositionVisualizer, PlotStyle
 
 # Create visualizer for a 9-base window
-viz = GenomicPositionVisualizer(K=9)
+viz = GenomicPositionVisualizer(K=9, stats=['mean', ...])
 
 # Plot signals from a genomic position
-viz.plot_condition(
+viz.add_condition(
     bam_path="sample1.bam",
     pod5_path="sample1.pod5",
     contig="chr1",
@@ -47,7 +47,7 @@ viz.plot_condition(
 )
 
 # Add another condition for comparison
-viz.plot_condition(
+viz.add_condition(
     bam_path="sample2.bam",
     pod5_path="sample2.pod5",
     contig="chr1",
@@ -56,8 +56,11 @@ viz.plot_condition(
     color="red"
 )
 
-# Display the plot
-viz.show()
+# Display the signal plot
+viz.show_signals()
+
+# Display the stat plot
+viz.show_stats()
 ```
 
 ## Core API
