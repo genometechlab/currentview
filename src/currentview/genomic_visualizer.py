@@ -240,6 +240,7 @@ class GenomicPositionVisualizer:
         """
         if not self._stats_enabled:
             self.logger.warning(f"No stats is provided to the visualizer")
+            return
         if not self._conditions:
             raise RuntimeError("No conditions to display. Use add_condition() first.")
         
@@ -247,8 +248,7 @@ class GenomicPositionVisualizer:
         self._ensure_stats_viz()
         self._stats_viz.show()
     
-    def save(self, path: Union[str, Path], *, dpi: Optional[int] = None, 
-             bbox_inches: str = 'tight', **kwargs):
+    def save(self, *args, **kwargs):
         """
         Save the signal figure to file.
         
@@ -258,6 +258,12 @@ class GenomicPositionVisualizer:
             bbox_inches: How to handle the bounding box ('tight' removes extra whitespace)
             **kwargs: Additional arguments passed to matplotlib.savefig()
         """
+        self.save_signals(*args, **kwargs)      
+
+    
+    def save_signals(self, path: Union[str, Path], *, dpi: Optional[int] = None, 
+                     bbox_inches: str = 'tight', **kwargs):
+        """Save the signal figure (explicit method name)."""  
         if not self._conditions:
             raise RuntimeError("No conditions to save. Use add_condition() first.")
         
@@ -265,31 +271,26 @@ class GenomicPositionVisualizer:
         self._ensure_signal_viz()
         self._signal_viz.save(path, dpi, bbox_inches, **kwargs)
     
-    def save_signals(self, *args, **kwargs):
-        """Save the signal figure (explicit method name)."""
-        self.save(*args, **kwargs)
-    
-    def save_stats(self, path: Union[str, Path], *, plot_type: str = 'kde', 
-                   dpi: Optional[int] = None, **kwargs):
+    def save_stats(self, path: Union[str, Path], *, dpi: Optional[int] = None, 
+                   bbox_inches: str = 'tight', **kwargs):
         """
         Save statistics visualization to file.
         
         Args:
             path: Output file path
-            plot_type: Type of statistical plot
             dpi: Resolution in dots per inch
+            bbox_inches: How to handle the bounding box ('tight' removes extra whitespace)
             **kwargs: Additional arguments passed to savefig
         """
         if not self._stats_enabled:
-            raise RuntimeError("Statistics not enabled.")
+            return
         
         if not self._conditions:
             raise RuntimeError("No conditions to save.")
         
-        self.logger.info(f"Saving {plot_type} statistics to {path}")
-        self._ensure_stats_viz()
-        # TODO: Implement when stats viz is ready
-        self.logger.warning("Statistics save not yet implemented")
+        self.logger.info(f"Saving signal figure to {path}")
+        self._ensure_signal_viz()
+        self._signal_viz.save(path, dpi, bbox_inches, **kwargs)
     
     def highlight_position(self, window_idx: Optional[int] = None, *,
                           color: str = 'red', alpha: float = 0.2) -> 'GenomicPositionVisualizer':
