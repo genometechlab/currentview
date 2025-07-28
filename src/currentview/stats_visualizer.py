@@ -191,6 +191,11 @@ class StatsVisualizer:
             position_labels=position_labels,
             line_artists=line_artists
         )
+
+        # Update x-axis labels
+        if not self.window_labels:
+            self.logger.debug("Updating position labels on x-axis")
+            self._update_position_labels()
         
         # Update legend
         self.logger.debug("Updating legend")
@@ -227,6 +232,7 @@ class StatsVisualizer:
         del self._plotted_conditions_map[label]
         
         # Update labels and legend
+        self._update_position_labels()
         self._update_legend()
         
         # Redraw the canvas
@@ -252,6 +258,7 @@ class StatsVisualizer:
         self._plot_count = 0
         
         # Update labels and legend
+        self._update_position_labels()
         self._update_legend()
         
         # Redraw
@@ -381,6 +388,71 @@ class StatsVisualizer:
             self.logger.debug(f"Successfully extracted all {len(positions)} reference bases")
         
         return kmer_dict
+    
+    def _update_position_labels(self):
+        """Update subplot titles with stacked position values."""
+        self.logger.debug("Updating position labels on subplot titles")
+        
+        # First, clear any existing custom title elements
+        for ax_row in self.axes:
+            for ax in ax_row:
+                # Remove any custom text objects that were added as title supplements
+                for txt in ax.texts:
+                    if hasattr(txt, '_is_position_label'):
+                        txt.remove()
+        
+        plotted_conditions = list(self._plotted_conditions_map.values())
+        n_conditions = len(plotted_conditions)
+        
+        if n_conditions == 0:
+            # No conditions, just show positions or window labels
+            for col_idx, ax in enumerate(self.axes[0]):
+                if self.window_labels:
+                    ax.set_title(self.window_labels[col_idx])
+                else:
+                    ax.set_title(f"Position {col_idx}")
+        elif n_conditions == 1:
+            # Single set of labels
+            self.logger.debug("Single condition - applying simple labels")
+            for col_idx, ax in enumerate(self.axes[0]):
+                ax.set_title(plotted_conditions[0].position_labels[col_idx], 
+                            color=plotted_conditions[0].condition.color,
+                            fontsize=self.style.title_fontsize)
+        else:
+            # Multiple label sets - create stacked labels
+            self.logger.debug(f"Multiple conditions ({n_conditions}) - creating stacked labels")
+            
+            for col_idx in range(self.K):
+                ax = self.axes[0][col_idx]
+                
+                # Clear the main title
+                ax.set_title('')
+                
+                # Add colored text for each condition
+                y_offset_base = 1.15  # Start position above the subplot
+                y_offset_step = 0.15  # Space between lines
+                
+                for j, group in enumerate(plotted_conditions[::-1]):
+                    color = group.condition.color
+                    
+                    # Add text above the subplot
+                    txt = ax.text(0.5, y_offset_base + j * y_offset_step, 
+                                group.position_labels[col_idx],
+                                transform=ax.transAxes,
+                                ha='center', va='bottom',
+                                fontsize=self.style.tick_labelsize,
+                                color=color)
+                    # Mark as position label for removal
+                    txt._is_position_label = True
+        
+        # Adjust top margin if multiple conditions
+        if n_conditions > 1:
+            top_margin = 0.93 - (n_conditions - 1) * 0.02
+            self.fig.subplots_adjust(top=top_margin)
+        else:
+            self.fig.subplots_adjust(top=0.93)
+        
+        self.logger.debug(f"Updated position labels for {n_conditions} conditions")
 
     def _update_legend(self):
         """Create custom legend on the right side."""
