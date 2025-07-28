@@ -113,8 +113,8 @@ class GenomicPositionVisualizer:
         self._conditions: OrderedDict[str, Condition] = OrderedDict()
         
         # Track visualization state
-        self._signal_viz_dirty = True
-        self._stats_viz_dirty = True
+        self._update_signal_viz = True
+        self._update_stats_viz = True
         
         # Track modifications to apply to visualizers
         self._pending_modifications = []
@@ -289,7 +289,7 @@ class GenomicPositionVisualizer:
             raise RuntimeError("No conditions to save.")
         
         self.logger.info(f"Saving signal figure to {path}")
-        self._ensure_signal_viz()
+        self._ensure_stats_viz()
         self._signal_viz.save(path, dpi, bbox_inches, **kwargs)
     
     def highlight_position(self, window_idx: Optional[int] = None, *,
@@ -314,7 +314,7 @@ class GenomicPositionVisualizer:
         self.logger.debug(f"Highlighting position {window_idx} with color={color}, alpha={alpha}")
         
         # Apply immediately if viz exists, otherwise queue
-        if self._signal_viz and not self._signal_viz_dirty:
+        if self._signal_viz and not self._update_signal_viz:
             self._signal_viz.highlight_position(window_idx, color, alpha)
         else:
             self._pending_modifications.append(
@@ -346,7 +346,7 @@ class GenomicPositionVisualizer:
         
         self.logger.debug(f"Adding annotation '{text}' at position {window_idx}")
         
-        if self._signal_viz and not self._signal_viz_dirty:
+        if self._signal_viz and not self._update_signal_viz:
             self._signal_viz.add_annotation(window_idx, text, y_position, **kwargs)
         else:
             self._pending_modifications.append(
@@ -370,7 +370,7 @@ class GenomicPositionVisualizer:
         """Set y-axis limits for signal plot."""
         self.logger.debug(f"Setting y-axis limits: bottom={bottom}, top={top}")
         
-        if self._signal_viz and not self._signal_viz_dirty:
+        if self._signal_viz and not self._update_signal_viz:
             self._signal_viz.set_ylim(bottom, top)
         else:
             self._pending_modifications.append(
@@ -466,8 +466,8 @@ class GenomicPositionVisualizer:
         self._stats_viz = None
         
         # Mark as dirty
-        self._signal_viz_dirty = True
-        self._stats_viz_dirty = True
+        self._update_signal_viz = True
+        self._update_stats_viz = True
         self._pending_modifications.clear()
         
         return self
@@ -499,10 +499,10 @@ class GenomicPositionVisualizer:
             self._signal_viz.remove_condition(label)
         else:
             # Mark as dirty to update on next display
-            self._signal_viz_dirty = True
+            self._update_signal_viz = True
         
         # Mark stats as dirty
-        self._stats_viz_dirty = True
+        self._update_stats_viz = True
         
         return self
     
@@ -624,8 +624,8 @@ class GenomicPositionVisualizer:
     
     def _mark_for_update(self):
         """Mark visualizations as needing update."""
-        self._signal_viz_dirty = True
-        self._stats_viz_dirty = True
+        self._update_signal_viz = True
+        self._update_stats_viz = True
     
     def _ensure_signal_viz(self):
         """Ensure signal visualizer is created and up to date."""
@@ -642,7 +642,7 @@ class GenomicPositionVisualizer:
                 self.logger
             )
             
-        if self._signal_viz_dirty:
+        if self._update_signal_viz:
             # Update existing visualizer
             self.logger.debug("Updating signal visualizer")
             
@@ -671,7 +671,7 @@ class GenomicPositionVisualizer:
                 method(*args, **kwargs)
             
             self._pending_modifications.clear()
-            self._signal_viz_dirty = False
+            self._update_signal_viz = False
     
     def _ensure_stats_viz(self):
         """Ensure statistics visualizer is created and up to date."""
@@ -690,7 +690,7 @@ class GenomicPositionVisualizer:
                 self.logger
             )
 
-        if self._stats_viz_dirty:
+        if self._update_stats_viz:
             # Update existing visualizer
             self.logger.debug("Updating signal visualizer")
             
@@ -714,7 +714,7 @@ class GenomicPositionVisualizer:
                 self._stats_viz.plot_condition(cond)
             
             self._pending_modifications.clear()
-            self._stats_viz_dirty = False
+            self._update_stats_viz = False
 
     
     # Backward compatibility properties

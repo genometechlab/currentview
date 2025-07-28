@@ -16,7 +16,7 @@ from .utils import PlotStyle, ColorScheme
 class PlottedCondition:
     """Track information about each plotted group."""
     condition: Condition
-    xticklabels: List[str]
+    position_labels: List[str]
     line_artists: List[Any] = None  # Store line objects for removal
 
 class SignalVisualizer:
@@ -147,7 +147,7 @@ class SignalVisualizer:
         self.logger.debug(f"Storing plotted condition '{label}'")
         self._plotted_conditions_map[label] = PlottedCondition(
             condition=condition,
-            xticklabels=position_labels,
+            position_labels=position_labels,
             line_artists=line_artists
         )
         
@@ -537,7 +537,7 @@ class SignalVisualizer:
         elif n_conditions == 1:
             # Single set of labels
             self.logger.debug("Single condition - applying simple labels")
-            labels = self.ax.set_xticklabels(plotted_conditions[0].xticklabels)
+            labels = self.ax.set_xticklabels(plotted_conditions[0].position_labels)
             # Color the labels
             for label in labels:
                 label.set_color(plotted_conditions[0].condition.color)
@@ -556,7 +556,7 @@ class SignalVisualizer:
                     color = group.condition.color
                     
                     trans = self.ax.get_xaxis_transform()
-                    txt = self.ax.text(x_pos, y_base + j * y_offset, str(group.xticklabels[i]),
+                    txt = self.ax.text(x_pos, y_base + j * y_offset, str(group.position_labels[i]),
                                        transform=trans,
                                        ha='center', va='top',
                                        fontsize=self.style.tick_labelsize,

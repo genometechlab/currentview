@@ -16,7 +16,7 @@ from .utils import PlotStyle, ColorScheme
 class PlottedCondition:
     """Track information about each plotted group."""
     condition: Condition
-    xticklabels: List[str]
+    position_labels: List[str]
     line_artists: List[Any] = None  # Store line objects for removal
 
 class StatsVisualizer:
@@ -183,7 +183,7 @@ class StatsVisualizer:
         self.logger.debug(f"Storing plotted condition '{label}'")
         self._plotted_conditions_map[label] = PlottedCondition(
             condition=condition,
-            xticklabels=position_labels,
+            position_labels=position_labels,
             line_artists=line_artists
         )
         

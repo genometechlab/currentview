@@ -73,7 +73,7 @@ class DataProcessor:
             raise FileNotFoundError(f"POD5 file not found: {pod5_path}")
         self.logger.debug("File validation successful")
         
-        self.logger.info(f"Processing {contig}:{target_position} from {bam_path.name}")
+        self.logger.info(f"Looking for reads aligned at position {target_position} of contig {contig} from {bam_path.name}")
         
         # Log extraction parameters
         self.logger.debug(f"Extraction parameters: "
