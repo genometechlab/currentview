@@ -124,35 +124,11 @@ class DataProcessor:
         
         return alignments
     
-    def get_summary(self) -> Dict:
-        """Get summary of io_processor class."""
-        self.logger.debug("get_summary called")
-        
-        summary = {
-            'K': self.K,
-            'n_conditions': len(self._extracted_conditions_map),
-            'total_reads': sum(len(cond.reads) for cond in self._extracted_conditions_map.values()),
-            'conditions': [
-                {
-                    'label': cond.label,
-                    'contig': cond.contig,
-                    'position': cond.target_position,
-                    'n_reads': len(cond.reads),
-                    'bam': str(cond.bam_path),
-                    'pod5': str(cond.pod5_path)
-                }
-                for cond in self._extracted_conditions_map.values()
-            ]
-        }
-        
-        self.logger.debug(f"Summary: {summary['n_conditions']} conditions, {summary['total_reads']} total reads")
-        return summary
-    
     def _extract_alignments(self,
                            bam_path: Path,
                            contig: str,
                            target_position: int,
-                           target_base: str,
+                           target_base: Optional[str],
                            exclude_reads_with_indels: bool,
                            read_ids: Optional[Union[Set[str], List[str]]],
                            max_reads: Optional[int]) -> List[ReadAlignment]:
@@ -162,7 +138,7 @@ class DataProcessor:
         # Check cache
         if bam_path not in self._alignment_cache:
             self.logger.debug(f"Creating new AlignmentExtractor for {bam_path.name}")
-            self._alignment_cache[bam_path] = AlignmentExtractor(bam_path)
+            self._alignment_cache[bam_path] = AlignmentExtractor(bam_path, logger=self.logger)
         else:
             self.logger.debug(f"Using cached AlignmentExtractor for {bam_path.name}")
         

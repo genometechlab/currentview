@@ -57,6 +57,7 @@ class GenomicPositionVisualizer:
                  kmer: Optional[List[Union[str, int]]] = None,
                  stats: Optional[List[Union[str, Callable]]] = None,
                  plot_style: Optional[PlotStyle] = None,
+                 plot_style_kde: Optional[PlotStyle] = None,
                  title: Optional[str] = None,
                  figsize: Optional[Tuple[float, float]] = None,
                  verbosity: Union[VerbosityLevel, int] = VerbosityLevel.SILENT,
@@ -102,6 +103,7 @@ class GenomicPositionVisualizer:
         # Store visualization parameters
         self.kmer = kmer
         self.plot_style = plot_style or PlotStyle()
+        self.plot_style_kde = plot_style_kde or self.plot_style
         self.title = title
         self.figsize = figsize
         
@@ -137,7 +139,8 @@ class GenomicPositionVisualizer:
                       color: Optional[Union[str, Tuple[float, float, float]]] = None,
                       alpha: Optional[float] = None,
                       line_width: Optional[float] = None,
-                      line_style: Optional[str] = None) -> 'GenomicPositionVisualizer':
+                      line_style: Optional[str] = None,
+                      overwrite: Optional[bool] = False) -> 'GenomicPositionVisualizer':
         """
         Add and process a new condition.
         
@@ -171,6 +174,20 @@ class GenomicPositionVisualizer:
             >>> viz.add_condition("control.bam", "control.pod5", "chr1", 12345, 
             ...                   label="Control", color="blue", max_reads=100)
         """
+
+        # Generate label if needed
+        if label is None:
+            label = f"{contig}:{target_position}"
+            self.logger.debug(f"Auto-generated label: {label}")
+        
+        # Check for duplicates
+        if label in self._conditions:
+            if overwrite is False:
+                raise KeyError(f"Condition '{label}' already exists. "
+                            f"Please use a unique label or remove the existing condition first.")
+            else:
+                self.logger.info(f"Overwriting the previous label: {label}")
+        
         # Step 1: Process the data
         processed_data = self._process_condition_data(
             bam_path=bam_path,
@@ -290,7 +307,7 @@ class GenomicPositionVisualizer:
         
         self.logger.info(f"Saving signal figure to {path}")
         self._ensure_stats_viz()
-        self._signal_viz.save(path, dpi, bbox_inches, **kwargs)
+        self._stats_viz.save(path, dpi, bbox_inches, **kwargs)
     
     def highlight_position(self, window_idx: Optional[int] = None, *,
                           color: str = 'red', alpha: float = 0.2) -> 'GenomicPositionVisualizer':
@@ -362,6 +379,17 @@ class GenomicPositionVisualizer:
         
         if self._signal_viz:
             self._signal_viz.set_title(title)
+        else:
+            self._pending_modifications.append(
+                ('set_title', (), {'title': title})
+            )
+
+        if self._stats_viz:
+            self._stats_viz.set_title(title)
+        else:
+            self._pending_modifications.append(
+                ('set_title', (), {'title': title})
+            )
         
         return self
     
@@ -554,16 +582,6 @@ class GenomicPositionVisualizer:
         bam_path = Path(bam_path)
         pod5_path = Path(pod5_path)
         
-        # Generate label if needed
-        if label is None:
-            label = f"{contig}:{target_position}"
-            self.logger.debug(f"Auto-generated label: {label}")
-        
-        # Check for duplicates
-        if label in self._conditions:
-            raise KeyError(f"Condition '{label}' already exists. "
-                          f"Please use a unique label or remove the existing condition first.")
-        
         # Process reads
         self.logger.info(f"Processing reads from {bam_path.name} for condition '{label}'")
         
@@ -667,8 +685,9 @@ class GenomicPositionVisualizer:
             
             # Apply any pending modifications
             for method_name, args, kwargs in self._pending_modifications:
-                method = getattr(self._signal_viz, method_name)
-                method(*args, **kwargs)
+                if hasattr(self._signal_viz, method_name):
+                    method = getattr(self._signal_viz, method_name)
+                    method(*args, **kwargs)
             
             self._pending_modifications.clear()
             self._update_signal_viz = False
@@ -677,14 +696,14 @@ class GenomicPositionVisualizer:
         """Ensure statistics visualizer is created and up to date."""
         if self._stats_viz is None:
             # First time - create new visualizer
-            self.logger.debug("Creating signal visualizer")
+            self.logger.debug("Creating stats visualizer")
             
             self._stats_viz = StatsVisualizer(
                 self.K,
                 self._n_stats,
                 self.kmer,
                 self._stats_names,
-                self.plot_style,
+                self.plot_style_kde,
                 self.title,
                 self.figsize,
                 self.logger
@@ -692,7 +711,7 @@ class GenomicPositionVisualizer:
 
         if self._update_stats_viz:
             # Update existing visualizer
-            self.logger.debug("Updating signal visualizer")
+            self.logger.debug("Updating stats visualizer")
             
             # Get currently plotted labels
             current_labels = self._stats_viz.get_plotted_labels()
@@ -712,6 +731,11 @@ class GenomicPositionVisualizer:
                 else:
                     self.logger.debug(f"Updating condition '{label}' in plot")
                 self._stats_viz.plot_condition(cond)
+
+            for method_name, args, kwargs in self._pending_modifications:
+                if hasattr(self._stats_viz, method_name):
+                    method = getattr(self._stats_viz, method_name)
+                    method(*args, **kwargs)
             
             self._pending_modifications.clear()
             self._update_stats_viz = False

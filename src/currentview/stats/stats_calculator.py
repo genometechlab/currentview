@@ -1,16 +1,21 @@
 import numpy as np
 from typing import List, Union, Callable, Dict, Optional, Tuple
-from dataclasses import dataclass
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from multiprocessing import cpu_count
+import warnings
+import logging
+
 from .stats_funcs import StatisticsFuncs
 from ..utils import ReadAlignment
 
 
 class StatsCalculator:
-    """Calculate and manage statistics for signal data."""
+    """Calculate and manage statistics for signal data with automatic parallel processing."""
     
     def __init__(self,
-                 statistics: Optional[List[Union[StatisticsFuncs, Callable, str]]] = None):
+                 statistics: Optional[List[Union[StatisticsFuncs, Callable, str]]] = None,
+                 logger: Optional[logging.Logger] = None):
         """
         Initialize calculator with statistics to compute.
         
@@ -20,83 +25,46 @@ class StatsCalculator:
                 - String names (e.g., 'mean', 'std')
                 - Callable functions
                 If None, uses defaults.
+            logger: Optional logger for debugging
         """
+        self.logger = logger or logging.getLogger(__name__)
+        
+        # Initialize statistics
         if statistics is None:
-            # Default statistics
             statistics = [
                 StatisticsFuncs.MEAN,
                 StatisticsFuncs.MEDIAN,
                 StatisticsFuncs.STD,
             ]
         
-        self.statistics = []
+        self.statistics = self._parse_statistics(statistics)
+        self._validate_statistics()
         
-        for stat in statistics:
-            if isinstance(stat, str):
-                # Convert string to StatisticsFuncs enum
-                try:
-                    # Try to find matching enum value
-                    stat_enum = StatisticsFuncs(stat.lower())
-                    self.statistics.append(stat_enum)
-                except ValueError:
-                    # If not a valid enum value, check if it's a valid enum name
-                    try:
-                        stat_enum = StatisticsFuncs[stat.upper()]
-                        self.statistics.append(stat_enum)
-                    except KeyError:
-                        raise ValueError(f"Unknown statistic: '{stat}'. "
-                                       f"Valid options are: {[s.value for s in StatisticsFuncs]}")
-            
-            elif isinstance(stat, StatisticsFuncs):
-                # Already a StatisticsFuncs enum
-                self.statistics.append(stat)
-            
-            elif callable(stat):
-                # Custom callable function
-                self.statistics.append(stat)
-            
-            else:
-                raise TypeError(f"Invalid statistic type: {type(stat)}. "
-                              f"Expected StatisticsFuncs, str, or callable.")
+        # Determine optimal worker count
+        self._n_workers = min(cpu_count(), 8)  # Cap at 8 workers
         
-        # Validate we have at least one statistic
-        if not self.statistics:
-            raise ValueError("At least one statistic must be specified.")
+        # Pre-compile statistics functions for better performance
+        self._compiled_stats = self._compile_statistics()
         
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_stats = []
-        for stat in self.statistics:
-            # Create a hashable key for the stat
-            if isinstance(stat, StatisticsFuncs):
-                key = stat
-            elif callable(stat):
-                key = id(stat)  # Use object id for callables
-            else:
-                key = stat
-            
-            if key not in seen:
-                seen.add(key)
-                unique_stats.append(stat)
-        
-        self.statistics = unique_stats
-
+        self.logger.debug(f"Initialized StatsCalculator with {len(self.statistics)} statistics")
+    
     def calculate_condition_stats(self,
                                   aligned_reads: List[ReadAlignment],
                                   target_position: int,
-                                  K: int) -> Dict[int, Dict[str, List[float]]]:
+                                  K: int) -> Dict[int, Dict[str, np.ndarray]]:
         """
         Calculate statistics for each read at each position in a condition.
         
+        Uses parallel processing across positions for optimal performance.
+        
         Args:
-            aligned_condition: AlignedCondition object containing reads
+            aligned_reads: List of aligned reads
             target_position: Center position
             K: Window size
             
         Returns:
-            Dict mapping position -> stat_name -> list of values (one per read)
+            Dict mapping position -> stat_name -> array of values (one per read)
         """
-        
         # Calculate positions
         half_window = K // 2
         positions = list(range(
@@ -104,33 +72,94 @@ class StatsCalculator:
             target_position + half_window + 1
         ))
         
-        # Calculate stats for each position
+        n_reads = len(aligned_reads)
+        n_positions = len(positions)
+        
+        self.logger.info(f"Calculating stats for {n_reads} reads across {n_positions} positions")
+        
+        # Use parallel processing for positions if worthwhile
+        if n_positions < 3 or n_reads < 10:
+            # Small dataset - sequential is faster
+            return self._calculate_sequential(aligned_reads, positions)
+        else:
+            # Parallel processing across positions
+            return self._calculate_parallel(aligned_reads, positions)
+    
+    def _calculate_sequential(self,
+                              reads: List[ReadAlignment],
+                              positions: List[int]) -> Dict[int, Dict[str, np.ndarray]]:
+        """Sequential calculation for small datasets."""
         stats_by_position = {}
+        
         for pos in positions:
-            pos_stats = self._calculate_position_stats(aligned_reads, pos)
+            pos_stats = self._calculate_position_stats(reads, pos)
             stats_by_position[pos] = pos_stats
         
         return stats_by_position
     
+    def _calculate_parallel(self,
+                           reads: List[ReadAlignment],
+                           positions: List[int]) -> Dict[int, Dict[str, np.ndarray]]:
+        """Parallel calculation across positions."""
+        stats_by_position = {}
+        
+        # Determine chunk size - balance between overhead and parallelism
+        chunk_size = max(1, len(positions) // (self._n_workers * 2))
+        
+        with ThreadPoolExecutor(max_workers=self._n_workers) as executor:
+            # Submit position chunks for processing
+            future_to_positions = {}
+            
+            for i in range(0, len(positions), chunk_size):
+                chunk_positions = positions[i:i + chunk_size]
+                future = executor.submit(
+                    self._process_position_chunk,
+                    reads,
+                    chunk_positions
+                )
+                future_to_positions[future] = chunk_positions
+            
+            # Collect results as they complete
+            for future in as_completed(future_to_positions):
+                try:
+                    chunk_results = future.result()
+                    stats_by_position.update(chunk_results)
+                except Exception as e:
+                    self.logger.error(f"Error processing position chunk: {e}")
+                    # Fall back to sequential for failed chunks
+                    for pos in future_to_positions[future]:
+                        stats_by_position[pos] = self._calculate_position_stats(reads, pos)
+        
+        return stats_by_position
+    
+    def _process_position_chunk(self,
+                                reads: List[ReadAlignment],
+                                positions: List[int]) -> Dict[int, Dict[str, np.ndarray]]:
+        """Process a chunk of positions (runs in worker thread)."""
+        result = {}
+        for pos in positions:
+            result[pos] = self._calculate_position_stats(reads, pos)
+        return result
+    
     def _calculate_position_stats(self,
                                   reads: List[ReadAlignment],
-                                  pos: int) -> Dict[str, List[float]]:
+                                  pos: int) -> Dict[str, np.ndarray]:
         """
         Calculate statistics for each read at a specific position.
         
         Returns:
-            Dict[stat_name, List[values]] where each value is from one read
+            Dict[stat_name, array of values] where each value is from one read
         """
-        # Initialize result dict with proper type
-        stats_dict = {self._get_stat_name(stat): [] 
-                      for stat in self.statistics}
+        # Initialize result dict
+        stats_dict = {
+            self._get_stat_name(stat): [] 
+            for stat in self.statistics
+        }
         
-        # Track reads with valid signals
-        reads_with_signal = 0
+        # Collect signals from reads at this position
+        valid_signals = []
         
-        # For each read
         for read in reads:
-            # Get base at position
             pos_base = read.get_base_at_ref_pos(pos)
             
             if pos_base is not None and pos_base.has_signal:
@@ -140,59 +169,112 @@ class StatsCalculator:
                 if read.is_reversed:
                     signal = signal[::-1]
                 
-                reads_with_signal += 1
-                
-                # Calculate each statistic for THIS read's signal
-                for stat in self.statistics:
-                    stat_name = self._get_stat_name(stat)
-                    stat_value = self._calculate_single_stat(signal, stat)
-                    stats_dict[stat_name].append(stat_value)
+                valid_signals.append(signal)
         
-        # Log warning if many reads have no signal at this position
-        if reads_with_signal < len(reads) * 0.5 and len(reads) > 0:
-            coverage_percent = (reads_with_signal / len(reads)) * 100
-            print(f"Warning: Only {reads_with_signal}/{len(reads)} reads "
-                  f"({coverage_percent:.1f}%) have signal at position {pos}")
-            
-        stats_dict = {k: np.array(v) for k,v in stats_dict.items()}
+        # Calculate statistics for each signal
+        if valid_signals:
+            # Use pre-compiled functions for efficiency
+            for stat, compiled_func in zip(self.statistics, self._compiled_stats):
+                stat_name = self._get_stat_name(stat)
+                
+                # Calculate statistic for each signal
+                values = []
+                for signal in valid_signals:
+                    try:
+                        value = compiled_func(signal)
+                        # Ensure scalar
+                        if isinstance(value, np.ndarray):
+                            value = float(value)
+                        values.append(value)
+                    except Exception as e:
+                        if self.logger.isEnabledFor(logging.DEBUG):
+                            self.logger.debug(f"Failed to calculate {stat_name}: {e}")
+                        values.append(np.nan)
+                
+                stats_dict[stat_name] = np.array(values, dtype=np.float32)
+        else:
+            # No valid signals - return empty arrays
+            for stat_name in stats_dict:
+                stats_dict[stat_name] = np.array([], dtype=np.float32)
+        
+        # Log coverage warning if needed
+        coverage = len(valid_signals) / len(reads) if reads else 0
+        if coverage < 0.5 and len(reads) > 0:
+            self.logger.warning(f"Low coverage at position {pos}: {len(valid_signals)}/{len(reads)} "
+                              f"reads ({coverage*100:.1f}%) have signal")
         
         return stats_dict
     
-    def _calculate_single_stat(self,
-                               signal: np.ndarray,
-                               stat: Union[StatisticsFuncs, Callable]) -> float:
-        """Calculate a single statistic on a signal."""
-        try:
+    def _compile_statistics(self) -> List[Callable]:
+        """Get optimal (compiled if available) version of each statistic function."""
+        optimized = []
+        
+        for stat in self.statistics:
             if isinstance(stat, StatisticsFuncs):
-                func = stat.to_function()
+                # Try to get compiled version first
+                compiled_func = stat.to_compiled_function()
+                if compiled_func is not None:
+                    optimized.append(compiled_func)
+                    self.logger.debug(f"Using compiled version for {stat.value}")
+                else:
+                    # Fall back to regular function
+                    optimized.append(stat.to_function())
             else:
-                func = stat
-            
-            result = func(signal)
-            
-            # Ensure it's a scalar float
-            if isinstance(result, np.ndarray):
-                result = float(result)
-            
-            return result
-            
-        except Exception as e:
-            print(f"Warning: Failed to calculate {self._get_stat_name(stat)}: {e}")
-            return np.nan
+                # Custom callable - use as is
+                optimized.append(stat)
+        
+        return optimized
+    
+    def _parse_statistics(self, statistics: List[Union[StatisticsFuncs, Callable, str]]) -> List[Union[StatisticsFuncs, Callable]]:
+        """Parse and validate statistics list."""
+        parsed = []
+        
+        for stat in statistics:
+            if isinstance(stat, str):
+                # Convert string to enum
+                try:
+                    stat_enum = StatisticsFuncs(stat.lower())
+                    parsed.append(stat_enum)
+                except ValueError:
+                    try:
+                        stat_enum = StatisticsFuncs[stat.upper()]
+                        parsed.append(stat_enum)
+                    except KeyError:
+                        raise ValueError(f"Unknown statistic: '{stat}'. "
+                                       f"Valid options are: {[s.value for s in StatisticsFuncs]}")
+            elif isinstance(stat, StatisticsFuncs):
+                parsed.append(stat)
+            elif callable(stat):
+                parsed.append(stat)
+            else:
+                raise TypeError(f"Invalid statistic type: {type(stat)}. "
+                              f"Expected StatisticsFuncs, str, or callable.")
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique = []
+        for stat in parsed:
+            key = stat if isinstance(stat, StatisticsFuncs) else id(stat)
+            if key not in seen:
+                seen.add(key)
+                unique.append(stat)
+        
+        return unique
+    
+    def _validate_statistics(self):
+        """Validate that we have at least one statistic."""
+        if not self.statistics:
+            raise ValueError("At least one statistic must be specified.")
     
     def _get_stat_name(self, stat: Union[StatisticsFuncs, Callable]) -> str:
         """Get human-readable name for a statistic."""
         if isinstance(stat, StatisticsFuncs):
             return stat.value
         else:
-            # Try to get function name
-            if hasattr(stat, '__name__'):
-                return stat.__name__
-            else:
-                return 'custom_stat'
+            return getattr(stat, '__name__', 'custom_stat')
     
     def get_summary(self, 
-                    stats_by_position: Dict[int, Dict[str, List[float]]],
+                    stats_by_position: Dict[int, Dict[str, np.ndarray]],
                     condition_label: Optional[str] = None) -> Dict:
         """
         Get summary of statistics across all positions.
@@ -222,20 +304,19 @@ class StatsCalculator:
             for pos, pos_stats in stats_by_position.items():
                 if stat_name in pos_stats:
                     values = pos_stats[stat_name]
-                    all_values.extend(values)
-                    
-                    # Calculate mean for this position
-                    if values:
+                    if len(values) > 0:
+                        all_values.extend(values)
                         position_means.append(np.mean(values))
             
             # Calculate summary statistics
             if all_values:
+                all_values_array = np.array(all_values)
                 summary['statistics'][stat_name] = {
                     'n_values': len(all_values),
-                    'mean_across_all': float(np.mean(all_values)),
-                    'std_across_all': float(np.std(all_values)),
-                    'min': float(np.min(all_values)),
-                    'max': float(np.max(all_values)),
+                    'mean_across_all': float(np.mean(all_values_array)),
+                    'std_across_all': float(np.std(all_values_array)),
+                    'min': float(np.min(all_values_array)),
+                    'max': float(np.max(all_values_array)),
                     'mean_of_position_means': float(np.mean(position_means)) if position_means else None,
                     'std_of_position_means': float(np.std(position_means)) if len(position_means) > 1 else None
                 }
@@ -248,13 +329,11 @@ class StatsCalculator:
         return summary
     
     @property
-    def num_stats(self):
-        if hasattr(self, 'statistics'):
-            return len(self.statistics)
-        return 0
+    def num_stats(self) -> int:
+        """Number of statistics to calculate."""
+        return len(self.statistics)
     
     @property
-    def stats_names(self):
-        if hasattr(self, 'statistics'):
-            return [self._get_stat_name(stat) for stat in self.statistics]
-        return None
+    def stats_names(self) -> List[str]:
+        """Names of statistics to calculate."""
+        return [self._get_stat_name(stat) for stat in self.statistics]

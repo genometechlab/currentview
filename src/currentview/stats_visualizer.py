@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union, Literal, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import OrderedDict
 
 from .readers import AlignmentExtractor
@@ -17,7 +17,7 @@ class PlottedCondition:
     """Track information about each plotted group."""
     condition: Condition
     position_labels: List[str]
-    line_artists: List[Any] = None  # Store line objects for removal
+    line_artists: List[Any] = field(default_factory=list)
 
 class StatsVisualizer:
     """Handles all plotting, visualization, and figure management."""
@@ -88,7 +88,10 @@ class StatsVisualizer:
         plt.ioff()  # Turn off interactive mode during creation
         
         fig, axes = plt.subplots(figsize=self.style.figsize, dpi=self.style.dpi, nrows=self.n_stats, ncols=self.K)
-        
+
+        # Make sure axes is a 2d matrix even if only 1 stat is provided
+        axes = np.atleast_2d(axes)
+
         # Set title
         self.logger.debug(f"Setting initial title: '{title}'")
         fig.suptitle(title, fontsize=self.style.title_fontsize)
@@ -97,7 +100,9 @@ class StatsVisualizer:
         for row_index, row_axes in enumerate(axes):
             for col_index, ax in enumerate(row_axes):
                 if col_index==0:
-                    ax.set_ylabel(f'{self.stats_names[row_index]}\nDensity', fontsize=self.style.label_fontsize)
+                    stat_label = self.stats_names[row_index] if self.stats_names else f'Stat {row_index+1}'
+                    ax.set_ylabel(f'{stat_label}\nDensity', fontsize=self.style.label_fontsize)
+
                 if row_index==self.n_stats-1:
                     ax.set_xlabel('Data', fontsize=self.style.label_fontsize)
                 
@@ -247,7 +252,6 @@ class StatsVisualizer:
         self._plot_count = 0
         
         # Update labels and legend
-        self._update_position_labels()
         self._update_legend()
         
         # Redraw
@@ -268,7 +272,7 @@ class StatsVisualizer:
         """Set or update the plot title."""
         self.logger.debug(f"Setting plot title: '{title}'")
         self.title = title
-        self.ax.set_title(title, fontsize=self.style.title_fontsize, pad=10)
+        self.fig.suptitle(title, fontsize=self.style.title_fontsize)
         return self
     
     def refresh(self):
@@ -339,11 +343,14 @@ class StatsVisualizer:
         """Apply custom window labels."""
         self.logger.debug(f"Applying {len(self.window_labels)} custom labels")
         
-        tick_positions = np.arange(self.K) + 0.5 - self.style.padding / 2
-        self.ax.set_xticks(tick_positions)
-        self.ax.set_xticklabels(self.window_labels)
+        for row_index, row_axes in enumerate(self.axes):
+            for col_index, ax in enumerate(row_axes):
+                if row_index==0:
+                    ax.set_title(self.window_labels[col_index])
+            if row_index!=0:
+                break
         
-        self.logger.debug(f"Custom labels applied at positions: {tick_positions}")
+        self.logger.debug(f"Custom labels applied at titles")
 
     def _extract_reference_bases(self,
                                 positions: List[int],
@@ -377,7 +384,70 @@ class StatsVisualizer:
 
     def _update_legend(self):
         """Create custom legend on the right side."""
-        pass
+        # First, remove any existing legend elements
+        for artist in self.fig.get_children():
+            if isinstance(artist, plt.Text) and hasattr(artist, '_is_legend_element'):
+                artist.remove()
+        for artist in self.fig.artists:
+            if hasattr(artist, '_is_legend_element'):
+                artist.remove()
+        
+        if not self.style.show_legend:
+            self.logger.debug("Legend disabled by style settings")
+            return
+            
+        if not self._plotted_conditions_map:
+            self.logger.debug("No conditions to show in legend")
+            # Reset figure margins
+            self.fig.subplots_adjust(right=0.9)
+            return
+        
+        self.logger.debug(f"Creating legend for {len(self._plotted_conditions_map)} conditions")
+        
+        # Adjust figure for legend
+        self.fig.subplots_adjust(right=0.75)
+        
+        # Add title
+        title_text = self.fig.text(0.77, 0.9, 'Groups:', 
+                                  fontsize=self.style.label_fontsize,
+                                  weight='bold',
+                                  transform=self.fig.transFigure)
+        title_text._is_legend_element = True
+        
+        plotted_conditions = list(self._plotted_conditions_map.values())
+        
+        # Add each group
+        y_pos = 0.85
+        for i, group in enumerate(plotted_conditions):
+            # Draw line sample
+            from matplotlib.lines import Line2D
+            line = Line2D([0.77, 0.79], [y_pos, y_pos], 
+                         color=group.condition.color, 
+                         linewidth=group.condition.line_width * 2,
+                         linestyle=group.condition.line_style,
+                         transform=self.fig.transFigure)
+            line._is_legend_element = True
+            self.fig.add_artist(line)
+            
+            # Add label text
+            label_text = self.fig.text(0.80, y_pos, group.condition.label,
+                                      fontsize=self.style.legend_fontsize,
+                                      color='black',
+                                      transform=self.fig.transFigure,
+                                      va='center')
+            label_text._is_legend_element = True
+            
+            y_pos -= 0.08
+            
+            # Add separator
+            if i < len(plotted_conditions) - 1:
+                sep_text = self.fig.text(0.77, y_pos + 0.03, '─' * 20,
+                                        fontsize=self.style.legend_fontsize * 0.7,
+                                        color='lightgray',
+                                        transform=self.fig.transFigure)
+                sep_text._is_legend_element = True
+        
+        self.logger.debug("Legend created successfully")
     
     def _plot_stats(self, condition: Condition) -> List[Any]:
         """Plot a group of reads and return line artists."""
@@ -419,11 +489,8 @@ class StatsVisualizer:
             
             from scipy.stats import gaussian_kde
             kde = gaussian_kde(values)
-            x_range = np.linspace(
-                np.min(values) - np.std(values),
-                np.max(values) + np.std(values),
-                200
-            )
+            q1, q9 = np.percentile(values, [1, 99])
+            x_range = np.linspace(q1, q9, 200)
             density = kde(x_range)
 
             # Plot KDE curve
@@ -441,127 +508,6 @@ class StatsVisualizer:
         
         ax.locator_params(axis='x', nbins=4)
         return artists
-
-    # Alternative version with more customization options
-    def _plot_single_kde_advanced(self,
-                                ax: plt.Axes,
-                                values: List[float],
-                                label: str,
-                                color: Any,
-                                show_xlabel: bool,
-                                show_ylabel: bool,
-                                stat_name: Optional[str] = None,
-                                plot_type: str = 'kde'):
-        """Plot distribution on a single axes with multiple visualization options."""
-        values = np.array(values)
-        
-        import seaborn as sns
-        
-        if len(values) > 2:
-            if plot_type == 'kde':
-                # KDE plot with fill
-                sns.kdeplot(
-                    data=values,
-                    ax=ax,
-                    color=color,
-                    fill=True,
-                    alpha=0.3,
-                    linewidth=self.style.line_width * 1.2,
-                    bw_adjust=1.0
-                )
-                
-                # Add rug
-                sns.rugplot(
-                    data=values,
-                    ax=ax,
-                    color=color,
-                    alpha=0.5,
-                    height=0.05
-                )
-                
-            elif plot_type == 'violin':
-                # Violin plot for single distribution
-                parts = ax.violinplot(
-                    [values],
-                    positions=[0],
-                    widths=0.8,
-                    showmeans=True,
-                    showextrema=True
-                )
-                
-                # Color the violin
-                for pc in parts['bodies']:
-                    pc.set_facecolor(color)
-                    pc.set_alpha(0.5)
-                
-                # Hide x-axis for violin
-                ax.set_xticks([])
-                ax.set_xlim(-0.5, 0.5)
-                
-            elif plot_type == 'hist':
-                # Histogram with KDE overlay
-                sns.histplot(
-                    data=values,
-                    ax=ax,
-                    color=color,
-                    alpha=0.5,
-                    kde=True,
-                    bins='auto',
-                )
-                
-            elif plot_type == 'box':
-                # Box plot
-                box = ax.boxplot(
-                    values,
-                    positions=[0],
-                    widths=0.6,
-                    patch_artist=True,
-                    showfliers=True
-                )
-                
-                # Color the box
-                box['boxes'][0].set_facecolor(color)
-                box['boxes'][0].set_alpha(0.5)
-                
-                # Hide x-axis for box
-                ax.set_xticks([])
-                ax.set_xlim(-0.5, 0.5)
-            
-            # Add mean line for all plot types
-            mean_val = np.mean(values)
-            if plot_type in ['kde', 'hist']:
-                ax.axvline(mean_val, color=color, linestyle='--',
-                        alpha=0.7, linewidth=1)
-        else:
-            # Use strip plot for few values
-            sns.stripplot(
-                x=values,
-                y=[0] * len(values),
-                ax=ax,
-                color=color,
-                alpha=0.7,
-                size=8,
-                jitter=0.2
-            )
-            ax.set_ylim(-0.5, 0.5)
-            ax.set_yticks([])
-        
-        # Common styling
-        sns.despine(ax=ax)  # Remove top and right spines
-        
-        # Labels
-        if show_ylabel and stat_name:
-            ax.set_ylabel(f'{stat_name.capitalize()}', 
-                        fontsize=self.style.label_fontsize * 0.9)
-        
-        if show_xlabel and plot_type in ['kde', 'hist']:
-            ax.set_xlabel('Value', fontsize=self.style.label_fontsize * 0.8)
-        else:
-            ax.set_xlabel('')
-            if plot_type not in ['violin', 'box']:
-                ax.set_xticklabels([])
-        
-        ax.tick_params(axis='both', labelsize=self.style.tick_labelsize * 0.8)
     
     def _calculate_alpha(self, n_reads: int) -> float:
         """Calculate appropriate alpha value."""

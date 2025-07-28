@@ -1,5 +1,6 @@
 import numpy as np
 import pysam
+import logging
 
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union
@@ -13,14 +14,17 @@ from ..utils.data_classes import ReadAlignment, AlignedBase, BaseType, SignalRan
 class AlignmentExtractor:
     """API for extracting nanopore signal data aligned to genomic positions."""
 
-    def __init__(self, bam_path: Union[str, Path]):
+    def __init__(self, bam_path: Union[str, Path], logger: Optional[logging.Logger] = None):
         """
         Initialize the alignment extractor with BAM file path.
 
         Args:
             bam_path: Path to the BAM alignment file
         """
-        self.bam_path = bam_path
+        self.bam_path = Path(bam_path)
+
+        self.logger = logger or logging.getLogger(__name__)
+        self.logger.debug(f"Initializing AlignmentExtractor on {self.bam_path.name}")
 
     def extract_alignments(
         self,
@@ -99,12 +103,12 @@ class AlignmentExtractor:
 
             # Fetching reads
             for read in bam.fetch(**region):
+
                 # Skip if not in read_ids (when specified)
                 if read_ids is not None and read.query_name not in read_ids:
                     continue
 
                 try:
-
                     # Extract aligned bases with signal mapping
                     aligned_bases = self._extract_aligned_bases(
                         read, start_pos, end_pos
@@ -145,7 +149,6 @@ class AlignmentExtractor:
 
                 except Exception as e:
                     print(f"Skipping read {read.query_name}: {e}")
-                    raise e
                     continue
 
         return read_alignments

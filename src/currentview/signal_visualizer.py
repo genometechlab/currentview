@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union, Literal, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import OrderedDict
 
 from .readers import AlignmentExtractor
@@ -17,7 +17,7 @@ class PlottedCondition:
     """Track information about each plotted group."""
     condition: Condition
     position_labels: List[str]
-    line_artists: List[Any] = None  # Store line objects for removal
+    line_artists: List[Any] = field(default_factory=list)
 
 class SignalVisualizer:
     """Handles all plotting, visualization, and figure management."""
