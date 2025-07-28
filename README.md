@@ -18,7 +18,7 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
 ## Installation
 
 ```bash
-git clone https://github.com/genometechlab/kmer-visualizer.git
+git clone https://github.com/genometechlab/current-view.git
 cd kmer-visualizer
 pip install -e .
 ```
