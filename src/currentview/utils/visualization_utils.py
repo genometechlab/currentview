@@ -4,19 +4,8 @@ from typing import Dict, List, Optional, Set, Tuple, Union, Literal
 
 class ColorScheme(Enum):
     """Predefined color schemes for Plotly visualization."""
-    DEFAULT = "plotly"  # Plotly's default color sequence
     TAB10 = "tab10"  # Matplotlib's tab10 color scheme
     PLOTLY_DARK = "plotly_dark"
-    PLOTLY_WHITE = "plotly_white"
-    GGPLOT2 = "ggplot2"
-    SEABORN = "seaborn"
-    SIMPLE_WHITE = "simple_white"
-    VIRIDIS = "Viridis"
-    PLASMA = "Plasma"
-    INFERNO = "Inferno"
-    TURBO = "Turbo"
-    BLUES = "Blues"
-    CATEGORICAL = "Set3"
     PASTEL = "Pastel"
     DARK = "Dark2"
     COLORBLIND = "Safe"  # Colorblind-friendly palette
@@ -52,7 +41,7 @@ class PlotStyle:
     
     # Colors and themes
     template: str = "plotly_white"  # Plotly template
-    color_scheme: ColorScheme = ColorScheme.TAB10
+    color_scheme: Union[ColorScheme, str] = ColorScheme.TAB10 
     colorway: Optional[List[str]] = None  # Custom color sequence
     
     # Fonts
@@ -108,6 +97,16 @@ class PlotStyle:
         'height': 800,
         'scale': 2  # For higher resolution
     })
+
+    def __post_init__(self):
+        if isinstance(self.color_scheme, str):
+            try:
+                self.color_scheme = ColorScheme[self.color_scheme.upper()]
+            except KeyError:
+                raise ValueError(
+                    f"Invalid color_scheme '{self.color_scheme}'. "
+                    f"Must be one of: {[e.name.lower() for e in ColorScheme]}"
+                )
     
     def get_layout_dict(self) -> Dict:
         """Convert style settings to Plotly layout dictionary."""
@@ -186,8 +185,6 @@ class PlotStyle:
         
         # Plotly's built-in color sequences
         color_sequences = {
-            ColorScheme.DEFAULT: ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A', 
-                                 '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52'],
             ColorScheme.TAB10: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
                            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'],
             ColorScheme.PLOTLY_DARK: ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A',
@@ -200,10 +197,4 @@ class PlotStyle:
                               '#E6AB02', '#A6761D', '#666666', '#FF7F00', '#6A3D9A'],
         }
         
-        # For continuous color schemes, generate a sequence
-        if self.color_scheme in [ColorScheme.VIRIDIS, ColorScheme.PLASMA, 
-                                ColorScheme.INFERNO, ColorScheme.TURBO]:
-            import plotly.colors as pc
-            return pc.sample_colorscale(self.color_scheme.value, 10)
-        
-        return color_sequences.get(self.color_scheme, color_sequences[ColorScheme.DEFAULT])
+        return color_sequences.get(self.color_scheme, color_sequences[ColorScheme.TAB10])
