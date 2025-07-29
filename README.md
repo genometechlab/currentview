@@ -18,8 +18,8 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
 ## Installation
 
 ```bash
-git clone https://github.com/genometechlab/current-view.git
-cd kmer-visualizer
+git clone -b plotly https://github.com/genometechlab/current-view.git
+cd current-view
 pip install -e .
 ```
 
@@ -28,6 +28,8 @@ pip install -e .
 - matplotlib >= 3.5.0
 - pysam >= 0.19.0 (for BAM file reading)
 - pod5 >= 0.2.0 (for POD5 file reading)
+- plotly>=6.2.0
+- nbformat>=5.10.4
 
 ## Quick Start
 
@@ -74,6 +76,7 @@ GenomicPositionVisualizer(
     K: int = 9,
     kmer: Optional[List[Union[str, int]]] = None,
     plot_style: Optional[PlotStyle] = None,
+    plot_style_kde: Optional[PlotStyle] = None,
     title: Optional[str] = None,
     figsize: Optional[Tuple[float, float]] = None,
     verbosity: VerbosityLevel = VerbosityLevel.SILENT,
@@ -84,7 +87,8 @@ GenomicPositionVisualizer(
 **Parameters:**
 - `K`: Window size (will be made odd if even). Default: 9
 - `kmer`: Optional custom k-mer labels for x-axis. Should be an iterable with size `K`
-- `plot_style`: PlotStyle object for customization. Please refer to `PlotStyle` section
+- `plot_style`: PlotStyle object for signal visualization customization. Please refer to `PlotStyle` section
+- `plot_style`: PlotStyle object for kde visualization customization. Please refer to `PlotStyle` section
 - `title`: Plot title
 - `figsize`: Figure size (width, height) in inches
 - `verbosity`: Logging level (0-4):
@@ -114,7 +118,8 @@ viz.plot_condition(
     color: Optional[Union[str, Tuple[float, float, float]]] = None,
     alpha: Optional[float] = None,
     line_width: Optional[float] = None,
-    line_style: Optional[str] = None
+    line_style: Optional[str] = None,
+    overwrite: Optional[bool] = False
 ) -> GenomicPositionVisualizer
 ```
 
@@ -123,15 +128,30 @@ viz.plot_condition(
 - `pod5_path`: Path to POD5 signal file (Required) 
 - `contig`: Chromosome/contig name (e.g., "chr1") (Required) 
 - `target_position`: 0-based reference genomic position (Required)
-- `target_base`: Required read base matched to the reference target position (Default: None - tollkot doesn't care about the base matched to target position)
+- `target_base`: Read base matched to the reference target position (Default: None - toolkit doesn't care about the base matched to target position)
 - `read_ids`: Specific read IDs to include (default: None - fetched all aligned reads)
 - `max_reads`: Maximum number of reads to plot(default: None - No limitation of the fetched reads)
 - `exclude_reads_with_indels`: Skip reads with insertions/deletions (default: False)
-- `label`: Condition label for legend (default: {contig}:{target-position})
+- `label`: Condition name(default: {contig}:{target-position})
 - `color`: Line color (matplotlib color) (default: style.color_scheme - please refer to plot style below)
 - `alpha`: Line transparency (0-1) (default: based on style.alpha_mode - please refer to plot style below)
 - `line_width`: Line thickness (default: style.line_width - please refer to plot style below)
 - `line_style`: Line style ('-', '--', ':', etc.) (default: style.line_style - please refer to plot style below)
+- `overwrite`: If set to True, any previously added condition with the same name as the new one will be removed and replaced by the new condition. (Default: False)
+
+
+##### show(), show_signals(), and show_stats()
+
+```python
+# Returns both signals and KDE plots
+viz.show()
+
+# Returns only the signals plot
+viz.show_signals()
+
+# Returns only the KDE plot
+viz.show_stats()
+```
 
 #### Other Methods
 
@@ -139,11 +159,20 @@ viz.plot_condition(
 # Highlight a position in the window
 viz.highlight_position(window_idx=4, color='red', alpha=0.2)
 
+# Highlight the centeral position
+viz.highlight_center(color='red', alpha=0.2)
+
+# Remove all previously added highlights
+viz.clear_highlights()
+
 # Add text annotation
 viz.add_annotation(window_idx=4, text="SNP", y_position=150)
 
+# Remove preiously added text annotations
+viz.add_annotation()
+
 # Set plot title
-viz.set_title("Nanopore Signal Comparison at chr1:1000000")
+viz.set_title("Ionic current  comparison at chr1:1000000")
 
 # Set y-axis limits
 viz.set_ylim(bottom=50, top=200)
@@ -151,13 +180,11 @@ viz.set_ylim(bottom=50, top=200)
 # Show interactive plot
 viz.show()
 
-# Save to file
-viz.save("output.png", dpi=300)
-viz.save("output.pdf", dpi=300)
+# Save signals plot to file
+viz.save_signals(path="output.png", format='png', scale=1, **kwargs)
 
-# Get summary statistics
-summary = viz.get_summary()
-viz.print_summary()
+# Save kde plot to file
+viz.save_signals(path="output.png", format='png', scale=1, **kwargs)
 
 # Change verbosity
 viz.set_verbosity(3)  # Set to INFO level
@@ -172,67 +199,24 @@ from genomic_position_visualizer.utils.visualization_utils import PlotStyle, Col
 
 # Create custom style
 style = PlotStyle(
-    figsize=(12, 8),
-    dpi=300,  # High resolution
-    line_width=1.5,
-    show_grid=True,
-    grid_alpha=0.3,
-    color_scheme=ColorScheme.COLORBLIND,
-    title_fontsize=16,
-    label_fontsize=14,
-    show_legend=True
+    # Figure dimensions
+    width: int = 1200  # pixels
+    height: int = 800  # pixels
+    
+    # Trace styling
+    line_width: float = 2.0
+    line_style: str = "solid"  # "solid", "dash", "dot", "dashdot"
+    opacity_mode: Literal['auto', 'fixed'] = 'auto'
+    fixed_opacity: float = 0.8
+    fill_opacity: float = 0.3
+
+    ...
 )
 
-viz = GenomicPositionVisualizer(K=9, plot_style=style)
+viz = GenomicPositionVisualizer(K=9, plot_style=style, plot_style_kde=style)
 ```
 
-#### Available PlotStyle Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| **Figure Settings** | | | |
-| `figsize` | tuple | (12, 8) | Figure size in inches (width, height) |
-| `dpi` | int | 100 | Resolution (dots per inch) |
-| `padding` | float | 0.025 | Padding between genomic positions |
-| **Line Styling** | | | |
-| `line_width` | float | 1.0 | Default line thickness |
-| `line_style` | str | '-' | Default line style ('-', '--', ':', '-.') |
-| `alpha_mode` | 'auto'/'fixed' | 'auto' | Alpha calculation mode ('Auto': based on the number of plotted reads, 'fixed': fixed value provided via `fixed_alpha`) |
-| `fixed_alpha` | float | 0.8 | Alpha value when mode is 'fixed' |
-| **Grid and Axes** | | | |
-| `show_grid` | bool | False | Show background grid |
-| `grid_alpha` | float | 0.3 | Grid line transparency |
-| `show_spines` | list | ['left', 'bottom'] | Which plot borders to show |
-| **Position Barriers** | | | |
-| `position_barrier_color` | str | 'gray' | Color of vertical position separators |
-| `position_barrier_style` | str | '--' | Line style for position barriers |
-| `position_barrier_alpha` | float | 0.3 | Transparency of position barriers |
-| **Colors** | | | |
-| `color_scheme` | ColorScheme | DEFAULT | Color palette for multiple conditions |
-| **Text and Labels** | | | |
-| `title_fontsize` | int | 14 | Plot title font size |
-| `label_fontsize` | int | 12 | Axis label font size |
-| `tick_labelsize` | int | 10 | Tick label font size |
-| **Legend** | | | |
-| `show_legend` | bool | True | Display legend |
-| `legend_location` | str | 'best' | Legend position (currently not used) |
-| `legend_fontsize` | int | 10 | Legend text font size |
-| **X-axis Label Positioning** | | | |
-| `xtick_label_y_start` | float | -0.02 | Starting y-position for x-tick labels |
-| `xtick_label_row_spacing` | float | -0.03 | Spacing between stacked label rows |
-| `xlabel_margin_base` | float | 20.0 | Base margin between tick labels and x-label |
-| `xlabel_margin_per_row` | float | 15.0 | Additional margin per row of stacked labels |
-
-##### Color Schemes
-
-Available color schemes via `ColorScheme` enum:
-- `DEFAULT`: General purpose (matplotlib 'tab10')
-- `COLORBLIND`: Optimized for color vision deficiency (same as DEFAULT)
-- `VIRIDIS`, `PLASMA`, `INFERNO`: Sequential, perceptually uniform
-- `SEABORN`: Aesthetic palette (Set2)
-- `CATEGORICAL`: Many distinct colors (Set3)
-- `PASTEL`: Soft colors (Pastel1)
-- `DARK`: High contrast colors (Dark2)
+A complete guide of the plotstyle can be found [Here]('./plotstyle_guide.md)
 
 #### Examples
 
