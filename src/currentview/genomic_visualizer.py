@@ -222,6 +222,7 @@ class GenomicPositionVisualizer:
     def show(self):
         """Display the signal plot (convenience method)."""
         self.show_signals()
+        self.show_stats()
     
     def show_signals(self):
         """
