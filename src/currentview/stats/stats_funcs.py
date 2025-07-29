@@ -20,7 +20,8 @@ class StatisticsFuncs(Enum):
     VARIANCE = "variance"
     MIN = "min"
     MAX = "max"
-    SKEWNESS = "skewness"
+    DURATION = "duration"
+    SKEW = "skewness"
     KURTOSIS = "kurtosis"
     
     def to_function(self) -> Callable[[np.ndarray], float]:
@@ -32,8 +33,9 @@ class StatisticsFuncs(Enum):
             self.VARIANCE: np.var,
             self.MIN: np.min,
             self.MAX: np.max,
-            self.SKEWNESS: lambda x: stats.skew(x) if len(x) > 1 else 0,
-            self.KURTOSIS: lambda x: stats.kurtosis(x) if len(x) > 1 else 0,
+            self.DURATION: lambda x: np.shape(x)[0],
+            self.SKEW: lambda x: stats.skew(x) if len(x) > 1 else 0,
+            self.KURTOSIS: lambda x: stats.kurtosis(x, fisher=True) if len(x) > 1 else 0,
         }
         return function_map[self]
     

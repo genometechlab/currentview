@@ -99,7 +99,7 @@ class StatsVisualizer:
             cols=self.K,
             subplot_titles=None,
             row_titles=self.stats_names,  # Keep stats names on the right
-            column_titles=column_titles,
+            column_titles=None,
             vertical_spacing=v_spacing,
             horizontal_spacing=h_spacing,
             specs=[[{'type': 'xy'} for _ in range(self.K)] for _ in range(self.n_stats)]
