@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union, Literal, Any, Callable
 from dataclasses import dataclass, field
@@ -27,10 +26,10 @@ class VerbosityLevel(IntEnum):
 
 class GenomicPositionVisualizer:
     """
-    Visualize nanopore signals at specific genomic positions.
+    Visualize nanopore signals at specific genomic positions using Plotly.
     
     This class provides a unified interface for processing and visualizing
-    nanopore sequencing data, with optional statistical analysis.
+    nanopore sequencing data with interactive plots and optional statistical analysis.
     
     Examples:
         Basic usage:
@@ -59,7 +58,8 @@ class GenomicPositionVisualizer:
                  plot_style: Optional[PlotStyle] = None,
                  plot_style_kde: Optional[PlotStyle] = None,
                  title: Optional[str] = None,
-                 figsize: Optional[Tuple[float, float]] = None,
+                 width: Optional[int] = None,
+                 height: Optional[int] = None,
                  verbosity: Union[VerbosityLevel, int] = VerbosityLevel.SILENT,
                  logger: Optional[logging.Logger] = None):
         """
@@ -73,8 +73,10 @@ class GenomicPositionVisualizer:
                    - StatisticsFuncs enum values
                    - Custom callable functions that take a numpy array and return a float
             plot_style: Style configuration for plots
+            plot_style_kde: Specific style for KDE plots (defaults to plot_style)
             title: Default title for plots
-            figsize: Figure size as (width, height) in inches
+            width: Figure width in pixels
+            height: Figure height in pixels
             verbosity: Logging verbosity level (0-4 or VerbosityLevel enum)
             logger: Optional custom logger (overrides verbosity if provided)
         """
@@ -95,9 +97,7 @@ class GenomicPositionVisualizer:
         if self._stats_enabled:
             self.logger.debug(f"Initializing statistics with {len(stats)} functions")
             self.stats_calculator = StatsCalculator(stats)
-            # Extract stat names for display
             self._stats_names = self.stats_calculator.stats_names
-            # Extract number of stats
             self._n_stats = self.stats_calculator.num_stats
         
         # Store visualization parameters
@@ -105,7 +105,8 @@ class GenomicPositionVisualizer:
         self.plot_style = plot_style or PlotStyle()
         self.plot_style_kde = plot_style_kde or self.plot_style
         self.title = title
-        self.figsize = figsize
+        self.width = width
+        self.height = height
         
         # Lazy-initialized visualizers
         self._signal_viz = None
@@ -136,7 +137,7 @@ class GenomicPositionVisualizer:
                       max_reads: Optional[int] = None,
                       exclude_reads_with_indels: bool = False,
                       label: Optional[str] = None,
-                      color: Optional[Union[str, Tuple[float, float, float]]] = None,
+                      color: Optional[str] = None,
                       alpha: Optional[float] = None,
                       line_width: Optional[float] = None,
                       line_style: Optional[str] = None,
@@ -161,20 +162,15 @@ class GenomicPositionVisualizer:
             alpha: Transparency (0-1, auto-calculated based on read count if None)
             line_width: Line width for signal plots
             line_style: Line style ('-', '--', ':', '-.')
+            overwrite: Whether to overwrite existing condition with same label
             
         Returns:
             self for method chaining
             
         Raises:
-            KeyError: If a condition with the same label already exists
+            KeyError: If a condition with the same label already exists and overwrite=False
             FileNotFoundError: If BAM or POD5 files don't exist
-            
-        Examples:
-            >>> viz.add_condition("sample.bam", "sample.pod5", "chr1", 12345)
-            >>> viz.add_condition("control.bam", "control.pod5", "chr1", 12345, 
-            ...                   label="Control", color="blue", max_reads=100)
         """
-
         # Generate label if needed
         if label is None:
             label = f"{contig}:{target_position}"
@@ -188,7 +184,7 @@ class GenomicPositionVisualizer:
             else:
                 self.logger.info(f"Overwriting the previous label: {label}")
         
-        # Step 1: Process the data
+        # Process the data
         processed_data = self._process_condition_data(
             bam_path=bam_path,
             pod5_path=pod5_path,
@@ -202,7 +198,7 @@ class GenomicPositionVisualizer:
         )
         
         if processed_data:
-            # Step 2: Store the condition with visualization parameters
+            # Store the condition with visualization parameters
             self._store_condition(
                 processed_data=processed_data,
                 color=color,
@@ -211,7 +207,7 @@ class GenomicPositionVisualizer:
                 line_style=line_style
             )
             
-            # Step 3: Mark visualizations as needing update
+            # Mark visualizations as needing update
             self._mark_for_update()
             
             self.logger.info(f"Successfully added condition '{processed_data['label']}' "
@@ -219,7 +215,6 @@ class GenomicPositionVisualizer:
         
         return self
     
-    # Convenience method with cleaner name
     def add(self, *args, **kwargs) -> 'GenomicPositionVisualizer':
         """Alias for add_condition() with shorter name."""
         return self.add_condition(*args, **kwargs)
@@ -230,10 +225,10 @@ class GenomicPositionVisualizer:
     
     def show_signals(self):
         """
-        Display the signal visualization.
+        Display the interactive signal visualization.
         
-        Creates and displays a plot showing signal traces for all added conditions.
-        The plot includes position barriers, reference bases, and a legend.
+        Creates and displays an interactive Plotly plot showing signal traces 
+        for all added conditions with zoom, pan, and hover capabilities.
         
         Raises:
             RuntimeError: If no conditions have been added
@@ -247,16 +242,16 @@ class GenomicPositionVisualizer:
     
     def show_stats(self):
         """
-        Display the stats visualization.
+        Display the statistics visualization.
         
-        Creates and displays a plot showing signal traces for all added conditions.
-        The plot includes position barriers, reference bases, and a legend.
+        Creates and displays an interactive plot showing statistical distributions
+        for all added conditions across positions.
         
         Raises:
-            RuntimeError: If no conditions have been added
+            RuntimeError: If no conditions have been added or stats not enabled
         """
         if not self._stats_enabled:
-            self.logger.warning(f"No stats is provided to the visualizer")
+            self.logger.warning(f"No stats provided to the visualizer")
             return
         if not self._conditions:
             raise RuntimeError("No conditions to display. Use add_condition() first.")
@@ -266,38 +261,42 @@ class GenomicPositionVisualizer:
         self._stats_viz.show()
     
     def save(self, *args, **kwargs):
+        """Save the signal figure to file (convenience method)."""
+        self.save_signals(*args, **kwargs)
+    
+    def save_signals(self, path: Union[str, Path], *, 
+                     format: Optional[str] = None,
+                     scale: Optional[float] = None, 
+                     **kwargs):
         """
         Save the signal figure to file.
         
         Args:
-            path: Output file path (format determined by extension)
-            dpi: Resolution in dots per inch (uses style default if None)
-            bbox_inches: How to handle the bounding box ('tight' removes extra whitespace)
-            **kwargs: Additional arguments passed to matplotlib.savefig()
+            path: Output file path
+            format: File format ('png', 'jpg', 'svg', 'pdf', 'html')
+                    Determined from extension if not specified
+            scale: Scale factor for raster formats
+            **kwargs: Additional arguments passed to Plotly's write functions
         """
-        self.save_signals(*args, **kwargs)      
-
-    
-    def save_signals(self, path: Union[str, Path], *, dpi: Optional[int] = None, 
-                     bbox_inches: str = 'tight', **kwargs):
-        """Save the signal figure (explicit method name)."""  
         if not self._conditions:
             raise RuntimeError("No conditions to save. Use add_condition() first.")
         
         self.logger.info(f"Saving signal figure to {path}")
         self._ensure_signal_viz()
-        self._signal_viz.save(path, dpi, bbox_inches, **kwargs)
+        self._signal_viz.save(path, format=format, scale=scale, **kwargs)
     
-    def save_stats(self, path: Union[str, Path], *, dpi: Optional[int] = None, 
-                   bbox_inches: str = 'tight', **kwargs):
+    def save_stats(self, path: Union[str, Path], *, 
+                   format: Optional[str] = None,
+                   scale: Optional[float] = None, 
+                   **kwargs):
         """
         Save statistics visualization to file.
         
         Args:
             path: Output file path
-            dpi: Resolution in dots per inch
-            bbox_inches: How to handle the bounding box ('tight' removes extra whitespace)
-            **kwargs: Additional arguments passed to savefig
+            format: File format ('png', 'jpg', 'svg', 'pdf', 'html')
+            scale: Scale factor for raster formats
+            **kwargs: Additional arguments passed to write functions
         """
         if not self._stats_enabled:
             return
@@ -305,19 +304,20 @@ class GenomicPositionVisualizer:
         if not self._conditions:
             raise RuntimeError("No conditions to save.")
         
-        self.logger.info(f"Saving signal figure to {path}")
+        self.logger.info(f"Saving stats figure to {path}")
         self._ensure_stats_viz()
-        self._stats_viz.save(path, dpi, bbox_inches, **kwargs)
+        self._stats_viz.save(path, format=format, scale=scale, **kwargs)
     
     def highlight_position(self, window_idx: Optional[int] = None, *,
-                          color: str = 'red', alpha: float = 0.2) -> 'GenomicPositionVisualizer':
+                          color: str = 'red', 
+                          opacity: float = 0.2) -> 'GenomicPositionVisualizer':
         """
         Highlight a position in the window.
         
         Args:
             window_idx: Position index in window (0 to K-1). None = center position
             color: Highlight color
-            alpha: Transparency (0-1)
+            opacity: Transparency (0-1)
             
         Returns:
             self for method chaining
@@ -328,14 +328,14 @@ class GenomicPositionVisualizer:
         if not 0 <= window_idx < self.K:
             raise ValueError(f"window_idx must be between 0 and {self.K-1}, got {window_idx}")
         
-        self.logger.debug(f"Highlighting position {window_idx} with color={color}, alpha={alpha}")
+        self.logger.debug(f"Highlighting position {window_idx} with color={color}, opacity={opacity}")
         
         # Apply immediately if viz exists, otherwise queue
         if self._signal_viz and not self._update_signal_viz:
-            self._signal_viz.highlight_position(window_idx, color, alpha)
+            self._signal_viz.highlight_position(window_idx, color=color, opacity=opacity)
         else:
             self._pending_modifications.append(
-                ('highlight_position', (window_idx,), {'color': color, 'alpha': alpha})
+                ('highlight_position', (window_idx,), {'color': color, 'opacity': opacity})
             )
         
         return self
@@ -344,8 +344,18 @@ class GenomicPositionVisualizer:
         """Highlight the center position (convenience method)."""
         return self.highlight_position(None, **kwargs)
     
+    def clear_highlights(self) -> 'GenomicPositionVisualizer':        
+        # Apply immediately if viz exists, otherwise queue
+        if self._signal_viz and not self._update_signal_viz:
+            self._signal_viz.clear_highlights()
+        else:
+            self._pending_modifications.append(
+                ('clear_highlights', (), {})
+            )
+    
     def add_annotation(self, window_idx: int, text: str, *,
-                      y_position: Optional[float] = None, **kwargs) -> 'GenomicPositionVisualizer':
+                      y_position: Optional[float] = None, 
+                      **kwargs) -> 'GenomicPositionVisualizer':
         """
         Add text annotation at a specific position.
         
@@ -353,7 +363,7 @@ class GenomicPositionVisualizer:
             window_idx: Position index in window (0 to K-1)
             text: Annotation text
             y_position: Y-coordinate for annotation (auto-calculated if None)
-            **kwargs: Additional arguments passed to matplotlib.annotate()
+            **kwargs: Additional arguments for annotation styling
             
         Returns:
             self for method chaining
@@ -364,7 +374,7 @@ class GenomicPositionVisualizer:
         self.logger.debug(f"Adding annotation '{text}' at position {window_idx}")
         
         if self._signal_viz and not self._update_signal_viz:
-            self._signal_viz.add_annotation(window_idx, text, y_position, **kwargs)
+            self._signal_viz.add_annotation(window_idx, text, y_position=y_position, **kwargs)
         else:
             self._pending_modifications.append(
                 ('add_annotation', (window_idx, text), {'y_position': y_position, **kwargs})
@@ -372,24 +382,30 @@ class GenomicPositionVisualizer:
         
         return self
     
+    def clear_annotation(self) -> 'GenomicPositionVisualizer':
+        if self._signal_viz and not self._update_signal_viz:
+            self._signal_viz.clear_annotations()
+        else:
+            self._pending_modifications.append(
+                ('clear_annotations', (), {})
+            )
+    
     def set_title(self, title: str) -> 'GenomicPositionVisualizer':
         """Set plot title."""
         self.logger.debug(f"Setting title: {title}")
         self.title = title
         
+        # Update signal viz
         if self._signal_viz:
             self._signal_viz.set_title(title)
         else:
             self._pending_modifications.append(
-                ('set_title', (), {'title': title})
+                ('set_title', (title,), {})
             )
-
+        
+        # Update stats viz
         if self._stats_viz:
             self._stats_viz.set_title(title)
-        else:
-            self._pending_modifications.append(
-                ('set_title', (), {'title': title})
-            )
         
         return self
     
@@ -539,18 +555,7 @@ class GenomicPositionVisualizer:
         return list(self._conditions.keys())
     
     def get_condition(self, label: str) -> Condition:
-        """
-        Get a specific condition by label.
-        
-        Args:
-            label: Condition label
-            
-        Returns:
-            Condition object
-            
-        Raises:
-            KeyError: If condition not found
-        """
+        """Get a specific condition by label."""
         if label not in self._conditions:
             raise KeyError(f"Condition '{label}' not found")
         return self._conditions[label]
@@ -565,7 +570,7 @@ class GenomicPositionVisualizer:
         """Whether any conditions have been added."""
         return len(self._conditions) > 0
     
-    # Internal methods with clear separation of concerns
+    # Internal methods
     
     def _process_condition_data(self, 
                                bam_path: Union[str, Path],
@@ -623,7 +628,7 @@ class GenomicPositionVisualizer:
     
     def _store_condition(self,
                         processed_data: Dict[str, Any],
-                        color: Optional[Any],
+                        color: Optional[str],
                         alpha: Optional[float],
                         line_width: Optional[float],
                         line_style: Optional[str]):
@@ -652,12 +657,13 @@ class GenomicPositionVisualizer:
             self.logger.debug("Creating signal visualizer")
             
             self._signal_viz = SignalVisualizer(
-                self.K,
-                self.kmer,
-                self.plot_style,
-                self.title,
-                self.figsize,
-                self.logger
+                K=self.K,
+                window_labels=self.kmer,
+                plot_style=self.plot_style,
+                title=self.title,
+                width=self.width,
+                height=self.height,
+                logger=self.logger
             )
             
         if self._update_signal_viz:
@@ -699,14 +705,15 @@ class GenomicPositionVisualizer:
             self.logger.debug("Creating stats visualizer")
             
             self._stats_viz = StatsVisualizer(
-                self.K,
-                self._n_stats,
-                self.kmer,
-                self._stats_names,
-                self.plot_style_kde,
-                self.title,
-                self.figsize,
-                self.logger
+                K=self.K,
+                n_stats=self._n_stats,
+                window_labels=self.kmer,
+                stats_names=self._stats_names,
+                plot_style=self.plot_style_kde,
+                title=self.title,
+                width=self.width,
+                height=self.height,
+                logger=self.logger
             )
 
         if self._update_stats_viz:
@@ -732,14 +739,13 @@ class GenomicPositionVisualizer:
                     self.logger.debug(f"Updating condition '{label}' in plot")
                 self._stats_viz.plot_condition(cond)
 
+            # Apply pending modifications
             for method_name, args, kwargs in self._pending_modifications:
                 if hasattr(self._stats_viz, method_name):
                     method = getattr(self._stats_viz, method_name)
                     method(*args, **kwargs)
             
-            self._pending_modifications.clear()
             self._update_stats_viz = False
-
     
     # Backward compatibility properties
     
@@ -747,6 +753,14 @@ class GenomicPositionVisualizer:
     def style(self):
         """Get plot style (backward compatibility)."""
         return self.plot_style
+    
+    @property
+    def figsize(self):
+        """Get figure size (backward compatibility)."""
+        if self.width and self.height:
+            # Convert pixels to inches (assuming 100 DPI)
+            return (self.width / 100, self.height / 100)
+        return (12, 8)  # Default
     
     @property
     def _extracted_conditions_map(self):
@@ -763,12 +777,7 @@ class GenomicPositionVisualizer:
     # Verbosity and logging methods
     
     def set_verbosity(self, level: Union[VerbosityLevel, int]):
-        """
-        Change verbosity level after initialization.
-        
-        Args:
-            level: New verbosity level (0-4 or VerbosityLevel enum)
-        """
+        """Change verbosity level after initialization."""
         self.verbosity = VerbosityLevel(level) if isinstance(level, int) else level
         
         if hasattr(self.logger, 'setLevel'):
