@@ -10,6 +10,8 @@ requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.20.0",
     "matplotlib>=3.5.0",
+    "plotly>=6.2.0",
+    "nbformat>=5.10.4",
     "pysam>=0.22.0",  # For BAM file reading
     "pod5>=0.3.23",    # For POD5 file reading
 ]
