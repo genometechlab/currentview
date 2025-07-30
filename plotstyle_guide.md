@@ -17,13 +17,16 @@
 | `fill_opacity` | float | 0.3 | Opacity for filled areas |
 | **Layout and Spacing** | | | |
 | `margin` | dict | {'l': 80, 'r': 80, 't': 100, 'b': 80} | Margins in pixels (left, right, top, bottom) |
-| `padding` | float | 0.025 | Padding between elements |
+| `padding` | float | 0.025 | Padding between kmer windows |
 | **Grid and Axes** | | | |
 | `show_grid` | bool | True | Show background grid |
-| `grid_color` | str | 'rgba(128, 128, 128, 0.2)' | Grid line color (RGBA format) |
+| `grid_color` | str | 'rgba(128, 128, 128, 0.2)' | Grid line color (Plotly accepted format) |
 | `zeroline` | bool | False | Show zero line on axes |
 | `showline` | bool | True | Show axis lines |
 | `linecolor` | str | 'black' | Axis line color |
+| `barrier_style` | str | 'solid' | Line style of the barrier lines ('solid', 'dash', 'dot', 'dashdot') |
+| `barrier_opacity` | float | 0.8 | Opacity of the barrier lines |
+| `barrier_color` | str | 'grey' | Grid line color (Plotly accepted format) |
 | `linewidth` | int | 1 | Axis line width |
 | `mirror` | bool | False | Mirror axis lines to opposite side |
 | **Background Colors** | | | |
@@ -79,15 +82,6 @@ Available color schemes via `ColorScheme` enum:
 - `PASTEL`: Soft, muted colors
 - `DARK`: Dark2 color scheme with rich, deep colors
 - `COLORBLIND`: Accessible palette optimized for color vision deficiency
-
-## Usage Notes
-
-- The `get_layout_dict()` method converts all style settings into a Plotly-compatible layout dictionary
-- The `get_color_sequence()` method returns the appropriate color list based on the selected color scheme
-- Custom colors can be provided via the `colorway` parameter, which overrides the color scheme
-- Subplot spacing parameters are auto-calculated if set to `None`
-- All color parameters accept CSS color names, hex codes, or RGBA strings
-- The `template` parameter accepts any valid Plotly template name ('plotly', 'plotly_white', 'plotly_dark', 'ggplot2', 'seaborn', etc.)
 
 ## Example Usage
 
