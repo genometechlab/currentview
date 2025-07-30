@@ -216,7 +216,7 @@ style = PlotStyle(
 viz = GenomicPositionVisualizer(K=9, plot_style=style, plot_style_kde=style)
 ```
 
-A complete guide of the plotstyle can be found [Here]('./plotstyle_guide.md)
+A complete guide of the plotstyle can be found [here](plotstyle_guide.md)
 
 #### Examples
 
