@@ -7,6 +7,8 @@
 | **Figure Dimensions** | | | |
 | `width` | int | 1200 | Figure width in pixels |
 | `height` | int | 800 | Figure height in pixels |
+| **Rendering** | | | |
+| `renderer` | 'SVG'/'WebGL' | 'WebGL' | Rendering option |
 | **Trace Styling** | | | |
 | `line_width` | float | 2.0 | Default line thickness for traces |
 | `line_style` | str | 'solid' | Line style ('solid', 'dash', 'dot', 'dashdot') |

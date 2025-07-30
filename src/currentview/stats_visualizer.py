@@ -63,6 +63,11 @@ class StatsVisualizer:
         if height:
             self.style.height = height
             
+        if self.style.renderer=='SVG':
+            self._plot_func = go.Scatter
+        elif self.style.renderer=='WebGL':
+            self._plot_func = go.Scattergl
+        
         # Store initial title
         self.title = title or 'Nanopore Signal Statistics'
         
@@ -314,7 +319,7 @@ class StatsVisualizer:
                 
                 # Single trace with both line and fill
                 self.fig.add_trace(
-                    go.Scatter(
+                    self._plot_func(
                         x=x_range,
                         y=density,
                         mode='lines',
@@ -345,7 +350,7 @@ class StatsVisualizer:
             y_jitter = np.random.normal(0, 0.02, len(values))
             
             self.fig.add_trace(
-                go.Scatter(
+                self._plot_func(
                     x=values,
                     y=y_jitter,
                     mode='markers',
@@ -426,50 +431,48 @@ class StatsVisualizer:
     
     def _update_position_labels(self):
         """Update x-axis labels based on plotted conditions."""
-        DONT = True
-        if DONT: pass
+        if True: return
+        self.logger.debug("Updating position labels")
+        
+        plotted_conditions = list(self._plotted_conditions_map.values())
+        n_conditions = len(plotted_conditions)
+        
+        if n_conditions == 0:
+            # Default labels
+            titles_text = [str(i) for i in range(self.K)]
+        elif n_conditions == 1:
+            # Single condition labels
+            titles_text = plotted_conditions[0].position_labels
         else:
-            self.logger.debug("Updating position labels")
+            # Multiple conditions - create multi-line labels
+            titles_text = []
+            for i in range(self.K):
+                labels = []
+                for cond in plotted_conditions:
+                    color = cond.condition.color
+                    label = cond.position_labels[i]
+                    labels.append(f"<span style='color:{color}'>{label}</span>")
+                titles_text.append("<br>".join(labels*3))
+
+        # Update the first K subplot titles (one per column in row=1)
+        for ann in self.fig.layout.annotations:
+            ann_dict = ann.to_plotly_json()
+
+            # Check if this is a positional column title
+            name = ann_dict.get('name')
+            if not (isinstance(name, str) and "ColumnTitle_Position" in name):
+                continue
+
+            # Extract index from text like "Position 3"
+            curr_txt = ann_dict.get('text', '')
+            print(f"Original text: {curr_txt}")
             
-            plotted_conditions = list(self._plotted_conditions_map.values())
-            n_conditions = len(plotted_conditions)
-            
-            if n_conditions == 0:
-                # Default labels
-                titles_text = [str(i) for i in range(self.K)]
-            elif n_conditions == 1:
-                # Single condition labels
-                titles_text = plotted_conditions[0].position_labels
-            else:
-                # Multiple conditions - create multi-line labels
-                titles_text = []
-                for i in range(self.K):
-                    labels = []
-                    for cond in plotted_conditions:
-                        color = cond.condition.color
-                        label = cond.position_labels[i]
-                        labels.append(f"<span style='color:{color}'>{label}</span>")
-                    titles_text.append("<br>".join(labels*3))
-
-            # Update the first K subplot titles (one per column in row=1)
-            for ann in self.fig.layout.annotations:
-                ann_dict = ann.to_plotly_json()
-
-                # Check if this is a positional column title
-                name = ann_dict.get('name')
-                if not (isinstance(name, str) and "ColumnTitle_Position" in name):
-                    continue
-
-                # Extract index from text like "Position 3"
-                curr_txt = ann_dict.get('text', '')
-                print(f"Original text: {curr_txt}")
-                
-                try:
-                    idx = int(name.split(" ")[-1])
-                    ann['text'] = titles_text[idx]  # use the real index from the label
-                except (IndexError, ValueError) as e:
-                    print(f"Skipping annotation with invalid text: {curr_txt}")
-                    continue
+            try:
+                idx = int(name.split(" ")[-1])
+                ann['text'] = titles_text[idx]  # use the real index from the label
+            except (IndexError, ValueError) as e:
+                print(f"Skipping annotation with invalid text: {curr_txt}")
+                continue
         
     
     def get_plotted_labels(self) -> List[str]:

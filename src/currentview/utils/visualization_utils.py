@@ -17,6 +17,9 @@ class PlotStyle:
     width: int = 1200  # pixels
     height: int = 800  # pixels
     
+    # Backend
+    renderer: Literal['SVG', 'WebGL'] = 'WebGL'
+    
     # Trace styling
     line_width: float = 2.0
     line_style: str = "solid"  # "solid", "dash", "dot", "dashdot"
@@ -29,11 +32,15 @@ class PlotStyle:
         'l': 80, 'r': 80, 't': 100, 'b': 80
     })
     
-    # Grid and axes
+    # Grids, kmer barriers, and axes
     show_grid: bool = True
     grid_color: str = "rgba(128, 128, 128, 0.2)"
     zeroline: bool = False
     padding: float = 0.025
+    barrier_style: str = 'solid'
+    barrier_opacity: str = .25
+    barrier_color: str = 'grey'
+    
     
     # Background colors
     plot_bgcolor: str = "white"

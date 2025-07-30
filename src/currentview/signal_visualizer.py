@@ -18,6 +18,8 @@ class PlottedCondition:
     condition: Condition
     position_labels: List[str]
     trace_indices: List[int] = field(default_factory=list)
+    y_min: float = field(default=float('inf'))
+    y_max: float = field(default=float('-inf'))
 
 class SignalVisualizer:
     """Handles all plotting, visualization, and figure management using Plotly."""
@@ -55,6 +57,11 @@ class SignalVisualizer:
         if height:
             self.style.height = height
         
+        if self.style.renderer=='SVG':
+            self._plot_func = go.Scatter
+        elif self.style.renderer=='WebGL':
+            self._plot_func = go.Scattergl
+        
         # Store initial title
         self.title = title or 'Nanopore Signal Visualization'
         
@@ -79,6 +86,11 @@ class SignalVisualizer:
         # Store additional plot elements
         self._highlight_shapes = []
         self._annotation_indices = []
+        
+        # Track global y-axis limits
+        self._global_y_min = float('inf')
+        self._global_y_max = float('-inf')
+        self._auto_ylim = True  # Flag to enable/disable auto y-axis adjustment
         
         self.logger.info(f"Initialized SignalVisualizer with K={K}")
     
@@ -140,11 +152,12 @@ class SignalVisualizer:
                 y0=0, y1=1,
                 yref="paper",
                 line=dict(
-                    color="gray",
+                    color=self.style.barrier_color,
                     width=1.5,
-                    dash="dash"
+                    dash=self.style.barrier_style,
                 ),
-                layer="below"
+                layer="below",
+                opacity=self.style.barrier_opacity,
             )
     
     def _apply_custom_labels(self):
@@ -207,16 +220,22 @@ class SignalVisualizer:
         line_width = line_width or self.style.line_width
         condition.line_width = line_width
         
-        # Plot the signals
+        # Plot the signals and get y-axis bounds
         self.logger.info(f"Plotting {len(reads)} reads for condition '{label}'")
-        trace_indices = self._plot_signals(condition)
+        trace_indices, y_min, y_max = self._plot_signals(condition)
         
-        # Store plotted condition
-        self._plotted_conditions_map[label] = PlottedCondition(
+        # Store plotted condition with y-axis bounds
+        plotted_condition = PlottedCondition(
             condition=condition,
             position_labels=position_labels,
-            trace_indices=trace_indices
+            trace_indices=trace_indices,
+            y_min=y_min,
+            y_max=y_max
         )
+        self._plotted_conditions_map[label] = plotted_condition
+        
+        # Update global y-axis limits
+        self._update_global_ylim()
         
         # Update position labels
         if not self.window_labels:
@@ -224,13 +243,17 @@ class SignalVisualizer:
         
         self._plot_count += 1
     
-    def _plot_signals(self, condition: Condition) -> List[int]:
-        """Plot signals and return trace indices."""
+    def _plot_signals(self, condition: Condition) -> Tuple[List[int], float, float]:
+        """Plot signals and return trace indices and y-axis bounds."""
         trace_indices = []
         
         # Combine all signals for this condition
         all_x = []
         all_y = []
+        
+        # Track min/max for this condition
+        condition_y_min = float('inf')
+        condition_y_max = float('-inf')
         
         # Plot each read
         for read_idx, read_alignment in enumerate(condition.reads):
@@ -244,6 +267,11 @@ class SignalVisualizer:
                     
                     if read_alignment.is_reversed:
                         signal = signal[::-1]
+                    
+                    # Update condition's y-axis bounds
+                    if len(signal) > 0:
+                        condition_y_min = min(condition_y_min, np.min(signal))
+                        condition_y_max = max(condition_y_max, np.max(signal))
                     
                     # Calculate x-coordinates
                     signal_length = len(signal)
@@ -263,8 +291,9 @@ class SignalVisualizer:
         if all_x:
             show_legend = self.style.show_legend
             
+            # Create the main trace with the actual opacity
             self.fig.add_trace(
-                go.Scatter(
+                self._plot_func(
                     x=all_x,
                     y=all_y,
                     mode='lines',
@@ -275,15 +304,65 @@ class SignalVisualizer:
                         dash=condition.line_style
                     ),
                     opacity=condition.alpha,
-                    showlegend=show_legend,
+                    showlegend=False,  # Hide this trace from legend
                     legendgroup=condition.label,
                     hovertemplate='Position: %{x:.2f}<br>Signal: %{y:.1f} pA<extra></extra>'
                 )
             )
             
             trace_indices.append(len(self.fig.data) - 1)
+            
+            # Add a dummy trace just for the legend with full opacity
+            if show_legend:
+                self.fig.add_trace(
+                    self._plot_func(
+                        x=[None],  # No actual data points
+                        y=[None],
+                        mode='lines',
+                        name=condition.label,
+                        line=dict(
+                            color=condition.color,
+                            width=condition.line_width,
+                            dash=condition.line_style
+                        ),
+                        opacity=1.0,  # Full opacity in legend
+                        showlegend=True,
+                        legendgroup=condition.label,
+                        hoverinfo='skip'  # No hover for dummy trace
+                    )
+                )
+                
+                trace_indices.append(len(self.fig.data) - 1)
         
-        return trace_indices
+        # Handle case where no valid signals were found
+        if condition_y_min == float('inf'):
+            condition_y_min = 0
+            condition_y_max = 100
+        
+        return trace_indices, condition_y_min, condition_y_max
+    
+    def _update_global_ylim(self):
+        """Update global y-axis limits based on all plotted conditions."""
+        if not self._auto_ylim:
+            return
+        
+        # Reset global limits
+        self._global_y_min = float('inf')
+        self._global_y_max = float('-inf')
+        
+        # Find min/max across all conditions
+        for plotted_condition in self._plotted_conditions_map.values():
+            self._global_y_min = min(self._global_y_min, plotted_condition.y_min)
+            self._global_y_max = max(self._global_y_max, plotted_condition.y_max)
+        
+        # Add some padding (5% on each side)
+        if self._global_y_min != float('inf') and self._global_y_max != float('-inf'):
+            y_range = self._global_y_max - self._global_y_min
+            padding = y_range * 0.05
+            
+            self.logger.debug(f"Updating y-axis limits: [{self._global_y_min - padding:.1f}, {self._global_y_max + padding:.1f}]")
+            
+            self.fig.update_yaxes(range=[self._global_y_min - padding, self._global_y_max + padding])
     
     def remove_condition(self, label: str) -> bool:
         """Remove a specific condition from the plot."""
@@ -306,6 +385,9 @@ class SignalVisualizer:
         
         # Update trace indices for remaining conditions
         self._update_trace_indices()
+        
+        # Update y-axis limits
+        self._update_global_ylim()
         
         # Update position labels
         if not self.window_labels:
@@ -336,9 +418,20 @@ class SignalVisualizer:
         # Reset plot count
         self._plot_count = 0
         
+        # Reset y-axis limits
+        self._global_y_min = float('inf')
+        self._global_y_max = float('-inf')
+        
         # Update position labels
         if not self.window_labels:
             self._update_position_labels()
+    
+    def set_auto_ylim(self, enabled: bool = True) -> 'SignalVisualizer':
+        """Enable or disable automatic y-axis limit adjustment."""
+        self._auto_ylim = enabled
+        if enabled:
+            self._update_global_ylim()
+        return self
     
     def highlight_position(self, window_idx: Optional[int] = None,
                         color: str = 'red',
@@ -444,8 +537,9 @@ class SignalVisualizer:
     
     def set_ylim(self, bottom: Optional[float] = None,
                  top: Optional[float] = None) -> 'SignalVisualizer':
-        """Set y-axis limits."""
+        """Set y-axis limits manually (disables auto ylim)."""
         self.logger.debug(f"Setting y-axis limits: bottom={bottom}, top={top}")
+        self._auto_ylim = False  # Disable auto adjustment when manually setting limits
         self.fig.update_yaxes(range=[bottom, top])
         return self
     
@@ -457,9 +551,12 @@ class SignalVisualizer:
         self.clear_highlights()
         self.clear_annotations()
         
-        # Reset axes
-        self.fig.update_xaxes(autorange=True)
-        self.fig.update_yaxes(autorange=True)
+        # Re-enable auto ylim and update
+        self._auto_ylim = True
+        self._update_global_ylim()
+        
+        # Reset x-axis
+        self.fig.update_xaxes(range=[-0.1, self.K - 0.025 + 0.1])
     
     def show(self):
         """Display the plot."""
