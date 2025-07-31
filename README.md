@@ -7,6 +7,11 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
 - **Signal Visualization**: Plot nanopore signals from POD5 files at specific genomic positions
 - **Multi-condition Comparison**: Overlay multiple conditions/samples for direct comparison
 
+## Output sample
+
+!['Signals sample'](images/sample.png)
+!['KDE sample'](images/sample_kde.png)
+
 ## Table of Contents
 - [Installation](#installation)
 - [Quick Start](#quick-start)
