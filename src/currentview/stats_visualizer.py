@@ -31,8 +31,6 @@ class StatsVisualizer:
                  stats_names: Optional[List[str]] = None,
                  plot_style: Optional[PlotStyle] = None,
                  title: Optional[str] = None,
-                 width: Optional[int] = None,
-                 height: Optional[int] = None,
                  logger: Optional[logging.Logger] = None):
         """
         Initialize the visualizer.
@@ -58,10 +56,6 @@ class StatsVisualizer:
         
         # Setup style
         self.style = plot_style or PlotStyle()
-        if width:
-            self.style.width = width
-        if height:
-            self.style.height = height
             
         if self.style.renderer=='SVG':
             self._plot_func = go.Scatter

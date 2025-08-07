@@ -29,8 +29,6 @@ class SignalVisualizer:
                  window_labels: Optional[List[Union[str, int]]] = None,
                  plot_style: Optional[PlotStyle] = None,
                  title: Optional[str] = None,
-                 width: Optional[int] = None,
-                 height: Optional[int] = None,
                  logger: Optional[logging.Logger] = None):
         """
         Initialize the visualizer.
@@ -52,10 +50,6 @@ class SignalVisualizer:
         
         # Setup style
         self.style = plot_style or PlotStyle()
-        if width:
-            self.style.width = width
-        if height:
-            self.style.height = height
         
         if self.style.renderer=='SVG':
             self._plot_func = go.Scatter
@@ -587,7 +581,7 @@ class SignalVisualizer:
             self.logger.info(f"Saved figure to {path}")
         except Exception as e:
             self.logger.error(f"Failed to save figure: {type(e).__name__}: {str(e)}")
-            raise
+            raise e
     
     def get_plotted_labels(self) -> List[str]:
         """Get list of currently plotted condition labels."""

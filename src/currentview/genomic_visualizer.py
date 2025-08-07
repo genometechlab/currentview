@@ -58,8 +58,6 @@ class GenomicPositionVisualizer:
                  plot_style: Optional[PlotStyle] = None,
                  plot_style_kde: Optional[PlotStyle] = None,
                  title: Optional[str] = None,
-                 width: Optional[int] = None,
-                 height: Optional[int] = None,
                  verbosity: Union[VerbosityLevel, int] = VerbosityLevel.SILENT,
                  logger: Optional[logging.Logger] = None):
         """
@@ -105,8 +103,6 @@ class GenomicPositionVisualizer:
         self.plot_style = plot_style or PlotStyle()
         self.plot_style_kde = plot_style_kde or self.plot_style
         self.title = title
-        self.width = width
-        self.height = height
         
         # Lazy-initialized visualizers
         self._signal_viz = None
@@ -261,9 +257,40 @@ class GenomicPositionVisualizer:
         self._ensure_stats_viz()
         self._stats_viz.show()
     
-    def save(self, *args, **kwargs):
-        """Save the signal figure to file (convenience method)."""
-        self.save_signals(*args, **kwargs)
+
+    def save(self, path: Union[str, Path], *, 
+            format: Optional[str] = None,
+            scale: Optional[float] = None, 
+            save_both: bool = True,
+            **kwargs):
+        """
+        Save the figure(s) to file.
+        
+        By default, saves both signal and stats figures with appropriate suffixes.
+        
+        Args:
+            path: Output file path (base path if saving both)
+            format: File format ('png', 'jpg', 'svg', 'pdf', 'html')
+                    Determined from extension if not specified
+            scale: Scale factor for raster formats
+            save_both: If True, saves both signals and stats figures
+            **kwargs: Additional arguments passed to Plotly's write functions
+        """
+        path = Path(path)
+        
+        # Extract the base name and extension
+        base_name = path.stem
+        extension = path.suffix
+        parent_dir = path.parent
+        
+        # Save signals figure
+        signals_path = parent_dir / f"{base_name}_signals{extension}"
+        self.save_signals(signals_path, format=format, scale=scale, **kwargs)
+        
+        # Save stats figure if enabled
+        if self._stats_enabled:
+            stats_path = parent_dir / f"{base_name}_stats{extension}"
+            self.save_stats(stats_path, format=format, scale=scale, **kwargs)
     
     def save_signals(self, path: Union[str, Path], *, 
                      format: Optional[str] = None,
@@ -662,8 +689,6 @@ class GenomicPositionVisualizer:
                 window_labels=self.kmer,
                 plot_style=self.plot_style,
                 title=self.title,
-                width=self.width,
-                height=self.height,
                 logger=self.logger
             )
             
@@ -712,8 +737,6 @@ class GenomicPositionVisualizer:
                 stats_names=self._stats_names,
                 plot_style=self.plot_style_kde,
                 title=self.title,
-                width=self.width,
-                height=self.height,
                 logger=self.logger
             )
 
@@ -754,14 +777,6 @@ class GenomicPositionVisualizer:
     def style(self):
         """Get plot style (backward compatibility)."""
         return self.plot_style
-    
-    @property
-    def figsize(self):
-        """Get figure size (backward compatibility)."""
-        if self.width and self.height:
-            # Convert pixels to inches (assuming 100 DPI)
-            return (self.width / 100, self.height / 100)
-        return (12, 8)  # Default
     
     @property
     def _extracted_conditions_map(self):
