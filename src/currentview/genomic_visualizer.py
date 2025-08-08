@@ -339,7 +339,7 @@ class GenomicPositionVisualizer:
     
     def highlight_position(self, window_idx: Optional[int] = None, *,
                           color: str = 'red', 
-                          opacity: float = 0.2) -> 'GenomicPositionVisualizer':
+                          alpha: float = 0.2) -> 'GenomicPositionVisualizer':
         """
         Highlight a position in the window.
         
@@ -357,14 +357,14 @@ class GenomicPositionVisualizer:
         if not 0 <= window_idx < self.K:
             raise ValueError(f"window_idx must be between 0 and {self.K-1}, got {window_idx}")
         
-        self.logger.debug(f"Highlighting position {window_idx} with color={color}, opacity={opacity}")
+        self.logger.debug(f"Highlighting position {window_idx} with color={color}, opacity={alpha}")
         
         # Apply immediately if viz exists, otherwise queue
         if self._signal_viz and not self._update_signal_viz:
-            self._signal_viz.highlight_position(window_idx, color=color, opacity=opacity)
+            self._signal_viz.highlight_position(window_idx, color=color, alpha=alpha)
         else:
             self._pending_modifications.append(
-                ('highlight_position', (window_idx,), {'color': color, 'opacity': opacity})
+                ('highlight_position', (window_idx,), {'color': color, 'alpha': alpha})
             )
         
         return self

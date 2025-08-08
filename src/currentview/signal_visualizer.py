@@ -11,6 +11,7 @@ from .readers import SignalExtractor
 from .utils import ReadAlignment, Condition
 from .utils import validate_files
 from .utils import PlotStyle, ColorScheme
+from .utils import to_rgba_str, get_contrasting_color
 
 @dataclass
 class PlottedCondition:
@@ -429,7 +430,7 @@ class SignalVisualizer:
     
     def highlight_position(self, window_idx: Optional[int] = None,
                         color: str = 'red',
-                        opacity: float = 0.2) -> 'SignalVisualizer':
+                        alpha: float = 0.2) -> 'SignalVisualizer':
         """Highlight a position in the window."""
         if window_idx is None:
             window_idx = self.K // 2
@@ -445,7 +446,7 @@ class SignalVisualizer:
             y1=1,
             yref="paper",
             fillcolor=color,
-            opacity=opacity,
+            opacity=alpha,
             line=dict(width=0),
             layer="below",
             name=f"user_highlight_{len(self._highlight_shapes)}",  # Custom identifier
@@ -466,9 +467,11 @@ class SignalVisualizer:
             if not (hasattr(ann, 'name') and ann.name in self._highlight_shapes)
         ]
         self.fig.layout.shapes = new_shapes
-        self._annotation_indices.clear()
+        self._highlight_shapes.clear()
     
     def add_annotation(self, window_idx: int, text: str,
+                       color: str = "rgba(255, 255, 0, 0.7)",
+                       fontsize: int = None, fontcolor: str = None,
                     y_position: Optional[float] = None,
                     **kwargs) -> 'SignalVisualizer':
         """Add text annotation at a specific position."""
@@ -476,7 +479,7 @@ class SignalVisualizer:
             window_idx = self.K // 2
         
         x_pos = window_idx + 0.5 - self.style.padding / 2
-        
+        fontcolor = fontcolor or get_contrasting_color(color)
         if y_position is None:
             # Get current y range
             y_range = self.fig.layout.yaxis.range
@@ -493,8 +496,8 @@ class SignalVisualizer:
             y=y_position,
             text=text,
             showarrow=False,
-            font=dict(size=self.style.annotation_font_size),
-            bgcolor="rgba(255, 255, 0, 0.7)",
+            font=dict(size=fontsize or self.style.annotation_font_size, color=fontcolor),
+            bgcolor=color,
             borderpad=4,
             name=f"user_annotation_{len(self._annotation_indices)}",  # Custom identifier
             **kwargs
