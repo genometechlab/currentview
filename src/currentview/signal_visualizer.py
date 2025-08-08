@@ -602,14 +602,16 @@ class SignalVisualizer:
         self.logger.debug(f"Extracting reference bases for {len(positions)} positions")
         
         kmer_dict = {position: '_' for position in positions}
+        rem = len(kmer_dict)
         
         for read_alignment in reads:
             for aligned_base in read_alignment.aligned_bases:
                 if aligned_base.reference_pos in positions:
                     if kmer_dict[aligned_base.reference_pos] == '_':
-                        kmer_dict[aligned_base.reference_pos] = aligned_base.reference_base
+                        kmer_dict[aligned_base.reference_pos] = aligned_base.reference_base.upper()
+                        rem-=1
             
-            if all(base != '_' for base in kmer_dict.values()):
+            if rem==0:
                 break
         
         return kmer_dict
