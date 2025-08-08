@@ -8,14 +8,14 @@ def with_alpha(color, alpha=0.2):
     # Handle 'rgb(r,g,b)' or 'rgba(r,g,b,a)' format
     if isinstance(color, str) and color.startswith(('rgb(', 'rgba(')):
         # Extract numbers from rgb/rgba string
-        numbers = re.findall(r'\d+', color)
+        numbers = re.findall(r'[\d.]+', color)  # Changed to handle decimals
         if len(numbers) >= 3:
-            r, g, b = int(numbers[0]), int(numbers[1]), int(numbers[2])
+            r, g, b = int(float(numbers[0])), int(float(numbers[1])), int(float(numbers[2]))
+            # If rgba, multiply alphas
+            if color.startswith('rgba(') and len(numbers) >= 4:
+                existing_alpha = float(numbers[3])
+                alpha = existing_alpha * alpha
             return f'rgba({r}, {g}, {b}, {alpha})'
-    
-    # For other formats, use matplotlib
-    r, g, b, *_ = to_rgba(color)
-    return f'rgba({int(r*255)}, {int(g*255)}, {int(b*255)}, {alpha})'
 
 class ColorScheme(Enum):
     """Predefined color schemes for Plotly visualization."""
