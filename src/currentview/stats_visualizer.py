@@ -12,7 +12,8 @@ from .readers import AlignmentExtractor
 from .readers import SignalExtractor
 from .utils import ReadAlignment, Condition
 from .utils import validate_files
-from .utils import PlotStyle, ColorScheme, with_alpha
+from .utils import PlotStyle, ColorScheme
+from .utils import to_rgba_str
 
 @dataclass
 class PlottedCondition:
@@ -291,7 +292,7 @@ class StatsVisualizer:
                 density = kde(x_range)
                 
                 # Convert color to RGBA for fill
-                fill_color = with_alpha(color, 0.2)
+                fill_color = to_rgba_str(color, 0.2)
                 
                 # Single trace with both line and fill
                 self.fig.add_trace(
