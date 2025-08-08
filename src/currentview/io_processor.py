@@ -37,8 +37,6 @@ class DataProcessor:
         self._alignment_cache: Dict[Path, AlignmentExtractor] = {}
         self._signal_cache: Dict[Path, SignalExtractor] = {}
         self.logger.debug("Initialized empty caches for extractors")
-        
-        self.logger.info(f"Initialized DataProcessor with window size {K}")
     
     def process_reads(self,
                       bam_path: Union[str, Path],
@@ -73,8 +71,6 @@ class DataProcessor:
             raise FileNotFoundError(f"POD5 file not found: {pod5_path}")
         self.logger.debug("File validation successful")
         
-        self.logger.info(f"Looking for reads aligned at position {target_position} of contig {contig} from {bam_path.name}")
-        
         # Log extraction parameters
         self.logger.debug(f"Extraction parameters: "
                          f"require_perfect_match={require_perfect_match}, "
@@ -91,7 +87,7 @@ class DataProcessor:
             self.logger.warning(f"No reads found at {contig}:{target_position}")
             return None
 
-        self.logger.info(f"Found {len(alignments)} reads at {contig}:{target_position}")
+        self.logger.info(f"Extracted {len(alignments)} reads from bam")
         
         # Log some statistics about the alignments
         if self.logger.isEnabledFor(logging.DEBUG):
@@ -106,7 +102,7 @@ class DataProcessor:
         alignments = self._extract_signals(pod5_path, alignments)
         
         if len(alignments) != len_fetched:
-            self.logger.warning(f"Signal extraction incomplete: {len(alignments)}/{len_fetched} reads have signals")
+            self.logger.warning(f"Signal extraction incomplete: found signals for {len(alignments)} out of {len_fetched} reads")
             if self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.debug(f"Lost {len_fetched - len(alignments)} reads during signal extraction")
         else:
@@ -116,7 +112,7 @@ class DataProcessor:
             self.logger.warning("No reads with signals found")
             return None
         
-        self.logger.info(f"Successfully processed {len(alignments)} reads for condition '{label}'")
+        self.logger.info(f"Extracted signals for {len(alignments)} reads")
         
         # Log summary statistics if in debug mode
         if self.logger.isEnabledFor(logging.DEBUG):
@@ -175,11 +171,9 @@ class DataProcessor:
         # Check cache
         if pod5_path not in self._signal_cache:
             self.logger.debug(f"Creating new SignalExtractor for {pod5_path.name}")
-            self._signal_cache[pod5_path] = SignalExtractor(pod5_path)
+            self._signal_cache[pod5_path] = SignalExtractor(pod5_path, logger=self.logger)
         else:
             self.logger.debug(f"Using cached SignalExtractor for {pod5_path.name}")
-        
-        self.logger.info(f"Extracting signals for {len(alignments)} reads...")
         
         try:
             # Log read IDs if in debug mode

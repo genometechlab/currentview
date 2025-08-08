@@ -208,6 +208,7 @@ class GenomicPositionVisualizer:
             
             self.logger.info(f"Successfully added condition '{processed_data['label']}' "
                            f"with {len(processed_data['reads'])} reads")
+            self.logger.info(f"====================================================")
         
         return self
     
@@ -616,7 +617,7 @@ class GenomicPositionVisualizer:
         pod5_path = Path(pod5_path)
         
         # Process reads
-        self.logger.info(f"Processing reads from {bam_path.name} for condition '{label}'")
+        self.logger.info(f"Condition '{label}'")
         
         aligned_reads = self.processor.process_reads(
             bam_path, pod5_path, label, contig, target_position, target_base,
@@ -692,7 +693,7 @@ class GenomicPositionVisualizer:
         """
         # Handle string style names
         if isinstance(style, str):
-            style = PlotStyles.get_style(style)
+            style = PlotStyle.get_style(style)
         
         # Save current state if requested
         saved_state = {}

@@ -54,6 +54,10 @@ class AlignmentExtractor:
         # Ensure window size is odd
         if window_size % 2 == 0:
             window_size += 1
+            
+            
+        self.logger.info(f"Processing reads from bam file")
+        self.logger.info(f"Looking in region {contig}:{target_position}")
 
         # Collect alignment data
         read_alignments = self._collect_read_alignments(
