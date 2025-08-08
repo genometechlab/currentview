@@ -207,7 +207,7 @@ class PlotStyle:
         return color_sequences.get(self.color_scheme, color_sequences[ColorScheme.TAB10])
      
     @staticmethod
-    def paper_single_column() -> "PlotStyle":
+    def _paper_single_column() -> "PlotStyle":
         """
         Style optimized for single-column figures in academic papers.
         - Column width: 3.5 inches (standard single column)
@@ -266,7 +266,7 @@ class PlotStyle:
         )
     
     @staticmethod
-    def paper_two_column() -> "PlotStyle":
+    def _paper_two_column() -> "PlotStyle":
         """
         Style optimized for two-column (full width) figures in academic papers.
         - Full page width: 7.0 inches (standard two-column span)
@@ -325,7 +325,7 @@ class PlotStyle:
         )
     
     @staticmethod
-    def poster() -> "PlotStyle":
+    def _poster() -> "PlotStyle":
         """
         Style optimized for academic posters.
         - Large dimensions for poster printing
@@ -384,7 +384,7 @@ class PlotStyle:
         )
     
     @staticmethod
-    def presentation() -> "PlotStyle":
+    def _presentation() -> "PlotStyle":
         """
         Style optimized for presentations and slides.
         - 16:9 aspect ratio for modern projectors
@@ -446,7 +446,7 @@ class PlotStyle:
         )
     
     @staticmethod
-    def interactive() -> "PlotStyle":
+    def _interactive() -> "PlotStyle":
         """
         Style optimized for interactive exploration.
         - Rich hover information
@@ -510,11 +510,11 @@ class PlotStyle:
         )
     
     @staticmethod
-    def dark_presentation() -> "PlotStyle":
+    def _dark_presentation() -> "PlotStyle":
         """
         Dark theme variant for presentations in dimmed rooms.
         """
-        style = PlotStyle.presentation()
+        style = PlotStyle._presentation()
         
         # Dark theme modifications
         style.template = "plotly_dark"
@@ -529,3 +529,45 @@ class PlotStyle:
         style.hoverlabel_bordercolor = "white"
         
         return style
+    
+    @staticmethod
+    def get_style(style_name: str) -> "PlotStyle":
+        """
+        Get a predefined style by name.
+        
+        Args:
+            style_name: Name of the style. Available options:
+                - 'paper_single': Single-column paper figure
+                - 'paper_double': Two-column (full width) paper figure
+                - 'poster': Conference poster
+                - 'presentation': Slide presentation
+                - 'presentation_dark': Dark theme presentation
+                - 'interactive': Interactive exploration
+        
+        Returns:
+            PlotStyle instance with predefined settings
+            
+        Raises:
+            ValueError: If style_name is not recognized
+            
+        Example:
+            >>> style = PlotStyles.get_style('paper_single')
+            >>> style.width = 1200  # Can still modify after creation
+        """
+        styles = {
+            'paper_single': PlotStyle._paper_single_column,
+            'paper_double': PlotStyle._paper_two_column,
+            'poster': PlotStyle._poster,
+            'presentation': PlotStyle._presentation,
+            'presentation_dark': PlotStyle._dark_presentation,
+            'interactive': PlotStyle._interactive,
+        }
+        
+        if style_name not in styles:
+            available = ', '.join(sorted(styles.keys()))
+            raise ValueError(
+                f"Unknown style '{style_name}'. "
+                f"Available styles: {available}"
+            )
+        
+        return styles[style_name]()
