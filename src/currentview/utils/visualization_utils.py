@@ -33,7 +33,7 @@ class PlotStyle:
     })
     
     # Grids, kmer barriers, and axes
-    show_grid: bool = True
+    show_grid: bool = False
     grid_color: str = "rgba(128, 128, 128, 0.2)"
     zeroline: bool = False
     padding: float = 0.025
@@ -347,7 +347,7 @@ class PlotStyle:
             
             # Thick lines for visibility
             line_width=4.0,
-            show_grid=True,
+            show_grid=False,
             grid_color="rgba(200, 200, 200, 0.3)",
             
             # Generous margins for titles
@@ -406,7 +406,7 @@ class PlotStyle:
             
             # Visible lines
             line_width=3.0,
-            show_grid=True,
+            show_grid=False,
             grid_color="rgba(230, 230, 230, 0.5)",
             
             # Balanced margins
@@ -471,7 +471,7 @@ class PlotStyle:
             opacity_mode='auto',
             
             # Detailed grid for exploration
-            show_grid=True,
+            show_grid=False,
             grid_color="rgba(128, 128, 128, 0.2)",
             zeroline=True,
             
