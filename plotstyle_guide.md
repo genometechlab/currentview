@@ -88,8 +88,8 @@ Available color schemes via `ColorScheme` enum:
 ```python
 # Create a custom style
 style = PlotStyle(
-    width=1400,
-    height=600,
+    width=1200,
+    height=800,
     color_scheme=ColorScheme.COLORBLIND,
     title_font_size=24,
     show_grid=True,
@@ -103,3 +103,31 @@ fig = go.Figure()
 # Add your traces here...
 fig.update_layout(**style.get_layout_dict())
 ```
+
+## Predefined Styles
+
+Use `PlotStyles.get_style()` to access predefined configurations created for different contexts.
+You can use this predefined styles as a head start. Note that you can still configure these styles.
+
+```python
+from plot_styles import PlotStyles
+
+# Get a predefined style by name
+style = PlotStyles.get_style('<style_name>')
+
+# Modify as needed
+style.color_scheme = ColorScheme.COLORBLIND
+style.show_grid = True
+```
+
+### Available Style Names
+
+| Style Name | Description | Dimensions | Primary Use Case |
+|------------|-------------|------------|------------------|
+| `'paper_single'` | Single-column journal figure | 1050×700 (3.5"×2.33") | Academic papers, single column |
+| `'paper_double'` | Two-column journal figure | 2100×1050 (7"×3.5") | Academic papers, full width |
+| `'poster'` | Conference poster figure | 2400×1800 (8"×6") | Academic posters |
+| `'presentation'` | Slide presentation | 1920×1080 (16:9) | Talks, lectures |
+| `'presentation_dark'` | Dark theme presentation | 1920×1080 (16:9) | Talks, lectures |
+| `'interactive'` | Web/exploration | 1200×800 | Data exploration in notebooks, web viewing |
+
