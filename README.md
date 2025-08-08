@@ -80,10 +80,10 @@ The main class that initiate the visualization.
 GenomicPositionVisualizer(
     K: int = 9,
     kmer: Optional[List[Union[str, int]]] = None,
+    stats: Optional[List[Union[str, Callable]]] = None,
     plot_style: Optional[PlotStyle] = None,
     plot_style_kde: Optional[PlotStyle] = None,
     title: Optional[str] = None,
-    figsize: Optional[Tuple[float, float]] = None,
     verbosity: VerbosityLevel = VerbosityLevel.SILENT,
     logger: Optional[logging.Logger] = None
 )
@@ -92,10 +92,10 @@ GenomicPositionVisualizer(
 **Parameters:**
 - `K`: Window size (will be made odd if even). Default: 9
 - `kmer`: Optional custom k-mer labels for x-axis. Should be an iterable with size `K`
+- `stats`: List of stats you would like to include in the stats visualization. Supports 'mean', 'median', 'std', 'variance', 'min', 'max', 'duration', 'kurtosis', 'skew' and user defined callables.
 - `plot_style`: PlotStyle object for signal visualization customization. Please refer to `PlotStyle` section
-- `plot_style`: PlotStyle object for kde visualization customization. Please refer to `PlotStyle` section
+- `plot_style_kde`: PlotStyle object for kde visualization customization. Please refer to `PlotStyle` section
 - `title`: Plot title
-- `figsize`: Figure size (width, height) in inches
 - `verbosity`: Logging level (0-4):
   - 0 = SILENT: No output
   - 1 = ERROR: Only errors
@@ -133,7 +133,7 @@ viz.plot_condition(
 - `pod5_path`: Path to POD5 signal file (Required) 
 - `contig`: Chromosome/contig name (e.g., "chr1") (Required) 
 - `target_position`: 0-based reference genomic position (Required)
-- `target_base`: Read base matched to the reference target position (Default: None - toolkit doesn't care about the base matched to target position)
+- `target_base`: To specify the read base matched to the reference target position (Default: None - toolkit doesn't care about the base matched to target position)
 - `read_ids`: Specific read IDs to include (default: None - fetched all aligned reads)
 - `max_reads`: Maximum number of reads to plot(default: None - No limitation of the fetched reads)
 - `exclude_reads_with_indels`: Skip reads with insertions/deletions (default: False)
@@ -142,7 +142,7 @@ viz.plot_condition(
 - `alpha`: Line transparency (0-1) (default: based on style.alpha_mode - please refer to plot style below)
 - `line_width`: Line thickness (default: style.line_width - please refer to plot style below)
 - `line_style`: Line style ('-', '--', ':', etc.) (default: style.line_style - please refer to plot style below)
-- `overwrite`: If set to True, any previously added condition with the same name as the new one will be removed and replaced by the new condition. (Default: False)
+- `overwrite`: If set to True, any previously added condition with the same `label` as the new one will be removed and replaced by the new condition. (Default: False)
 
 
 ##### show(), show_signals(), and show_stats()
