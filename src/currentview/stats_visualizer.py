@@ -12,7 +12,7 @@ from .readers import AlignmentExtractor
 from .readers import SignalExtractor
 from .utils import ReadAlignment, Condition
 from .utils import validate_files
-from .utils import PlotStyle, ColorScheme
+from .utils import PlotStyle, ColorScheme, with_alpha
 
 @dataclass
 class PlottedCondition:
@@ -276,24 +276,6 @@ class StatsVisualizer:
         
         return trace_indices
     
-    def _hex_to_rgba(self, hex_color: str, alpha: float) -> str:
-        """Convert hex color to rgba string."""
-        # Remove # if present
-        hex_color = hex_color.lstrip('#')
-        
-        # Convert hex to RGB
-        if len(hex_color) == 6:
-            r = int(hex_color[0:2], 16)
-            g = int(hex_color[2:4], 16)
-            b = int(hex_color[4:6], 16)
-        else:
-            # Handle 3-digit hex
-            r = int(hex_color[0] * 2, 16)
-            g = int(hex_color[1] * 2, 16)
-            b = int(hex_color[2] * 2, 16)
-        
-        return f'rgba({r},{g},{b},{alpha})'
-    
     def _plot_single_kde(self, values: List[float], label: str, color: str,
                         opacity: float, line_width: float, line_style: str,
                         row: int, col: int, showlegend: bool,
@@ -309,7 +291,7 @@ class StatsVisualizer:
                 density = kde(x_range)
                 
                 # Convert color to RGBA for fill
-                fill_color = self._hex_to_rgba(color, 0.2) if color.startswith('#') else color
+                fill_color = with_alpha(color, 0.2)
                 
                 # Single trace with both line and fill
                 self.fig.add_trace(
