@@ -55,8 +55,8 @@ class GenomicPositionVisualizer:
                  K: int = 9,
                  kmer: Optional[List[Union[str, int]]] = None,
                  stats: Optional[List[Union[str, Callable]]] = None,
-                 plot_style: Optional[PlotStyle] = None,
-                 plot_style_kde: Optional[PlotStyle] = None,
+                 signals_plot_style: Optional[PlotStyle] = None,
+                 stats_plot_style: Optional[PlotStyle] = None,
                  title: Optional[str] = None,
                  verbosity: Union[VerbosityLevel, int] = VerbosityLevel.SILENT,
                  logger: Optional[logging.Logger] = None):
@@ -70,8 +70,8 @@ class GenomicPositionVisualizer:
                    - String names: 'mean', 'median', 'std', 'variance', 'min', 'max', 'skewness', 'kurtosis'
                    - StatisticsFuncs enum values
                    - Custom callable functions that take a numpy array and return a float
-            plot_style: Style configuration for plots
-            plot_style_kde: Specific style for KDE plots (defaults to plot_style)
+            signals_plot_style: Style configuration for plots
+            stats_plot_style: Specific style for KDE plots (defaults to signals_plot_style)
             title: Default title for plots
             width: Figure width in pixels
             height: Figure height in pixels
@@ -100,8 +100,8 @@ class GenomicPositionVisualizer:
         
         # Store visualization parameters
         self.kmer = kmer
-        self.plot_style = plot_style or PlotStyle()
-        self.plot_style_kde = plot_style_kde or self.plot_style
+        self.signals_plot_style = signals_plot_style or PlotStyle()
+        self.stats_plot_style = stats_plot_style or self.signals_plot_style
         self.title = title
         
         # Lazy-initialized visualizers
@@ -677,6 +677,66 @@ class GenomicPositionVisualizer:
         """Mark visualizations as needing update."""
         self._update_signal_viz = True
         self._update_stats_viz = True
+        
+    def set_signals_style(self, style: Union[PlotStyle, str], 
+                        preserve_modifications: bool = True) -> 'GenomicPositionVisualizer':
+        """
+        Update the style for signal plots.
+        
+        Args:
+            style: PlotStyle instance or predefined style name
+            preserve_modifications: Whether to preserve highlights, annotations, etc.
+        
+        Returns:
+            self for method chaining
+        """
+        # Handle string style names
+        if isinstance(style, str):
+            style = PlotStyles.get_style(style)
+        
+        # Save current state if requested
+        saved_state = {}
+        if preserve_modifications and self._signal_viz:
+            saved_state = {
+                'highlights': getattr(self._signal_viz, '_highlights', []),
+                'annotations': getattr(self._signal_viz, '_annotations', []),
+                'title': getattr(self._signal_viz, 'title', self.title),
+                'ylim': getattr(self._signal_viz, '_ylim', None)
+            }
+        
+        # Update style
+        self.signals_plot_style = style
+        
+        # Force recreation
+        self._signal_viz = None
+        self._update_signal_viz = True
+        
+        # Queue state restoration
+        if saved_state:
+            # Restore title
+            if saved_state.get('title'):
+                self.title = saved_state['title']
+            
+            # Queue other modifications to be reapplied
+            for highlight in saved_state.get('highlights', []):
+                self._pending_modifications.append(
+                    ('highlight_position', (highlight['position'],), 
+                    {'color': highlight['color'], 'opacity': highlight['opacity']})
+                )
+            
+            for annotation in saved_state.get('annotations', []):
+                self._pending_modifications.append(
+                    ('add_annotation', (annotation['position'], annotation['text']), 
+                    annotation.get('kwargs', {}))
+                )
+            
+            if saved_state.get('ylim'):
+                self._pending_modifications.append(
+                    ('set_ylim', (), saved_state['ylim'])
+                )
+        
+        self.logger.debug(f"Set new signals plot style - will recreate visualizer")
+        return self
     
     def _ensure_signal_viz(self):
         """Ensure signal visualizer is created and up to date."""
@@ -687,7 +747,7 @@ class GenomicPositionVisualizer:
             self._signal_viz = SignalVisualizer(
                 K=self.K,
                 window_labels=self.kmer,
-                plot_style=self.plot_style,
+                plot_style=self.signals_plot_style,
                 title=self.title,
                 logger=self.logger
             )
@@ -735,7 +795,7 @@ class GenomicPositionVisualizer:
                 n_stats=self._n_stats,
                 window_labels=self.kmer,
                 stats_names=self._stats_names,
-                plot_style=self.plot_style_kde,
+                plot_style=self.stats_plot_style,
                 title=self.title,
                 logger=self.logger
             )
@@ -770,25 +830,6 @@ class GenomicPositionVisualizer:
                     method(*args, **kwargs)
             
             self._update_stats_viz = False
-    
-    # Backward compatibility properties
-    
-    @property
-    def style(self):
-        """Get plot style (backward compatibility)."""
-        return self.plot_style
-    
-    @property
-    def _extracted_conditions_map(self):
-        """Get extracted conditions (backward compatibility)."""
-        return self.processor._extracted_conditions_map
-    
-    @property
-    def _plotted_conditions_map(self):
-        """Get plotted conditions (backward compatibility)."""
-        if self._signal_viz:
-            return self._signal_viz._plotted_conditions_map
-        return {}
     
     # Verbosity and logging methods
     
