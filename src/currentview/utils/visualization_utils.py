@@ -1,6 +1,21 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple, Union, Literal
+from matplotlib.colors import to_rgba
+import re
+
+def with_alpha(color, alpha=0.2):
+    # Handle 'rgb(r,g,b)' or 'rgba(r,g,b,a)' format
+    if isinstance(color, str) and color.startswith(('rgb(', 'rgba(')):
+        # Extract numbers from rgb/rgba string
+        numbers = re.findall(r'\d+', color)
+        if len(numbers) >= 3:
+            r, g, b = int(numbers[0]), int(numbers[1]), int(numbers[2])
+            return f'rgba({r}, {g}, {b}, {alpha})'
+    
+    # For other formats, use matplotlib
+    r, g, b, *_ = to_rgba(color)
+    return f'rgba({int(r*255)}, {int(g*255)}, {int(b*255)}, {alpha})'
 
 class ColorScheme(Enum):
     """Predefined color schemes for Plotly visualization."""
@@ -508,6 +523,29 @@ class PlotStyle:
                 'scale': 2
             }
         )
+        
+    @staticmethod
+    def _dark_interactive() -> "PlotStyle":
+        """
+        Dark theme variant for dark tehemed interactive enviromentes
+        """
+        style = PlotStyle._interactive()
+        
+        # Dark theme modifications
+        style.template = "plotly_dark"
+        style.plot_bgcolor = "#111111"
+        style.paper_bgcolor = "#0a0a0a"
+        style.color_scheme = ColorScheme.PLOTLY_DARK
+        style.grid_color = "rgba(255, 255, 255, 0.1)"
+        style.linecolor = "white"
+        style.tickcolor = "white"
+        style.legend_bgcolor = "rgba(0, 0, 0, 0.8)"
+        style.legend_bordercolor = "rgba(255, 255, 255, 0.3)"
+        style.hoverlabel_bgcolor = "#222222"
+        style.hoverlabel_bordercolor = "white"
+        
+        return style
+        
     
     @staticmethod
     def _dark_presentation() -> "PlotStyle":
@@ -561,6 +599,7 @@ class PlotStyle:
             'presentation': PlotStyle._presentation,
             'presentation_dark': PlotStyle._dark_presentation,
             'interactive': PlotStyle._interactive,
+            'interactive_dark': PlotStyle._dark_interactive,
         }
         
         if style_name not in styles:
