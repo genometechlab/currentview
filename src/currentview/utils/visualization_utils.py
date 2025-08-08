@@ -4,19 +4,6 @@ from typing import Dict, List, Optional, Set, Tuple, Union, Literal
 from matplotlib.colors import to_rgba
 import re
 
-def with_alpha(color, alpha=0.2):
-    # Handle 'rgb(r,g,b)' or 'rgba(r,g,b,a)' format
-    if isinstance(color, str) and color.startswith(('rgb(', 'rgba(')):
-        # Extract numbers from rgb/rgba string
-        numbers = re.findall(r'[\d.]+', color)  # Changed to handle decimals
-        if len(numbers) >= 3:
-            r, g, b = int(float(numbers[0])), int(float(numbers[1])), int(float(numbers[2]))
-            # If rgba, multiply alphas
-            if color.startswith('rgba(') and len(numbers) >= 4:
-                existing_alpha = float(numbers[3])
-                alpha = existing_alpha * alpha
-            return f'rgba({r}, {g}, {b}, {alpha})'
-
 class ColorScheme(Enum):
     """Predefined color schemes for Plotly visualization."""
     TAB10 = "tab10"  # Matplotlib's tab10 color scheme
