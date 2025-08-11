@@ -10,11 +10,26 @@ requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.20.0",
     "matplotlib>=3.5.0",
-    "plotly>=6.2.0",
-    "kaleido>=0.2.0",  
+    "plotly>=5.14.0",
+    "kaleido>=0.2.0",
     "nbformat>=5.10.4",
     "pysam>=0.22.0",  # For BAM file reading
-    "pod5>=0.3.23",    # For POD5 file reading
+    "pod5>=0.3.23",   # For POD5 file reading
+    # Dash dependencies
+    "dash>=2.14.0",
+    "dash-bootstrap-components>=1.5.0",
+    # Scientific computing
+    "scipy>=1.10.0",
+    "pandas>=1.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
 ]
 
 [tool.black]
@@ -23,7 +38,11 @@ line-length = 88  # Slightly longer lines work well for scientific code
 [tool.isort]
 profile = "black"  # Makes isort compatible with black
 
-[flake8]
+[tool.flake8]
 max-line-length = 88
-extend-ignore = "E203"  # Black-compatible
+extend-ignore = ["E203"]  # Black-compatible
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*", "dash_app*"]
+exclude = ["tests*"]
