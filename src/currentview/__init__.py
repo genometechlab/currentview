@@ -1,2 +1,2 @@
-from currentview.genomic_visualizer import GenomicPositionVisualizer
+from currentview.genomic_visualizer import GenomicPositionVisualizer, VerbosityLevel
 from currentview.utils import PlotStyle

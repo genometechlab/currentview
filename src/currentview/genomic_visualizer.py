@@ -212,6 +212,59 @@ class GenomicPositionVisualizer:
         
         return self
     
+    def update_condition(self,
+                        label: str,
+                        *,  # Force keyword-only arguments
+                        color: Optional[str] = None,
+                        alpha: Optional[float] = None,
+                        line_width: Optional[float] = None,
+                        line_style: Optional[str] = None) -> 'GenomicPositionVisualizer':
+        """
+        Update visualization parameters of an existing condition.
+        
+        Args:
+            label: Label of the condition to update
+            color: New plot color (None = keep existing)
+            alpha: New transparency (None = keep existing)
+            line_width: New line width (None = keep existing)
+            line_style: New line style (None = keep existing)
+            
+        Returns:
+            self for method chaining
+            
+        Raises:
+            KeyError: If condition with given label doesn't exist
+        """
+        if label not in self._conditions:
+            raise KeyError(f"Condition '{label}' not found. "
+                        f"Available conditions: {list(self._conditions.keys())}")
+        
+        condition = self._conditions[label]
+        
+        # Update only the provided parameters
+        if color is not None:
+            self.logger.debug(f"Updating color for '{label}': {condition.color} -> {color}")
+            condition.color = color
+        
+        if alpha is not None:
+            self.logger.debug(f"Updating alpha for '{label}': {condition.alpha} -> {alpha}")
+            condition.alpha = alpha
+        
+        if line_width is not None:
+            self.logger.debug(f"Updating line_width for '{label}': {condition.line_width} -> {line_width}")
+            condition.line_width = line_width
+        
+        if line_style is not None:
+            self.logger.debug(f"Updating line_style for '{label}': {condition.line_style} -> {line_style}")
+            condition.line_style = line_style
+        
+        # Mark visualizations as needing update
+        self._mark_for_update()
+        
+        self.logger.info(f"Updated visualization parameters for condition '{label}'")
+        
+        return self
+    
     def add(self, *args, **kwargs) -> 'GenomicPositionVisualizer':
         """Alias for add_condition() with shorter name."""
         return self.add_condition(*args, **kwargs)
