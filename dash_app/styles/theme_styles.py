@@ -59,6 +59,7 @@ def get_base_styles():
         from { opacity: 0; }
         to { opacity: 1; }
     }
+
     """
 
 
@@ -100,8 +101,93 @@ def get_dark_mode_styles():
         color: #e4e4e7 !important;
     }
     
+    .modern-btn {
+        background: #27272a !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5) !important;
+    }
+
+    /* Primary button */
+    .btn-primary {
+        border: 1px solid #6366f1 !important;
+        color: #6366f1 !important;
+    }
+
+    .btn-primary:hover {
+        background: #3f3f46 !important;
+        border-color: #818cf8 !important;
+        color: #818cf8 !important;
+    }
+
+    .btn-primary i {
+        color: inherit !important;
+    }
+
+    /* Success button */
+    .btn-success {
+        border: 1px solid #10b981 !important;
+        color: #10b981 !important;
+    }
+
+    .btn-success:hover {
+        background: #3f3f46 !important;
+        border-color: #34d399 !important;
+        color: #34d399 !important;
+    }
+
+    /* Danger button */
+    .btn-danger {
+        border: 1px solid #ef4444 !important;
+        color: #ef4444 !important;
+    }
+
+    .btn-danger:hover {
+        background: #3f3f46 !important;
+        border-color: #f87171 !important;
+        color: #f87171 !important;
+    }
+
+    /* Warning button */
+    .btn-warning {
+        border: 1px solid #f5e239 !important;
+        color: #f5e239 !important;
+    }
+
+    .btn-warning:hover {
+        background: #3f3f46 !important;
+        border-color: #fef08a !important;
+        color: #fef08a !important;
+    }
+
+    /* Info button */
+    .btn-info {
+        border: 1px solid #3b82f6 !important;
+        color: #3b82f6 !important;
+    }
+
+    .btn-info:hover {
+        background: #3f3f46 !important;
+        border-color: #60a5fa !important;
+        color: #60a5fa !important;
+    }
+
+    /* Secondary button */
+    .btn-secondary {
+        border: 1px solid #71717a !important;
+        color: #a1a1aa !important;
+    }
+
+    .btn-secondary:hover {
+        background: #3f3f46 !important;
+        border-color: #a1a1aa !important;
+        color: #d4d4d8 !important;
+    }
+    
     .small-label {
         color: #a1a1aa !important;
+    }
+    
+    .card-title {
+        color: #e4e4e7 !important
     }
     
     /* Flat inputs in dark mode */
@@ -252,7 +338,7 @@ def get_dark_mode_styles():
     
     /* Plot container dark mode */
     #plot-container {
-        background: #0a0a0a !important;
+        background: #18181b !important;
     }
     
     /* Form switch dark mode */
@@ -306,6 +392,10 @@ def get_light_mode_styles():
     
     #app-title {
         color: #f1f5f9 !important;
+    }
+    
+    .card-title {
+        color: #2d3748 !important
     }
     
     /* Form switch light mode */

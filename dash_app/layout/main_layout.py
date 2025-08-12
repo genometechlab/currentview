@@ -3,8 +3,10 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from .components import (
+    create_top_bar,
     create_initialization_card,
     create_add_condition_card,
+    create_visualization_card
 )
 from .plot_style_settings import create_plot_style_settings
 from .modals import create_file_browser_modal
@@ -17,56 +19,7 @@ def create_layout() -> html.Div:
     """Create the main application layout."""
     return html.Div([
         # Modern Top Bar with glass effect
-        html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Button(
-                        html.I(className="bi bi-gear-fill"),
-                        id="settings-btn",
-                        color="link",
-                        className="text-white",
-                        style={"display": "none", "marginLeft": "20px", "fontSize": "1.2rem"}
-                    )
-                ], width=3, className="d-flex align-items-center"),
-                dbc.Col([
-                    html.H2(
-                        "CurrentView",
-                        className="text-center mb-0",
-                        id="app-title",
-                        style={
-                            "color": "white",
-                            "fontWeight": "300",
-                            "letterSpacing": "3px",
-                            "fontSize": "1.8rem",
-                            "textShadow": "2px 2px 4px rgba(0,0,0,0.3)"
-                        }
-                    )
-                ], width=6, className="d-flex align-items-center justify-content-center"),
-                dbc.Col([
-                    html.Div([
-                        html.I(id="sun-icon", className="bi bi-sun-fill", style={"color": "#ffc107", "fontSize": "1.2rem"}),
-                        dbc.Switch(
-                            id="theme-toggle",
-                            value=False,
-                            className="mx-2",
-                            style={"fontSize": "1.2rem"}
-                        ),
-                        html.I(id="moon-icon", className="bi bi-moon", style={"color": "#6c757d", "fontSize": "1.2rem"}),
-                    ], className="d-flex align-items-center", style={"marginRight": "20px", "gap": "0"})
-                ], width=3, className="d-flex align-items-center justify-content-end"),
-            ], className="align-items-center", style={"height": "48px", "margin": "0"}),
-        ], id="top-bar", style={
-            "position": "fixed",
-            "top": 0,
-            "left": 0,
-            "right": 0,
-            "background": "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",  # Modern gradient
-            "backdropFilter": "blur(10px)",
-            "boxShadow": "0 4px 6px rgba(0,0,0,.3)",
-            "paddingTop": "12px",
-            "paddingBottom": "12px",
-            "zIndex": 1030
-        }),
+        create_top_bar(),
         
         # Spacer div to push content below fixed header
         html.Div(style={"height": "72px"}),
@@ -141,66 +94,13 @@ def create_layout() -> html.Div:
                     html.H4([
                         html.I(className="bi bi-list-check me-2"),
                         "Conditions"
-                    ], className="mb-3", style={"fontWeight": "600", "color": "#2d3748"}),
+                    ], className="mb-3 card-title", style={"fontWeight": "600", "color": "#2d3748"}),
                     html.Hr(style={"opacity": "0.1"}),
                     html.Div(id="conditions")
                 ], className="mb-4"),
                 
                 # Visualization
-                create_card([
-                    dbc.Tabs([
-                        dbc.Tab(
-                            label="Signals",
-                            tab_id="signals",
-                            tab_style={"borderRadius": "8px 8px 0 0"},
-                            active_tab_style={
-                                "borderRadius": "8px 8px 0 0",
-                                "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                "color": "white"
-                            }
-                        ),
-                        dbc.Tab(
-                            label="Statistics",
-                            tab_id="stats",
-                            disabled=True,
-                            id="stats-tab",
-                            tab_style={"borderRadius": "8px 8px 0 0"},
-                            active_tab_style={
-                                "borderRadius": "8px 8px 0 0",
-                                "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                "color": "white"
-                            }
-                        ),
-                    ], id="tabs", active_tab="signals", className="nav-pills mb-3"),
-                    
-                    html.Hr(style={"opacity": "0.1"}),
-                    
-                    dbc.Row([
-                        dbc.Col([
-                            create_button(
-                                "Refresh Plot",
-                                id="generate",
-                                color="secondary",
-                                size="sm",
-                                icon="bi bi-arrow-clockwise"
-                            ),
-                        ], width="auto"),
-                        dbc.Col([
-                            create_button(
-                                "Clear Cache",
-                                id="clear-cache",
-                                color="secondary",
-                                size="sm",
-                                icon="bi bi-trash"
-                            ),
-                        ], width="auto"),
-                    ], className="mb-3"),
-                    
-                    html.Div(
-                        id="plot-container", 
-                        className="d-flex justify-content-center",
-                    ),
-                ])
+                create_visualization_card(),
             ], id="main", style={"display": "none"}),
             
             # Alert for notifications

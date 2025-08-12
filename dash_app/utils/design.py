@@ -35,31 +35,37 @@ def create_button(text, id, color="primary", size="md", className="", icon=None,
     """Create a flat styled button with optional icon."""
     color_styles = {
         "primary": {
-            "background": "#6366f1",  # Flat color instead of gradient
+            "background": "#6366f1",
             "border": "none",
             "color": "white",
             "boxShadow": "0 1px 3px 0 rgba(0, 0, 0, 0.1)"
         },
         "success": {
-            "background": "#10b981",  # Flat green
+            "background": "#10b981",
             "border": "none",
             "color": "white",
             "boxShadow": "0 1px 3px 0 rgba(0, 0, 0, 0.1)"
         },
         "danger": {
-            "background": "#ef4444",  # Flat red
+            "background": "#ef4444",
             "border": "none",
             "color": "white",
             "boxShadow": "0 1px 3px 0 rgba(0, 0, 0, 0.1)"
         },
+        "warning": {
+            "background": "#f5e239",
+            "border": "none",
+            "color": "#374151",
+            "boxShadow": "0 1px 3px 0 rgba(0, 0, 0, 0.1)"
+        },
         "info": {
-            "background": "#3b82f6",  # Flat blue
+            "background": "#3b82f6",
             "border": "none",
             "color": "white",
             "boxShadow": "0 1px 3px 0 rgba(0, 0, 0, 0.1)"
         },
         "secondary": {
-            "background": "#f3f4f6",  # Light gray
+            "background": "#f3f4f6",
             "border": "1px solid #e5e7eb",
             "color": "#374151"
         }
@@ -72,7 +78,7 @@ def create_button(text, id, color="primary", size="md", className="", icon=None,
     }
     
     button_style = {
-        "borderRadius": "8px",  # Less rounded
+        "borderRadius": "8px",
         "fontWeight": "500",
         "transition": "all 0.2s ease",
         "cursor": "pointer",
@@ -86,7 +92,7 @@ def create_button(text, id, color="primary", size="md", className="", icon=None,
     return dbc.Button(
         content,
         id=id,
-        className=f"modern-btn {className}",
+        className=f"modern-btn btn-{color} {className}",  # Add color-specific class
         style=button_style,
         **kwargs
     )

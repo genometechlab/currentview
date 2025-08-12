@@ -10,9 +10,57 @@ from ..config import (
 
 from ..utils import create_button, create_card, create_input
 
-
-
-
+def create_top_bar() -> html.Div:
+    return html.Div([
+        dbc.Row([
+            dbc.Col([
+                dbc.Button(
+                    html.I(className="bi bi-gear-fill"),
+                    id="settings-btn",
+                    color="link",
+                    className="text-white",
+                    style={"display": "none", "marginLeft": "20px", "fontSize": "1.2rem"}
+                )
+            ], width=3, className="d-flex align-items-center"),
+            dbc.Col([
+                html.H2(
+                    "CurrentView",
+                    className="text-center mb-0",
+                    id="app-title",
+                    style={
+                        "color": "white",
+                        "fontWeight": "300",
+                        "letterSpacing": "3px",
+                        "fontSize": "1.8rem",
+                        "textShadow": "2px 2px 4px rgba(0,0,0,0.3)"
+                    }
+                )
+            ], width=6, className="d-flex align-items-center justify-content-center"),
+            dbc.Col([
+                html.Div([
+                    html.I(id="sun-icon", className="bi bi-sun-fill", style={"color": "#ffc107", "fontSize": "1.2rem"}),
+                    dbc.Switch(
+                        id="theme-toggle",
+                        value=False,
+                        className="mx-2",
+                        style={"fontSize": "1.2rem"}
+                    ),
+                    html.I(id="moon-icon", className="bi bi-moon", style={"color": "#6c757d", "fontSize": "1.2rem"}),
+                ], className="d-flex align-items-center", style={"marginRight": "20px", "gap": "0"})
+            ], width=3, className="d-flex align-items-center justify-content-end"),
+        ], className="align-items-center", style={"height": "48px", "margin": "0"}),
+    ], id="top-bar", style={
+        "position": "fixed",
+        "top": 0,
+        "left": 0,
+        "right": 0,
+        "background": "#1e293b",
+        "backdropFilter": "blur(10px)",
+        "boxShadow": "0 4px 6px rgba(0,0,0,.3)",
+        "paddingTop": "12px",
+        "paddingBottom": "12px",
+        "zIndex": 1030
+    })
 
 def create_initialization_card() -> html.Div:
     """Create the initialization card component with modern design."""
@@ -22,7 +70,7 @@ def create_initialization_card() -> html.Div:
                 html.H4([
                     html.I(className="bi bi-rocket-takeoff me-2"),
                     "Initialize Visualizer"
-                ], className="mb-4", style={"fontWeight": "600", "color": "#2d3748"}),
+                ], className="mb-4 card-title", style={"fontWeight": "600", "color": "#2d3748"}),
                 
                 dbc.Row([
                     dbc.Col([
@@ -36,17 +84,47 @@ def create_initialization_card() -> html.Div:
                             step=WINDOW_SIZE_STEP
                         ),
                         dbc.FormFeedback("Must be odd number", type="invalid"),
+                        html.Br(),
+                        html.Label("K-mer Labels", className="modern-label"),
+                        dbc.Textarea(
+                            id="kmer-labels",
+                            rows=2,
+                            placeholder="Enter custom labels for each position (comma separated)\nExample: A,T,G,C,A,T,G,C,A",
+                            style={
+                                "fontFamily": "'Fira Code', monospace",
+                                "borderRadius": "10px",
+                                "border": "1px solid rgba(0, 0, 0, 0.1)",
+                                "background": "rgba(255, 255, 255, 0.5)",
+                                "padding": "12px"
+                            }
+                        ),
+                        dbc.FormText("Optional: Provide custom labels for each position in the window"),
                     ], width=6),
                     dbc.Col([
-                        html.Div(style={"height": "29px"}),  # Spacer to align button
-                        create_button(
-                            "Initialize",
-                            id="init-btn",
-                            color="primary",
-                            className="w-100",
-                            icon="bi bi-play-fill"
-                        ),
-                    ], width=6),
+                        html.Label("Statistics Functions", className="modern-label"),
+                        dbc.InputGroup([
+                            dbc.Select(
+                                id="stat-select",
+                                options=STATISTICS_OPTIONS,
+                                placeholder="Select statistic...",
+                                style={"borderRadius": "10px 0 0 10px"}
+                            ),
+                            create_button("Add", id="add-stat", color="success", size="sm"),
+                        ], style={"borderRadius": "10px"}),
+                        html.Div(id="stats-list", className="mt-3"),
+                        dbc.FormText("Select statistics to calculate for each position"),
+                    ])
+                ]),
+                
+                dbc.Row([
+                    html.Div(style={"height": "29px"}),  # Spacer to align button
+                    create_button(
+                        "Initialize",
+                        id="init-btn",
+                        color="primary",
+                        className="w-100",
+                        icon="bi bi-play-fill"
+                    ),
                 ]),
                 
                 html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
@@ -72,22 +150,6 @@ def create_advanced_options() -> html.Div:
     return html.Div([
         dbc.Row([
             dbc.Col([
-                html.Label("K-mer Labels", className="modern-label"),
-                dbc.Textarea(
-                    id="kmer-labels",
-                    rows=2,
-                    placeholder="Enter custom labels for each position (comma separated)\nExample: A,T,G,C,A,T,G,C,A",
-                    style={
-                        "fontFamily": "'Fira Code', monospace",
-                        "borderRadius": "10px",
-                        "border": "1px solid rgba(0, 0, 0, 0.1)",
-                        "background": "rgba(255, 255, 255, 0.5)",
-                        "padding": "12px"
-                    }
-                ),
-                dbc.FormText("Optional: Provide custom labels for each position in the window"),
-            ], width=6),
-            dbc.Col([
                 html.Label("Title", className="modern-label"),
                 create_input(id="custom-title", placeholder="Nanopore Signal Visualization"),
                 html.Br(),
@@ -109,20 +171,6 @@ def create_advanced_options() -> html.Div:
         html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
         
         dbc.Row([
-            dbc.Col([
-                html.Label("Statistics Functions", className="modern-label"),
-                dbc.InputGroup([
-                    dbc.Select(
-                        id="stat-select",
-                        options=STATISTICS_OPTIONS,
-                        placeholder="Select statistic...",
-                        style={"borderRadius": "10px 0 0 10px"}
-                    ),
-                    create_button("Add", id="add-stat", color="success", size="sm"),
-                ], style={"borderRadius": "10px"}),
-                html.Div(id="stats-list", className="mt-3"),
-                dbc.FormText("Select statistics to calculate for each position"),
-            ], width=6),
             dbc.Col([
                 html.Label("Plot Styles", className="modern-label"),
                 dbc.Checklist(
@@ -160,7 +208,7 @@ def create_add_condition_card() -> html.Div:
                 html.H5([
                     html.I(className="bi bi-plus-circle me-2"),
                     "Add Condition"
-                ], className="mb-0", style={"fontWeight": "600", "color": "#2d3748"}),
+                ], className="mb-0 card-title", style={"fontWeight": "600", "color": "#2d3748"}),
             ], width=10),
             dbc.Col([
                 dbc.Button(
@@ -169,7 +217,7 @@ def create_add_condition_card() -> html.Div:
                     color="link",
                     size="sm",
                     className="float-end p-0",
-                    style={"color": "#667eea"}
+                    #style={"color": "#667eea"}
                 ),
             ], width=2, className="text-end"),
         ], align="center", className="mb-3"),
@@ -420,3 +468,88 @@ def create_condition_card(
             ], width=4),
         ])
     ], className="mb-3", style={"padding": "20px"})
+    
+    
+def create_visualization_card() -> html.Div:
+    """Create a visualization card for the plot."""
+    return create_card([
+                dbc.Tabs([
+                    dbc.Tab(
+                        label="Signals",
+                        tab_id="signals",
+                        tab_style={"borderRadius": "8px 8px 0 0"},
+                        active_tab_style={
+                            "borderRadius": "8px 8px 0 0",
+                            "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            "color": "white"
+                        }
+                    ),
+                    dbc.Tab(
+                        label="Statistics",
+                        tab_id="stats",
+                        disabled=True,
+                        id="stats-tab",
+                        tab_style={"borderRadius": "8px 8px 0 0"},
+                        active_tab_style={
+                            "borderRadius": "8px 8px 0 0",
+                            "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            "color": "white"
+                        }
+                    ),
+                ], id="tabs", active_tab="signals", className="nav-pills mb-3"),
+                
+                html.Hr(style={"opacity": "0.1"}),
+                
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Row([
+                            dbc.Col([
+                                create_button(
+                                    "Refresh Plot",
+                                    id="generate",
+                                    color="secondary",
+                                    size="sm",
+                                    icon="bi bi-arrow-clockwise"
+                                ),
+                            ], width="auto"),
+                            dbc.Col([
+                                create_button(
+                                    "Clear Cache",
+                                    id="clear-cache",
+                                    color="warning",
+                                    size="sm",
+                                    icon="bi bi-trash"
+                                ),
+                            ], width="auto"),
+                        ], className="g-2"),
+                    ], width=6, className="d-flex justify-content-start"),
+                    
+                    dbc.Col([
+                        dbc.Row([
+                            dbc.Col([
+                                create_button(
+                                    "Export (HTML)",
+                                    id="export-html",
+                                    color="success",
+                                    size="sm",
+                                    icon="bi bi-save"
+                                ),
+                            ], width="auto"),
+                            dbc.Col([
+                                create_button(
+                                    "Export (PNG)",
+                                    id="export-png",
+                                    color="success",
+                                    size="sm",
+                                    icon="bi bi-save"
+                                ),
+                            ], width="auto"),
+                        ], className="g-2"),
+                    ], width=6, className="d-flex justify-content-end"),
+                ], className="mb-3"),
+                
+                html.Div(
+                    id="plot-container", 
+                    className="d-flex justify-content-center",
+                ),
+            ])
