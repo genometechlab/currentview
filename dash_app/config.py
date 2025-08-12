@@ -43,7 +43,7 @@ STYLE_OPTIONS = [
     {"label": "Dark theme", "value": "dark"},
     {"label": "Show grid", "value": "grid"},
     {"label": "Show legend", "value": "legend"},
-    {"label": "Use WebGL renderer", "value": "WebGL"},
+    {"label": "Use WebGL renderer", "value": "webgl"},
 ]
 
 # Plot settings

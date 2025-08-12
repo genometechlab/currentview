@@ -91,7 +91,7 @@ def create_advanced_options() -> html.Div:
                 dbc.Checklist(
                     id="style-options", 
                     options=STYLE_OPTIONS, 
-                    value=["WebGL"], 
+                    value=["webgl"], 
                     inline=True
                 ),
                 html.Br(),
@@ -111,26 +111,43 @@ def create_advanced_options() -> html.Div:
 def create_add_condition_card() -> dbc.Card:
     """Create the add condition card component."""
     return dbc.Card([
-        dbc.CardHeader("Add Condition"),
-        dbc.CardBody([
-            create_file_inputs(),
-            html.Hr(),
-            create_condition_parameters(),
-            html.Hr(),
-            create_visualization_style_inputs(),
-            html.Hr(),
+        dbc.CardHeader([
             dbc.Row([
                 dbc.Col([
+                    html.H5("Add Condition", className="mb-0"),
+                ], width=10),
+                dbc.Col([
                     dbc.Button(
-                        "Add Condition", 
-                        id="add-condition-button", 
-                        color="success", 
-                        className="w-100", 
-                        size="lg"
+                        html.I(className="bi bi-chevron-down", id="add-condition-chevron"),
+                        id="toggle-add-condition",
+                        color="link",
+                        size="sm",
+                        className="float-end p-0"
                     ),
-                ], width=12),
-            ]),
-        ])
+                ], width=2, className="text-end"),
+            ], align="center")
+        ]),
+        dbc.Collapse([
+            dbc.CardBody([
+                create_file_inputs(),
+                html.Hr(),
+                create_condition_parameters(),
+                html.Hr(),
+                create_visualization_style_inputs(),
+                html.Hr(),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Button(
+                            "Add Condition", 
+                            id="add-condition-button", 
+                            color="success", 
+                            className="w-100", 
+                            size="lg"
+                        ),
+                    ], width=12),
+                ]),
+            ])
+        ], id="add-condition-collapse", is_open=True),
     ], className="mb-4")
 
 

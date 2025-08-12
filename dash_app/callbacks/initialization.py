@@ -74,7 +74,8 @@ def register_initialization_callbacks():
          Output("init-card", "style"),
          Output("alert", "children"), 
          Output("alert", "is_open"),
-         Output("stats-tab", "disabled")],
+         Output("stats-tab", "disabled"),
+         Output("settings-btn", "style")],
         Input("init-btn", "n_clicks"),
         [State("window-size", "value"), 
          State("kmer-labels", "value"),
@@ -97,7 +98,8 @@ def register_initialization_callbacks():
                 {}, 
                 "Window size must be odd!", 
                 True, 
-                True
+                True,
+                {"display": "none"}
             )
         
         # Initialize parameters
@@ -110,7 +112,7 @@ def register_initialization_callbacks():
         if kmer_text:
             is_valid, kmers, error_msg = validate_kmer_labels(kmer_text, k)
             if not is_valid:
-                return {"display": "none"}, {}, error_msg, True, True
+                return {"display": "none"}, {}, error_msg, True, True, {"display": "none"}
             params['kmer'] = kmers
         
         # Add statistics if selected
@@ -125,7 +127,7 @@ def register_initialization_callbacks():
         if custom_style:
             is_valid, style_data, error_msg = validate_json_string(custom_style)
             if not is_valid:
-                return {"display": "none"}, {}, error_msg, True, True
+                return {"display": "none"}, {}, error_msg, True, True, {"display": "none"}
             params['signals_plot_style'] = style_data
         
         # Configure plot style based on options
@@ -136,7 +138,7 @@ def register_initialization_callbacks():
         
         plot_style.show_grid = 'grid' in style_opts
         plot_style.show_legend = 'legend' in style_opts
-        plot_style.renderer = "WebGL" if "WebGL" in style_opts else "SVG"
+        plot_style.renderer = "WebGL" if "webgl" in style_opts else "SVG"
         
         params['signals_plot_style'] = plot_style
         params['stats_plot_style'] = plot_style
@@ -155,7 +157,8 @@ def register_initialization_callbacks():
             {"display": "none"}, 
             msg, 
             True, 
-            len(stats) == 0
+            len(stats) == 0,
+            {"display": "inline-block", "marginLeft": "20px", "fontSize": "1.2rem"}  # Show settings button
         )
 
 

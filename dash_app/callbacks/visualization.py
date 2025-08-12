@@ -33,7 +33,7 @@ def register_visualization_callbacks():
             )
         
         # Check if there are any conditions
-        if viz.n_conditions==0:
+        if viz.n_conditions == 0:
             return dbc.Alert(
                 "Please add at least one condition to visualize", 
                 color="info",
@@ -57,9 +57,91 @@ def register_visualization_callbacks():
                     style={"height": DEFAULT_PLOT_HEIGHT}
                 )
             )
+        except ValueError as e:
+            # Handle specific ValueError which might be the "not in list" error
+            error_msg = str(e)
+            if "is not in list" in error_msg:
+                # Try to recover by clearing cache and regenerating
+                try:
+                    if hasattr(viz, '_signal_viz'):
+                        delattr(viz, '_signal_viz')
+                    if hasattr(viz, '_stats_viz'):
+                        delattr(viz, '_stats_viz')
+                    
+                    # Try again after clearing cache
+                    if active_tab == "signals":
+                        viz._ensure_signal_viz()
+                        fig = viz._signal_viz.fig
+                    else:
+                        viz._ensure_stats_viz()
+                        fig = viz._stats_viz.fig
+                    
+                    return dcc.Loading(
+                        dcc.Graph(
+                            id="plot", 
+                            figure=fig,
+                            style={"height": DEFAULT_PLOT_HEIGHT}
+                        )
+                    )
+                except Exception:
+                    # If recovery fails, show error message
+                    return dbc.Alert(
+                        [
+                            html.H5("Synchronization Error", className="alert-heading"),
+                            html.P("The plot data is out of sync with the conditions."),
+                            html.Hr(),
+                            html.P("Try these solutions:", className="mb-1"),
+                            html.Ul([
+                                html.Li("Click 'Clear Cache' then 'Refresh Plot'"),
+                                html.Li("Remove and re-add the problematic condition"),
+                                html.Li("Reinitialize the visualizer if the problem persists"),
+                            ]),
+                            html.P(f"Technical details: {error_msg}", className="mb-0 small text-muted")
+                        ],
+                        color="danger"
+                    )
+            else:
+                return dbc.Alert(
+                    f"Error generating plot: {error_msg}", 
+                    color="danger",
+                    className="text-center"
+                )
         except Exception as e:
             return dbc.Alert(
                 f"Error generating plot: {str(e)}", 
                 color="danger",
                 className="text-center"
             )
+    
+    @callback(
+        [Output("alert", "children", allow_duplicate=True),
+         Output("alert", "is_open", allow_duplicate=True),
+         Output("plot-trigger", "data", allow_duplicate=True)],
+        Input("clear-cache", "n_clicks"),
+        [State("session-id", "data"),
+         State("plot-trigger", "data")],
+        prevent_initial_call=True
+    )
+    def clear_cache(n_clicks, session_id, trigger):
+        """Clear cached visualizations and trigger plot refresh."""
+        if not n_clicks:
+            raise PreventUpdate
+        
+        viz = get_visualizer(session_id)
+        if not viz:
+            return "No visualizer to clear", True, trigger
+        
+        # Clear all cached visualizations
+        cleared = []
+        if hasattr(viz, '_signal_viz'):
+            delattr(viz, '_signal_viz')
+            cleared.append("signals")
+        if hasattr(viz, '_stats_viz'):
+            delattr(viz, '_stats_viz')
+            cleared.append("statistics")
+        
+        if cleared:
+            # Trigger plot update after clearing
+            return f"Cleared cache for: {', '.join(cleared)}", True, trigger + 1
+        else:
+            return "No cache to clear", True, trigger
