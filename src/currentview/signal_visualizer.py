@@ -111,20 +111,30 @@ class SignalVisualizer:
         # Merge xaxis settings
         if 'xaxis' not in layout_dict:
             layout_dict['xaxis'] = {}
+        else:
+            try:
+                title_font = layout_dict['xaxis']['title']['font']
+            except:
+                title_font = {}
         layout_dict['xaxis'].update({
-            'title': 'Genomic Position',
+            'title': {'text': 'Genomic Position','font': title_font},
             'showgrid': False,
             'tickmode': 'array',
             'tickvals': [],
             'ticktext': [],
-            'range': [-0.1, self.K - 0.025 + 0.1]  # Using 0.025 as default padding
+            'range': [-0.1, self.K - self.style.padding + 0.1]  # Using 0.025 as default padding
         })
         
         # Merge yaxis settings
         if 'yaxis' not in layout_dict:
             layout_dict['yaxis'] = {}
+        else:
+            try:
+                title_font = layout_dict['yaxis']['title']['font']
+            except:
+                title_font = {}
         layout_dict['yaxis'].update({
-            'title': 'Signal (pA)'
+            'title': {'text': 'Signal (pA)','font': title_font},
         })
         
         self.fig.update_layout(**layout_dict)
@@ -559,7 +569,11 @@ class SignalVisualizer:
         """Display the plot."""
         self.logger.info("Displaying plot")
         self.fig.show()
-    
+
+    def get_fig(self):
+        self.logger.info("Returning fig")
+        return self.fig
+        
     def save(self, path: Union[str, Path], format: Optional[str] = None,
              scale: Optional[float] = None, **kwargs):
         """Save the figure to file."""

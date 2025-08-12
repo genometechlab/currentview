@@ -273,7 +273,12 @@ class GenomicPositionVisualizer:
         """Display the signal plot (convenience method)."""
         self.show_signals()
         self.show_stats()
-    
+        
+    def get_signals_fig(self):
+        self.logger.info("Displaying signal plot")
+        self._ensure_signal_viz()
+        return self._signal_viz.get_fig()
+           
     def show_signals(self):
         """
         Display the interactive signal visualization.
@@ -284,13 +289,15 @@ class GenomicPositionVisualizer:
         Raises:
             RuntimeError: If no conditions have been added
         """
-        if not self._conditions:
-            raise RuntimeError("No conditions to display. Use add_condition() first.")
-        
         self.logger.info("Displaying signal plot")
         self._ensure_signal_viz()
-        self._signal_viz.show()
+        return self._signal_viz.show()
     
+    def get_stats_fig(self):
+        self.logger.info("Displaying stats plot")
+        self._ensure_stats_viz()
+        return self._stats_viz.get_fig()
+        
     def show_stats(self):
         """
         Display the statistics visualization.
@@ -732,8 +739,7 @@ class GenomicPositionVisualizer:
         self._update_signal_viz = True
         self._update_stats_viz = True
         
-    def set_signals_style(self, style: Union[PlotStyle, str], 
-                        preserve_modifications: bool = True) -> 'GenomicPositionVisualizer':
+    def set_signals_style(self, style: Union[PlotStyle, str]) -> 'GenomicPositionVisualizer':
         """
         Update the style for signal plots.
         
@@ -747,16 +753,7 @@ class GenomicPositionVisualizer:
         # Handle string style names
         if isinstance(style, str):
             style = PlotStyle.get_style(style)
-        
-        # Save current state if requested
-        saved_state = {}
-        if preserve_modifications and self._signal_viz:
-            saved_state = {
-                'highlights': getattr(self._signal_viz, '_highlights', []),
-                'annotations': getattr(self._signal_viz, '_annotations', []),
-                'title': getattr(self._signal_viz, 'title', self.title),
-                'ylim': getattr(self._signal_viz, '_ylim', None)
-            }
+
         
         # Update style
         self.signals_plot_style = style
@@ -765,29 +762,30 @@ class GenomicPositionVisualizer:
         self._signal_viz = None
         self._update_signal_viz = True
         
-        # Queue state restoration
-        if saved_state:
-            # Restore title
-            if saved_state.get('title'):
-                self.title = saved_state['title']
-            
-            # Queue other modifications to be reapplied
-            for highlight in saved_state.get('highlights', []):
-                self._pending_modifications.append(
-                    ('highlight_position', (highlight['position'],), 
-                    {'color': highlight['color'], 'opacity': highlight['opacity']})
-                )
-            
-            for annotation in saved_state.get('annotations', []):
-                self._pending_modifications.append(
-                    ('add_annotation', (annotation['position'], annotation['text']), 
-                    annotation.get('kwargs', {}))
-                )
-            
-            if saved_state.get('ylim'):
-                self._pending_modifications.append(
-                    ('set_ylim', (), saved_state['ylim'])
-                )
+        self.logger.debug(f"Set new signals plot style - will recreate visualizer")
+        return self
+    
+    def set_stats_style(self, style: Union[PlotStyle, str]) -> 'GenomicPositionVisualizer':
+        """
+        Update the style for signal plots.
+        
+        Args:
+            style: PlotStyle instance or predefined style name
+            preserve_modifications: Whether to preserve highlights, annotations, etc.
+        
+        Returns:
+            self for method chaining
+        """
+        # Handle string style names
+        if isinstance(style, str):
+            style = PlotStyle.get_style(style)
+
+        # Update style
+        self.stats_plot_style = style
+        
+        # Force recreation
+        self._stats_viz = None
+        self._update_stats_viz = True
         
         self.logger.debug(f"Set new signals plot style - will recreate visualizer")
         return self

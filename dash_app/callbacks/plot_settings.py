@@ -1,23 +1,82 @@
-from dash import Input, Output, State, callback, ALL
+from dash import Input, Output, State, callback, ALL, no_update
 from dash.exceptions import PreventUpdate
 
 from currentview import PlotStyle
 from .initialization import get_visualizer
 
 
+def create_plot_style_for_theme(theme, width, height, line_width, line_style, 
+                                show_grid, show_legend, 
+                                zeroline, showline, title_font, axis_font, tick_font, 
+                                legend_font, margin_l, margin_r, margin_t, margin_b, 
+                                barrier_style, barrier_opacity, barrier_color):
+    """Helper to create PlotStyle based on theme."""
+    if theme == 'light':
+        template = "plotly_white"
+        titlecolor = "black"
+        axis_title_color = "black"
+        plot_bgcolor = "white"
+        paper_bgcolor = "white"
+        grid_color = "rgba(128, 128, 128, 0.2)"
+        linecolor = "black"
+        tickcolor = "black"
+        legend_bgcolor = "rgba(255, 255, 255, 0.8)"
+        legend_bordercolor = "rgba(0, 0, 0, 0.2)"
+        hoverlabel_bgcolor = "white"
+        hoverlabel_bordercolor = "black"
+    else:
+        template = "plotly_dark"
+        titlecolor = "white"
+        axis_title_color = "white"
+        plot_bgcolor = "#18181b"
+        paper_bgcolor = "#18181b"
+        grid_color = "rgba(255, 255, 255, 0.1)"
+        linecolor = "white"
+        tickcolor = "white"
+        legend_bgcolor = "rgba(0, 0, 0, 0.8)"
+        legend_bordercolor = "rgba(255, 255, 255, 0.3)"
+        hoverlabel_bgcolor = "#222222"
+        hoverlabel_bordercolor = "white"
+    
+    return PlotStyle(
+        width=width,
+        height=height,
+        line_width=line_width,
+        line_style=line_style,
+        template=template,
+        show_grid=show_grid,
+        show_legend=show_legend,
+        zeroline=zeroline,
+        showline=showline,
+        title_font_size=title_font,
+        titlecolor=titlecolor,
+        axis_title_color=axis_title_color,
+        axis_title_font_size=axis_font,
+        tick_font_size=tick_font,
+        legend_font_size=legend_font,
+        margin={
+            'l': margin_l,
+            'r': margin_r,
+            't': margin_t,
+            'b': margin_b
+        },
+        barrier_style=barrier_style,
+        barrier_opacity=barrier_opacity,
+        barrier_color=barrier_color,
+        plot_bgcolor=plot_bgcolor,
+        paper_bgcolor=paper_bgcolor,
+        grid_color=grid_color,
+        linecolor=linecolor,
+        tickcolor=tickcolor,
+        legend_bgcolor=legend_bgcolor,
+        legend_bordercolor=legend_bordercolor,
+        hoverlabel_bgcolor=hoverlabel_bgcolor,
+        hoverlabel_bordercolor=hoverlabel_bordercolor,
+    )
+
+
 def register_plot_settings_callbacks():
     """Register all plot settings related callbacks."""
-    
-    # Enable/disable fixed opacity based on mode
-    for prefix in ["signals", "stats"]:
-        @callback(
-            Output(f"{prefix}-fixed-opacity", "disabled"),
-            Input(f"{prefix}-opacity-mode", "value"),
-            prevent_initial_call=True
-        )
-        def toggle_opacity_input(mode, p=prefix):
-            """Enable fixed opacity input only when mode is 'fixed'."""
-            return mode != "fixed"
     
     # Apply signals style
     @callback(
@@ -33,8 +92,6 @@ def register_plot_settings_callbacks():
          # Line styling states
          State("signals-line-width-style", "value"),
          State("signals-line-style-default", "value"),
-         State("signals-opacity-mode", "value"),
-         State("signals-fixed-opacity", "value"),
          # Theme states
          State("signals-template", "value"),
          # Grid and axes states
@@ -55,15 +112,17 @@ def register_plot_settings_callbacks():
          # Barrier states
          State("signals-barrier-style", "value"),
          State("signals-barrier-opacity", "value"),
-         State("signals-barrier-color", "value")],
+         State("signals-barrier-color", "value"),
+         # Theme
+         State("theme-store", "data")],
         prevent_initial_call=True
     )
     def apply_signals_style(n_clicks, session_id, trigger, width, height,
-                           line_width, line_style, opacity_mode, fixed_opacity,
+                           line_width, line_style,
                            template, show_grid, show_legend, zeroline, showline,
                            title_font, axis_font, tick_font, legend_font,
                            margin_l, margin_r, margin_t, margin_b,
-                           barrier_style, barrier_opacity, barrier_color):
+                           barrier_style, barrier_opacity, barrier_color, theme):
         """Apply plot style settings to signals visualization."""
         if not n_clicks:
             raise PreventUpdate
@@ -72,40 +131,23 @@ def register_plot_settings_callbacks():
         if not viz:
             return "Please initialize visualizer first", True, trigger
         
+        # Determine actual theme to use
+        theme_to_use = theme if template == "auto" else template
+        
         try:
-            # Create PlotStyle instance with all settings
-            style = PlotStyle(
-                width=width,
-                height=height,
-                line_width=line_width,
-                line_style=line_style,
-                opacity_mode=opacity_mode,
-                fixed_opacity=fixed_opacity,
-                template=template,
-                show_grid=show_grid,
-                show_legend=show_legend,
-                zeroline=zeroline,
-                showline=showline,
-                title_font_size=title_font,
-                axis_title_font_size=axis_font,
-                tick_font_size=tick_font,
-                legend_font_size=legend_font,
-                margin={
-                    'l': margin_l,
-                    'r': margin_r,
-                    't': margin_t,
-                    'b': margin_b
-                },
-                barrier_style=barrier_style,
-                barrier_opacity=barrier_opacity,
-                barrier_color=barrier_color
+            # Create PlotStyle instance
+            style = create_plot_style_for_theme(
+                theme_to_use, width, height, line_width, line_style,
+                show_grid, show_legend,
+                zeroline, showline, title_font, axis_font, tick_font,
+                legend_font, margin_l, margin_r, margin_t, margin_b,
+                barrier_style, barrier_opacity, barrier_color
             )
             
             # Apply style to visualizer
             if hasattr(viz, 'set_signals_style'):
                 viz.set_signals_style(style)
             else:
-                # Fallback: directly set the style
                 viz.signals_plot_style = style
             
             return "Signals plot style updated", True, trigger + 1
@@ -127,8 +169,6 @@ def register_plot_settings_callbacks():
          # Line styling states
          State("stats-line-width-style", "value"),
          State("stats-line-style-default", "value"),
-         State("stats-opacity-mode", "value"),
-         State("stats-fixed-opacity", "value"),
          # Theme states
          State("stats-template", "value"),
          # Grid and axes states
@@ -149,15 +189,17 @@ def register_plot_settings_callbacks():
          # Barrier states
          State("stats-barrier-style", "value"),
          State("stats-barrier-opacity", "value"),
-         State("stats-barrier-color", "value")],
+         State("stats-barrier-color", "value"),
+         # Theme
+         State("theme-store", "data")],
         prevent_initial_call=True
     )
     def apply_stats_style(n_clicks, session_id, trigger, width, height,
-                         line_width, line_style, opacity_mode, fixed_opacity,
+                         line_width, line_style,
                          template, show_grid, show_legend, zeroline, showline,
                          title_font, axis_font, tick_font, legend_font,
                          margin_l, margin_r, margin_t, margin_b,
-                         barrier_style, barrier_opacity, barrier_color):
+                         barrier_style, barrier_opacity, barrier_color, theme):
         """Apply plot style settings to statistics visualization."""
         if not n_clicks:
             raise PreventUpdate
@@ -166,40 +208,23 @@ def register_plot_settings_callbacks():
         if not viz:
             return "Please initialize visualizer first", True, trigger
         
+        # Determine actual theme to use
+        theme_to_use = theme if template == "auto" else template
+        
         try:
-            # Create PlotStyle instance with all settings
-            style = PlotStyle(
-                width=width,
-                height=height,
-                line_width=line_width,
-                line_style=line_style,
-                opacity_mode=opacity_mode,
-                fixed_opacity=fixed_opacity,
-                template=template,
-                show_grid=show_grid,
-                show_legend=show_legend,
-                zeroline=zeroline,
-                showline=showline,
-                title_font_size=title_font,
-                axis_title_font_size=axis_font,
-                tick_font_size=tick_font,
-                legend_font_size=legend_font,
-                margin={
-                    'l': margin_l,
-                    'r': margin_r,
-                    't': margin_t,
-                    'b': margin_b
-                },
-                barrier_style=barrier_style,
-                barrier_opacity=barrier_opacity,
-                barrier_color=barrier_color
+            # Create PlotStyle instance
+            style = create_plot_style_for_theme(
+                theme_to_use, width, height, line_width, line_style,
+                show_grid, show_legend,
+                zeroline, showline, title_font, axis_font, tick_font,
+                legend_font, margin_l, margin_r, margin_t, margin_b,
+                barrier_style, barrier_opacity, barrier_color
             )
             
             # Apply style to visualizer
             if hasattr(viz, 'set_stats_style'):
                 viz.set_stats_style(style)
             else:
-                # Fallback: directly set the style
                 viz.stats_plot_style = style
             
             return "Statistics plot style updated", True, trigger + 1

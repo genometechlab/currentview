@@ -115,47 +115,6 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
                         ),
                     ], width=6),
                 ], className="mb-3"),
-                
-                # Opacity controls
-                dbc.Row([
-                    dbc.Col([
-                        html.Label("Opacity Mode", className="modern-label"),
-                        dbc.Select(
-                            id=f"{prefix}-opacity-mode",
-                            options=[
-                                {"label": "Auto", "value": "auto"},
-                                {"label": "Fixed", "value": "fixed"},
-                            ],
-                            value="auto",
-                            style={
-                                "borderRadius": "10px",
-                                "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                "background": "rgba(255, 255, 255, 0.9)",
-                                "padding": "12px 16px",
-                                "transition": "all 0.3s ease"
-                            }
-                        ),
-                    ], width=6),
-                    dbc.Col([
-                        html.Label("Fixed Opacity", className="modern-label"),
-                        dbc.InputGroup([
-                            create_input(
-                                id=f"{prefix}-fixed-opacity",
-                                type="number",
-                                value=0.8,
-                                min=0.1,
-                                max=1.0,
-                                step=0.1,
-                                disabled=True
-                            ),
-                            dbc.InputGroupText("%", style={
-                                "borderRadius": "0 10px 10px 0",
-                                "background": "rgba(255, 255, 255, 0.1)",
-                                "border": "1px solid rgba(0, 0, 0, 0.1)"
-                            })
-                        ]),
-                    ], width=6),
-                ], className="mb-4"),
             ]
         ),
         
@@ -172,12 +131,10 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
                         dbc.Select(
                             id=f"{prefix}-template",
                             options=[
-                                {"label": "Plotly White", "value": "plotly_white"},
-                                {"label": "Plotly Dark", "value": "plotly_dark"},
-                                {"label": "Simple White", "value": "simple_white"},
-                                {"label": "None", "value": "none"},
+                                {"label": "Light", "value": "light"},
+                                {"label": "Dark", "value": "dark"},
                             ],
-                            value="plotly_white",
+                            value="light",
                             style={
                                 "borderRadius": "10px",
                                 "border": "1px solid rgba(0, 0, 0, 0.1)",

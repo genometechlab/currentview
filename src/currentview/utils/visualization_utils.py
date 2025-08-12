@@ -56,7 +56,9 @@ class PlotStyle:
     # Fonts
     font_family: str = "Arial, sans-serif"
     title_font_size: int = 20
+    titlecolor: str = "black"
     axis_title_font_size: int = 16
+    axis_title_color: str = 'black'
     tick_font_size: int = 12
     legend_font_size: int = 12
     annotation_font_size: int = 11
@@ -133,7 +135,8 @@ class PlotStyle:
             'title': {
                 'font': {
                     'size': self.title_font_size,
-                    'family': self.font_family
+                    'family': self.font_family,
+                    'color': self.titlecolor,
                 }
             },
             'showlegend': self.show_legend,
@@ -172,12 +175,12 @@ class PlotStyle:
             'ticks': self.ticks,
             'ticklen': self.ticklen,
             'tickwidth': self.tickwidth,
-            'tickcolor': self.tickcolor,
-            'tickfont': {'size': self.tick_font_size},  # Changed from 'tickfont'
+            'tickfont': {'size': self.tick_font_size, 'color': self.tickcolor},  # Changed from 'tickfont'
             'title': {  # Changed from 'titlefont' - now it's a dict with font inside
                 'font': {
+                    'color': self.axis_title_color,
                     'size': self.axis_title_font_size,
-                    'family': self.font_family
+                    'family': self.font_family,
                 }
             }
         }

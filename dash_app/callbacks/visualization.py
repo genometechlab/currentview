@@ -1,4 +1,4 @@
-from dash import Input, Output, State, callback, dcc, html
+from dash import Input, Output, State, callback, dcc, html, ctx
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
@@ -19,7 +19,6 @@ def register_visualization_callbacks():
     )
     def generate_plot(n_clicks, trigger, active_tab, session_id):
         """Generate plot based on various triggers."""
-        # Get visualizer instance
         viz = get_visualizer(session_id)
         if not viz:
             # Return error message instead of empty plot
@@ -40,11 +39,9 @@ def register_visualization_callbacks():
         try:
             # Generate appropriate plot based on active tab
             if active_tab == "signals":
-                viz._ensure_signal_viz()
-                fig = viz._signal_viz.fig
+                fig = viz.get_signals_fig()
             else:
-                viz._ensure_stats_viz()
-                fig = viz._stats_viz.fig
+                fig = viz.get_stats_fig()
             
             # Return the graph component wrapped in loading
             return dcc.Loading(

@@ -287,8 +287,7 @@ class StatsVisualizer:
         if len(values) > 2:  # Need at least 3 values for KDE
             try:
                 kde = gaussian_kde(values)
-                q1, q99 = np.percentile(values, [1, 99])
-                x_range = np.linspace(q1, q99, 200)
+                x_range = np.linspace(values.min(), values.max(), 200)
                 density = kde(x_range)
                 
                 # Convert color to RGBA for fill
@@ -478,6 +477,10 @@ class StatsVisualizer:
         """Display the plot."""
         self.logger.info("Displaying plot")
         self.fig.show()
+        
+    def get_fig(self):
+        self.logger.info("Returning fig")
+        return self.fig
     
     def save(self, path: Union[str, Path], format: Optional[str] = None, 
              scale: Optional[float] = None, **kwargs):

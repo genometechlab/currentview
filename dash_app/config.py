@@ -34,6 +34,7 @@ STATISTICS_OPTIONS = [
     {"label": "Maximum", "value": "max"},
     {"label": "Skewness", "value": "skewness"},
     {"label": "Kurtosis", "value": "kurtosis"},
+    {"label": "Duration/Dwell time", "value": "duration"},
 ]
 
 STYLE_OPTIONS = [
