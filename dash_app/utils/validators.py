@@ -35,7 +35,7 @@ def validate_kmer_labels(kmer_text: str, k: int) -> tuple[bool, Optional[list[st
     if not kmer_text:
         return True, None, None
     
-    kmers = [l.strip() for l in kmer_text.strip().split('\n') if l.strip()]
+    kmers = [l.strip() for l in kmer_text.strip().split(',') if l.strip()]
     if len(kmers) != k:
         return False, None, f"Need {k} labels, got {len(kmers)}"
     

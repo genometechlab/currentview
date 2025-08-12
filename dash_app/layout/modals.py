@@ -1,6 +1,3 @@
-# dash_app/layout/modals.py
-"""File browser modal components."""
-
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 from pathlib import Path

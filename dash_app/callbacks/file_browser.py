@@ -1,6 +1,3 @@
-# dash_app/callbacks/file_browser.py
-"""File browser related callbacks."""
-
 from dash import Input, Output, State, callback, ctx, ALL
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc

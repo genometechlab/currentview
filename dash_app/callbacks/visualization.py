@@ -1,6 +1,3 @@
-# dash_app/callbacks/visualization.py
-"""Visualization related callbacks."""
-
 from dash import Input, Output, State, callback, dcc, html
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
@@ -133,12 +130,13 @@ def register_visualization_callbacks():
         
         # Clear all cached visualizations
         cleared = []
-        if hasattr(viz, '_signal_viz'):
-            delattr(viz, '_signal_viz')
+        if hasattr(viz, '_signal_viz') and viz._signal_viz is not None:
+            viz._signal_viz = None
             cleared.append("signals")
-        if hasattr(viz, '_stats_viz'):
-            delattr(viz, '_stats_viz')
-            cleared.append("statistics")
+        if hasattr(viz, '_stats_viz') and viz._stats_viz is not None:
+            viz._stats_viz = None
+            cleared.append("stats")
+        viz._mark_for_update()
         
         if cleared:
             # Trigger plot update after clearing

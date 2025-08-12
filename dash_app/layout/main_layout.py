@@ -1,6 +1,3 @@
-# dash_app/layout/main_layout.py
-"""Main layout assembly for the Dash application."""
-
 import uuid
 import dash_bootstrap_components as dbc
 from dash import dcc, html
@@ -12,12 +9,14 @@ from .components import (
 from .plot_style_settings import create_plot_style_settings
 from .modals import create_file_browser_modal
 from ..config import DEFAULT_BAM_PATH, DEFAULT_POD5_PATH, DEFAULT_PLOT_HEIGHT
+# Assuming you'll add this import:
+from ..utils import create_card, create_button
 
 
 def create_layout() -> html.Div:
     """Create the main application layout."""
     return html.Div([
-        # Professional Top Bar
+        # Modern Top Bar with glass effect
         html.Div([
             dbc.Row([
                 dbc.Col([
@@ -39,6 +38,7 @@ def create_layout() -> html.Div:
                             "fontWeight": "300",
                             "letterSpacing": "3px",
                             "fontSize": "1.8rem",
+                            "textShadow": "2px 2px 4px rgba(0,0,0,0.3)"
                         }
                     )
                 ], width=6, className="d-flex align-items-center justify-content-center"),
@@ -60,21 +60,22 @@ def create_layout() -> html.Div:
             "top": 0,
             "left": 0,
             "right": 0,
-            "backgroundColor": "#2c3e50",  # Dark blue-gray
-            "boxShadow": "0 2px 4px rgba(0,0,0,.2)",
+            "background": "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",  # Modern gradient
+            "backdropFilter": "blur(10px)",
+            "boxShadow": "0 4px 6px rgba(0,0,0,.3)",
             "paddingTop": "12px",
             "paddingBottom": "12px",
-            "zIndex": 1030  # High z-index to stay above other content
+            "zIndex": 1030
         }),
         
         # Spacer div to push content below fixed header
-        html.Div(style={"height": "72px"}),  # 48px bar height + 12px top padding + 12px bottom padding
+        html.Div(style={"height": "72px"}),
         
-        # Settings Panel (Offcanvas)
+        # Settings Panel (Offcanvas) with modern styling
         dbc.Offcanvas(
             [
-                html.H4("Plot Settings", className="mb-4"),
-                html.Hr(),
+                html.H4("Plot Settings", className="mb-4", style={"fontWeight": "600"}),
+                html.Hr(style={"opacity": "0.1"}),
                 dbc.Tabs([
                     dbc.Tab(
                         create_plot_style_settings("signals"),
@@ -86,13 +87,17 @@ def create_layout() -> html.Div:
                         label="Statistics Plot",
                         tab_id="stats-settings-tab"
                     ),
-                ], id="settings-tabs", active_tab="signals-settings-tab"),
+                ], id="settings-tabs", active_tab="signals-settings-tab", className="nav-pills"),
             ],
             id="settings-panel",
             is_open=False,
-            placement="start",  # Slides from left
+            placement="start",
             backdrop=True,
-            style={"width": "500px"}  # Wider for more settings
+            style={
+                "width": "500px",
+                "background": "rgba(255, 255, 255, 0.95)",
+                "backdropFilter": "blur(20px)"
+            }
         ),
         
         # Main Container with all existing content
@@ -101,9 +106,9 @@ def create_layout() -> html.Div:
             dcc.Store(id='session-id', data=str(uuid.uuid4())),
             dcc.Store(id='stats-store', data=[]),
             dcc.Store(id='files-store', data={}),
-            dcc.Store(id='conditions-metadata', data={}),  # Store condition styling metadata
-            dcc.Store(id='plot-trigger', data=0),  # Trigger for plot updates
-            dcc.Store(id='theme-store', data='light'),  # Store for theme state
+            dcc.Store(id='conditions-metadata', data={}),
+            dcc.Store(id='plot-trigger', data=0),
+            dcc.Store(id='theme-store', data='light'),
             
             # Custom CSS for dark mode
             html.Div(id="theme-styles", style={"display": "none"}),
@@ -123,7 +128,7 @@ def create_layout() -> html.Div:
                 default=DEFAULT_POD5_PATH
             ),
             
-            # Initialization Card (removed the old header since we have the top bar now)
+            # Initialization Card
             create_initialization_card(),
             
             # Main Interface (hidden initially)
@@ -132,37 +137,86 @@ def create_layout() -> html.Div:
                 create_add_condition_card(),
                 
                 # Conditions List
-                dbc.Card([
-                    dbc.CardHeader("Conditions"),
-                    dbc.CardBody(id="conditions")
+                create_card([
+                    html.H4([
+                        html.I(className="bi bi-list-check me-2"),
+                        "Conditions"
+                    ], className="mb-3", style={"fontWeight": "600", "color": "#2d3748"}),
+                    html.Hr(style={"opacity": "0.1"}),
+                    html.Div(id="conditions")
                 ], className="mb-4"),
                 
                 # Visualization
-                dbc.Card([
-                    dbc.CardHeader([
-                        dbc.Tabs([
-                            dbc.Tab(label="Signals", tab_id="signals"),
-                            dbc.Tab(label="Statistics", tab_id="stats", disabled=True, id="stats-tab"),
-                        ], id="tabs", active_tab="signals"),
-                    ]),
-                    dbc.CardBody([
-                        dbc.Row([
-                            dbc.Col([
-                                dbc.Button("Refresh Plot", id="generate", color="secondary", size="sm"),
-                            ], width="auto"),
-                            dbc.Col([
-                                dbc.Button("Clear Cache", id="clear-cache", color="warning", size="sm", outline=True),
-                            ], width="auto"),
-                        ], className="mb-3"),
-                        html.Div(
-                            id="plot-container", 
-                            className="d-flex justify-content-center"
+                create_card([
+                    dbc.Tabs([
+                        dbc.Tab(
+                            label="Signals",
+                            tab_id="signals",
+                            tab_style={"borderRadius": "8px 8px 0 0"},
+                            active_tab_style={
+                                "borderRadius": "8px 8px 0 0",
+                                "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                "color": "white"
+                            }
                         ),
-                    ])
+                        dbc.Tab(
+                            label="Statistics",
+                            tab_id="stats",
+                            disabled=True,
+                            id="stats-tab",
+                            tab_style={"borderRadius": "8px 8px 0 0"},
+                            active_tab_style={
+                                "borderRadius": "8px 8px 0 0",
+                                "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                "color": "white"
+                            }
+                        ),
+                    ], id="tabs", active_tab="signals", className="nav-pills mb-3"),
+                    
+                    html.Hr(style={"opacity": "0.1"}),
+                    
+                    dbc.Row([
+                        dbc.Col([
+                            create_button(
+                                "Refresh Plot",
+                                id="generate",
+                                color="secondary",
+                                size="sm",
+                                icon="bi bi-arrow-clockwise"
+                            ),
+                        ], width="auto"),
+                        dbc.Col([
+                            create_button(
+                                "Clear Cache",
+                                id="clear-cache",
+                                color="secondary",
+                                size="sm",
+                                icon="bi bi-trash"
+                            ),
+                        ], width="auto"),
+                    ], className="mb-3"),
+                    
+                    html.Div(
+                        id="plot-container", 
+                        className="d-flex justify-content-center",
+                    ),
                 ])
             ], id="main", style={"display": "none"}),
             
             # Alert for notifications
-            dbc.Alert(id="alert", is_open=False, duration=4000),
-        ], fluid=True)
-    ], id="theme-container", style={"minHeight": "100vh", "backgroundColor": "#f8f9fa"})
+            dbc.Alert(
+                id="alert",
+                is_open=False,
+                duration=4000,
+                style={
+                    "borderRadius": "12px",
+                    "border": "none",
+                    "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1)"
+                }
+            ),
+        ], fluid=True, style={"padding": "2rem", "maxWidth": "1400px"})
+    ], id="theme-container", style={
+        "minHeight": "100vh",
+        "background": "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+        "backgroundAttachment": "fixed"
+    })

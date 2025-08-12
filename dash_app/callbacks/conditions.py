@@ -1,6 +1,3 @@
-# dash_app/callbacks/conditions.py
-"""Condition management related callbacks."""
-
 from dash import Input, Output, State, callback, ctx, ALL
 from dash.exceptions import PreventUpdate
 

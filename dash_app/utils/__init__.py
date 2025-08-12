@@ -8,6 +8,7 @@ from .validators import (
     validate_kmer_labels,
 )
 from .visualizer_extensions import apply_plot_style_extensions
+from .design import create_button, create_card, create_input, create_switch
 
 __all__ = [
     'get_directory_contents',
@@ -16,4 +17,8 @@ __all__ = [
     'validate_json_string',
     'validate_kmer_labels',
     'apply_plot_style_extensions',
+    'create_button',
+    'create_card',
+    'create_input',
+    'create_switch'
 ]

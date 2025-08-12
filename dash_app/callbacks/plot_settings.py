@@ -1,6 +1,3 @@
-# dash_app/callbacks/plot_settings.py
-"""Plot settings related callbacks."""
-
 from dash import Input, Output, State, callback, ALL
 from dash.exceptions import PreventUpdate
 

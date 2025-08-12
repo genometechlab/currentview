@@ -1,6 +1,3 @@
-# dash_app/layout/__init__.py
-"""Layout components for the Dash application."""
-
 from .main_layout import create_layout
 from .components import (
     create_initialization_card,
