@@ -53,7 +53,11 @@ def register_single_browser_callbacks(prefix: str, extension: str):
         elif trigger == f"{prefix}-browse":
             path = Path(current).resolve()
         elif isinstance(trigger, dict) and trigger.get("type") == f"{prefix}-dir":
-            path = trigger["path"]
+            # Check if any directory was actually clicked
+            if any(dir_clicks):
+                path = trigger["path"]
+            else:
+                raise PreventUpdate
         else:
             path = Path(current).resolve()
         
@@ -71,18 +75,25 @@ def register_single_browser_callbacks(prefix: str, extension: str):
                 if allow_dir and item['name'] != '..':
                     children.append(
                         dbc.ListGroupItem([
-                            html.I(className="bi bi-folder-fill text-warning me-2"),
-                            item['name'],
+                            # Clickable area for navigation
+                            html.Div([
+                                html.I(className="bi bi-folder-fill text-warning me-2"),
+                                html.Span(item['name'])
+                            ], 
+                            id={"type": f"{prefix}-dir", "path": item['path']},
+                            style={"cursor": "pointer", "flex": "1"}),  # Takes up remaining space
+                            
+                            # Separate clickable area for selection
                             dbc.Badge(
                                 "Select", 
                                 color="primary", 
-                                className="ms-auto", 
-                                id={"type": f"{prefix}-select-dir", "path": item['path']}
+                                id={"type": f"{prefix}-select-dir", "path": item['path']},
+                                style={"cursor": "pointer"}
                             )
                         ], 
-                        action=True,
-                        id={"type": f"{prefix}-dir", "path": item['path']},
-                        style={"cursor": "pointer"})
+                        className="d-flex align-items-center",
+                        action=True  # Remove the default hover effect
+                        )
                     )
                 else:
                     # Regular navigation for directories
@@ -93,7 +104,8 @@ def register_single_browser_callbacks(prefix: str, extension: str):
                         ], 
                         action=True,
                         id={"type": f"{prefix}-dir", "path": item['path']},
-                        style={"cursor": "pointer"})
+                        style={"cursor": "pointer"},
+                        n_clicks=0)  # Important for preventing event bubbling)
                     )
             else:
                 # Files

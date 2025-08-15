@@ -30,7 +30,7 @@ class AlignmentExtractor:
         self,
         contig: str,
         target_position: int,
-        target_base: str = None,
+        target_base: List[str] = None,
         window_size: int = 9,
         exclude_reads_with_indels: bool = True,
         read_ids: Optional[Union[Set[str], List[str]]] = None,
@@ -55,6 +55,14 @@ class AlignmentExtractor:
         if window_size % 2 == 0:
             window_size += 1
             
+        if target_base is not None:
+            if not target_base:
+                target_base==None
+            else:
+                if isinstance(target_base, str):
+                    target_base=[target_base.upper()]
+                else:
+                    target_base=[base.upper() for base in target_base]
             
         self.logger.info(f"Processing reads from bam file")
         self.logger.info(f"Looking in region {contig}:{target_position}")
@@ -76,7 +84,7 @@ class AlignmentExtractor:
         self,
         contig: str,
         target_position: int,
-        target_base: str,
+        target_base: List[str],
         window_size: int,
         exclude_reads_with_indels: bool,
         read_ids: Optional[Set[str]],
@@ -136,7 +144,7 @@ class AlignmentExtractor:
                         if (
                             aligned_base is None
                             or aligned_base.query_base is None
-                            or aligned_base.query_base.upper() != target_base.upper()
+                            or aligned_base.query_base.upper() not in target_base
                         ):
                             continue
 

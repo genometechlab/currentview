@@ -25,7 +25,10 @@ def create_app() -> dash.Dash:
             dbc.themes.BOOTSTRAP,
             "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"  # For icons
         ],
-        suppress_callback_exceptions=True  # Needed for dynamic callbacks
+        suppress_callback_exceptions=True,  # Needed for dynamic callbacks,
+        title="CurrentView",
+        assets_folder='assets',
+        assets_url_path='/assets/'  # URL path for assets
     )
     
     # Set the layout

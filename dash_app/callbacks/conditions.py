@@ -68,6 +68,10 @@ def register_condition_callbacks():
         # Generate label if not provided
         label = label or f"{contig}:{pos}"
         
+        # Handle target base
+        if not target_base:
+            target_base=None
+        
         # Add condition to visualizer
         try:
             viz.add_condition(

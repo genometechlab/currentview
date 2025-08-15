@@ -2,7 +2,7 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 from pathlib import Path
 from typing import Optional
-from ..utils import create_input, create_button
+from .elements import create_input, create_button
 
 
 def create_file_browser_modal(

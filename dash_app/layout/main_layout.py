@@ -13,7 +13,7 @@ from .plot_style_settings import create_plot_style_settings
 from .modals import create_file_browser_modal, create_file_saver_modal
 from ..config import DEFAULT_BAM_PATH, DEFAULT_POD5_PATH, DEFAULT_PLOT_HEIGHT
 # Assuming you'll add this import:
-from ..utils import create_card, create_button
+from .elements import create_card, create_button
 
 
 def create_layout() -> html.Div:

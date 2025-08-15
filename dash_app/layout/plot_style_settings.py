@@ -6,7 +6,7 @@ from dash import html, dcc
 
 from ..config import LINE_STYLES
 # Assuming you'll import these from utils:
-from ..utils import create_input, create_button, create_switch
+from .elements import create_input, create_button, create_switch
 
 
 def create_settings_section(title: str, icon: str, children) -> html.Div:

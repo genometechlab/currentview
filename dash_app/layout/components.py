@@ -8,7 +8,7 @@ from ..config import (
     DEFAULT_COLOR, DEFAULT_LINE_WIDTH, DEFAULT_OPACITY
 )
 
-from ..utils import create_button, create_card, create_input, create_label
+from .elements import create_button, create_card, create_input, create_label
 
 def create_top_bar() -> html.Div:
     return html.Div([
@@ -23,6 +23,11 @@ def create_top_bar() -> html.Div:
                 )
             ], width=3, className="d-flex align-items-center"),
             dbc.Col([
+                html.Img(
+                    src="assets/icon.png",
+                    height="40px",  # Adjust size as needed
+                    style={"marginRight": "15px"}
+                ),
                 html.H2(
                     "CurrentView",
                     className="text-center mb-0",
@@ -310,7 +315,24 @@ def create_condition_parameters() -> dbc.Row:
         ], width=2),
         dbc.Col([
             html.Label("Target Base", className="modern-label"),
-            create_input(id="target-base", placeholder="A,C,G, or T"),
+            dbc.Checklist(
+                id="target-base",
+                options=[
+                    {"label": "A", "value": "A"},
+                    {"label": "C", "value": "C"},
+                    {"label": "G", "value": "G"},
+                    {"label": "T", "value": "T"},
+                ],
+                value=[],
+                inline=False,
+                className="target-base-grid",
+                style={
+                    "display": "grid",
+                    "gridTemplateColumns": "1fr 1fr",
+                    "gap": "4px",
+                    "marginTop": "0"
+                }
+            ),
         ], width=2),
         dbc.Col([
             html.Label("Max Reads", className="modern-label"),

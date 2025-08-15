@@ -44,7 +44,7 @@ class DataProcessor:
                       label: str,
                       contig: str,
                       target_position: int,
-                      target_base: str = None,
+                      target_base: List[str] = None,
                       read_ids: Optional[Union[Set[str], List[str]]] = None,
                       max_reads: Optional[int] = None,
                       require_perfect_match: bool = False) -> List[ReadAlignment]:
@@ -124,7 +124,7 @@ class DataProcessor:
                            bam_path: Path,
                            contig: str,
                            target_position: int,
-                           target_base: Optional[str],
+                           target_base: Optional[List[str]],
                            exclude_reads_with_indels: bool,
                            read_ids: Optional[Union[Set[str], List[str]]],
                            max_reads: Optional[int]) -> List[ReadAlignment]:
