@@ -1,4 +1,4 @@
-from dash import Input, Output, State, callback, ctx, ALL
+from dash import Input, Output, State, callback, ctx, ALL, html, no_update
 from dash.exceptions import PreventUpdate
 
 from ..layout.components import create_condition_card
@@ -10,9 +10,12 @@ def register_condition_callbacks():
     
     @callback(
         [Output("conditions", "children"), 
-         Output("alert", "children", allow_duplicate=True),
-         Output("alert", "is_open", allow_duplicate=True), 
+         Output("add-condition-alert", "children", allow_duplicate=True),
+         Output("add-condition-alert", "is_open", allow_duplicate=True), 
+         Output("add-condition-alert", "color", allow_duplicate=True), 
          Output("files-store", "data", allow_duplicate=True),
+         Output("bam-display", "value", allow_duplicate=True),
+         Output("pod5-display", "value", allow_duplicate=True),
          Output("conditions-metadata", "data", allow_duplicate=True),
          Output("plot-trigger", "data", allow_duplicate=True)],
         Input("add-condition-button", "n_clicks"),
@@ -37,34 +40,55 @@ def register_condition_callbacks():
                      session_id, current_conditions, metadata, trigger):
         """Add a new condition."""
         
+        error_messages = []
+        
         # Validate inputs
-        if not files.get('bam') or not files.get('pod5'):
-            return current_conditions, "Please select both files", True, files, metadata, trigger
-        if not contig or not pos:
-            return current_conditions, "Please fill required fields", True, files, metadata, trigger
+        if not files.get('bam'):
+            error_messages.append("Please select a BAM file")
+        if not files.get('pod5'):
+            error_messages.append("Please select a POD5 directory")
+        if not contig:
+            error_messages.append("Please select a valid contig")
+        if not pos:
+            error_messages.append("Please select a target position")
+        
+        if error_messages:
+            # Create alert content with line breaks
+            alert_content = ["Please fill all of the required fields:"]
+            for msg in error_messages:
+                alert_content.extend([html.Br(), f"• {msg}"])
+            
+            return current_conditions, alert_content, True, "danger", files, files.get('bam'), files.get('pod5'), metadata, no_update
         
         # Get visualizer instance
         viz = get_visualizer(session_id)
         if not viz:
-            return current_conditions, "Please initialize visualizer first", True, files, metadata, trigger
+            return current_conditions, "Please initialize visualizer first", True, "warning", files, files.get('pod5'), metadata, no_update
         
         # Generate label if not provided
         label = label or f"{contig}:{pos}"
         
         # Add condition to visualizer
-        viz.add_condition(
-            bam_path=str(files['bam']),
-            pod5_path=str(files['pod5']),
-            contig=contig,
-            target_position=int(pos),
-            target_base=target_base,
-            max_reads=max_reads,
-            label=label,
-            color=color,
-            line_style=line_style,
-            line_width=line_width,
-            alpha=opacity/100
-        )
+        try:
+            viz.add_condition(
+                bam_path=str(files['bam']),
+                pod5_path=str(files['pod5']),
+                contig=contig,
+                target_position=int(pos),
+                target_base=target_base,
+                max_reads=max_reads,
+                label=label,
+                color=color,
+                line_style=line_style,
+                line_width=line_width,
+                alpha=opacity/100
+            )
+        except Exception as e:
+            # Create alert content with line breaks
+            alert_content = str(e)
+            
+            return current_conditions, alert_content, True, "danger", files, files.get('pod5'), metadata, no_update
+            
         
         # Store condition metadata
         metadata[label] = {
@@ -89,8 +113,12 @@ def register_condition_callbacks():
         else:
             conditions = current_conditions + [new_condition]
         
+        #Consume stored files
+        files.pop("bam")
+        files.pop("pod5")
+        
         # Clear file selections for next condition and trigger plot update
-        return conditions, f"Added: {label}", True, {}, metadata, trigger + 1
+        return conditions, f"Added: {label}", True, "success", files, None, None, metadata, trigger + 1
     
     @callback(
         [Output("conditions", "children", allow_duplicate=True),

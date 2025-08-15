@@ -1,6 +1,6 @@
 # Default paths
-DEFAULT_BAM_PATH = "/data/tRNA_model_training/Data/bam_files/06_07_25_RNA4/06_07_25_RNA4_ecolscerIVTpooltRNA.dorado_1.0.0.moves.aligned.sorted.filtered.bam"
-DEFAULT_POD5_PATH = "/data/tRNA/yeast/06_07_25_RNA4_ecolscerIVTpooltRNA/06_07_25_RNA4_ecolscerIVTpooltRNA/20250617_1515_P2S-00721-A_PAW01223_5b5d2793/pod5_skip"
+DEFAULT_BAM_PATH = "/data/tRNA_model_training/Data/bam_files/06_07_25_RNA4"
+DEFAULT_POD5_PATH = "/data/tRNA/yeast/06_07_25_RNA4_ecolscerIVTpooltRNA/06_07_25_RNA4_ecolscerIVTpooltRNA/20250617_1515_P2S-00721-A_PAW01223_5b5d2793/"
 DEFAULT_DATA_PATH = "/data/tRNA"
 
 # UI Constants

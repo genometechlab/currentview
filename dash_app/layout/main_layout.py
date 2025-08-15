@@ -6,10 +6,11 @@ from .components import (
     create_top_bar,
     create_initialization_card,
     create_add_condition_card,
-    create_visualization_card
+    create_visualization_card,
+    create_add_condition_alert_box
 )
 from .plot_style_settings import create_plot_style_settings
-from .modals import create_file_browser_modal
+from .modals import create_file_browser_modal, create_file_saver_modal
 from ..config import DEFAULT_BAM_PATH, DEFAULT_POD5_PATH, DEFAULT_PLOT_HEIGHT
 # Assuming you'll add this import:
 from ..utils import create_card, create_button
@@ -80,6 +81,13 @@ def create_layout() -> html.Div:
                 file_extension=None,
                 default=DEFAULT_POD5_PATH
             ),
+            create_file_saver_modal(
+                "html-modal", 
+                "Select the output file", 
+                allow_dir=False, 
+                file_extension="html",
+                default="./"
+            ),
             
             # Initialization Card
             create_initialization_card(),
@@ -88,6 +96,9 @@ def create_layout() -> html.Div:
             html.Div([
                 # Add Condition Card
                 create_add_condition_card(),
+                
+                # Add condition alert box
+                create_add_condition_alert_box(),
                 
                 # Conditions List
                 create_card([

@@ -8,7 +8,15 @@ from ..config import (
     DEFAULT_COLOR, DEFAULT_LINE_WIDTH, DEFAULT_OPACITY
 )
 
-
+def create_label(text, required=False):
+    if required:
+        return html.Label([
+            text, 
+            html.Span(" *", style={"color": "#dc3545", "fontWeight": "bold"})
+        ], className="modern-label")
+    else:
+        return html.Label(text, className="modern-label")
+    
 def create_card(children, className="", style=None):
     """Create a modern glass-morphism card with flat design."""
     default_style = {
@@ -98,14 +106,14 @@ def create_button(text, id, color="primary", size="md", className="", icon=None,
     )
 
 
-def create_input(id, type="text", placeholder="", value=None, **kwargs):
+def create_input(id, type="text", placeholder="", value=None, className="", **kwargs):
     """Create a flat styled input field."""
     return dbc.Input(
         id=id,
         type=type,
         placeholder=placeholder,
         value=value,
-        className="modern-input",
+        className="modern-input {className}",
         style={
             "borderRadius": "8px",
             "border": "1px solid #e5e7eb",

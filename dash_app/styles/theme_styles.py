@@ -290,11 +290,16 @@ def get_dark_mode_styles():
     }
     
     /* Alert dark mode */
-    .alert {
+    .alert-danger {
         background: #27272a !important;
-        color: #e4e4e7 !important;
-        border: 1px solid #3f3f46 !important;
-        backdrop-filter: none !important;
+        border: 1px solid #ef4444 !important;
+        color: #ef4444 !important;
+    }
+    
+    .alert-success {
+        background: #27272a !important;
+        border: 1px solid #10b981 !important;
+        color: #10b981 !important;
     }
     
     /* Tabs dark mode - flat */

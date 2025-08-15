@@ -8,7 +8,7 @@ from ..config import (
     DEFAULT_COLOR, DEFAULT_LINE_WIDTH, DEFAULT_OPACITY
 )
 
-from ..utils import create_button, create_card, create_input
+from ..utils import create_button, create_card, create_input, create_label
 
 def create_top_bar() -> html.Div:
     return html.Div([
@@ -225,7 +225,7 @@ def create_add_condition_card() -> html.Div:
         dbc.Collapse([
             html.Div([
                 create_file_inputs(),
-                html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
+                html.Hr(style={"opacity": "0.0", "margin": "8px 0"}),
                 create_condition_parameters(),
                 html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
                 create_visualization_style_inputs(),
@@ -246,12 +246,24 @@ def create_add_condition_card() -> html.Div:
         ], id="add-condition-collapse", is_open=True),
     ], className="mb-4")
 
+def create_add_condition_alert_box()->dbc.Alert:
+    return dbc.Alert(
+        id="add-condition-alert",
+        is_open=False,
+        duration=4000,
+        color="danger",  # This will give you a red alert
+        style={
+            "borderRadius": "12px",
+            "border": "none",
+            "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1),",
+        }
+    )
 
 def create_file_inputs() -> dbc.Row:
     """Create file input section with modern styling."""
     return dbc.Row([
         dbc.Col([
-            html.Label("BAM File", className="modern-label"),
+            create_label("BAM File",required=True),
             dbc.InputGroup([
                 create_input(
                     id="bam-display",
@@ -267,7 +279,7 @@ def create_file_inputs() -> dbc.Row:
             ], style={"gap": "8px"}),
         ], width=6),
         dbc.Col([
-            html.Label("POD5 File", className="modern-label"),
+            create_label("POD5 Directory",required=True),
             dbc.InputGroup([
                 create_input(
                     id="pod5-display",
@@ -289,11 +301,11 @@ def create_condition_parameters() -> dbc.Row:
     """Create condition parameter inputs with modern styling."""
     return dbc.Row([
         dbc.Col([
-            html.Label("Contig", className="modern-label"),
+            create_label("contig", required=True),
             create_input(id="contig", placeholder="e.g., chr1, chrX"),
         ], width=3),
         dbc.Col([
-            html.Label("Target Position", className="modern-label"),
+            create_label("Target Position", required=True),
             create_input(id="position", type="number", placeholder="e.g., 12345"),
         ], width=2),
         dbc.Col([
@@ -529,7 +541,7 @@ def create_visualization_card() -> html.Div:
                             dbc.Col([
                                 create_button(
                                     "Export (HTML)",
-                                    id="export-html",
+                                    id="html-browse",
                                     color="success",
                                     size="sm",
                                     icon="bi bi-save"

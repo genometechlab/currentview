@@ -1,4 +1,4 @@
-from dash import Input, Output, State, callback, dcc, html, ctx
+from dash import Input, Output, State, callback, dcc, html, ctx, no_update
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
@@ -123,7 +123,7 @@ def register_visualization_callbacks():
         
         viz = get_visualizer(session_id)
         if not viz:
-            return "No visualizer to clear", True, trigger
+            return "No visualizer to clear", True, no_update
         
         # Clear all cached visualizations
         cleared = []
@@ -139,4 +139,40 @@ def register_visualization_callbacks():
             # Trigger plot update after clearing
             return f"Cleared cache for: {', '.join(cleared)}", True, trigger + 1
         else:
-            return "No cache to clear", True, trigger
+            return "No cache to clear", True, no_update
+        
+    @callback(
+        [Output("alert", "children", allow_duplicate=True),
+         Output("alert", "is_open", allow_duplicate=True)],
+        [Input("html-modal-save", "n_clicks")],
+        [State("session-id", "data"),
+         State("tabs", "active_tab"),
+         State("html-modal-input-path", "value")],
+        prevent_initial_call=True
+    )
+    def export_html(n_clicks, session_id, active_tab, created):
+        """Export the plot as an HTML file"""
+        if not n_clicks:
+            raise PreventUpdate
+        
+        viz = get_visualizer(session_id)
+        if not viz:
+            return "No visualizer to clear", True
+        
+        # Check if there are any conditions
+        if viz.n_conditions == 0:
+            return f"No {active_tab} plot is currently available", True
+        
+        from pathlib import Path
+        path = created
+        path = Path(path).resolve()
+        
+        if active_tab=='signals':
+            viz.save_signals(path=path, format='html')
+            return f"Signals plot exported to {path}", True
+        elif active_tab=='stats':
+            viz.save_stats(path=path, format='html')
+            return f"Signals plot exported to {path}", True
+        else:
+            return f"Invalid plot to export", True
+            
