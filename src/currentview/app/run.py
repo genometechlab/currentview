@@ -45,3 +45,10 @@ def create_app() -> dash.Dash:
     register_ui_callbacks()
     
     return app
+
+def main():
+    app = create_app()
+    app.run(debug=True, host="0.0.0.0", port=8050)
+
+if __name__ == "__main__":
+    main()
