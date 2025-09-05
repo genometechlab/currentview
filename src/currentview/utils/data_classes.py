@@ -21,7 +21,7 @@ class SignalRange:
     @property
     def range(self):
         return (self.start, self.end)
-   
+
 
 @dataclass
 class AlignedBase:
@@ -32,16 +32,20 @@ class AlignedBase:
     reference_base: Optional[str] = None
     query_base: Optional[str] = None
     _signal: Optional[np.ndarray] = field(default=None, repr=False, compare=False)
-    
+
     @property
     def signal(self) -> np.ndarray:
         """Get signal data. Raises error if not yet extracted."""
         if self._signal is None:
             if self.signal_range is None:
-                raise ValueError(f"No signal for {self.base_type.value} at ref:{self.reference_pos}")
-            raise ValueError("Signal not extracted. Run SignalExtractor.extract_signals() first")
+                raise ValueError(
+                    f"No signal for {self.base_type.value} at ref:{self.reference_pos}"
+                )
+            raise ValueError(
+                "Signal not extracted. Run SignalExtractor.extract_signals() first"
+            )
         return self._signal
-    
+
     @signal.setter
     def signal(self, value: np.ndarray):
         """Set signal data."""
@@ -49,14 +53,16 @@ class AlignedBase:
             raise ValueError(f"Cannot set signal for base without signal_range")
         expected_length = self.signal_range.end - self.signal_range.start
         if len(value) != expected_length:
-            raise ValueError(f"Signal length {len(value)} doesn't match range {expected_length}")
+            raise ValueError(
+                f"Signal length {len(value)} doesn't match range {expected_length}"
+            )
         self._signal = value
-    
+
     @property
     def has_signal(self) -> bool:
         """Check if signal has been extracted."""
         return self._signal is not None
-    
+
     @property
     def is_exact_match(self) -> bool:
         return self.base_type == BaseType.MATCH
@@ -69,22 +75,22 @@ class ReadAlignment:
     target_position: int
     window_size: int
     is_reversed: bool
-    
+
     @property
     def bases_by_ref_pos(self) -> Dict[int, AlignedBase]:
         """Get dictionary mapping reference positions to aligned bases."""
-        if not hasattr(self, '_bases_by_ref_pos'):
+        if not hasattr(self, "_bases_by_ref_pos"):
             self._bases_by_ref_pos = {
-                base.reference_pos: base 
-                for base in self.aligned_bases 
+                base.reference_pos: base
+                for base in self.aligned_bases
                 if base.reference_pos is not None
             }
         return self._bases_by_ref_pos
-    
+
     def get_base_at_ref_pos(self, ref_pos: int) -> Optional[AlignedBase]:
         """Convenience method to get base at specific reference position."""
         return self.bases_by_ref_pos.get(ref_pos)
-    
+
     def has_no_indels(self, window_size: int = 3) -> bool:
         """Check if there's a contiguous window of matches (no indels) around the target position."""
         if window_size % 2 == 0:
@@ -94,7 +100,7 @@ class ReadAlignment:
         matched_base = self.get_base_at_ref_pos(self.target_position)
         if matched_base is None or matched_base.query_pos is None:
             return False
-        
+
         matched_query_pos_to_target = matched_base.query_pos
         half_window = window_size // 2
 
@@ -113,6 +119,7 @@ class ReadAlignment:
 @dataclass
 class Condition:
     """Store all data for a processed condition."""
+
     label: str
     reads: List[ReadAlignment]
     positions: List[int]
@@ -125,12 +132,12 @@ class Condition:
     alpha: Optional[float] = None
     line_width: Optional[float] = None
     line_style: Optional[str] = None
-    
+
     @property
     def n_reads(self) -> int:
         """Number of reads in this condition."""
         return len(self.reads)
-    
+
     @property
     def genomic_location(self) -> str:
         """Genomic location as string."""

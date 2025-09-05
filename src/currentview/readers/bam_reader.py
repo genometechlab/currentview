@@ -14,7 +14,9 @@ from ..utils.data_classes import ReadAlignment, AlignedBase, BaseType, SignalRan
 class AlignmentExtractor:
     """API for extracting nanopore signal data aligned to genomic positions."""
 
-    def __init__(self, bam_path: Union[str, Path], logger: Optional[logging.Logger] = None):
+    def __init__(
+        self, bam_path: Union[str, Path], logger: Optional[logging.Logger] = None
+    ):
         """
         Initialize the alignment extractor with BAM file path.
 
@@ -54,16 +56,16 @@ class AlignmentExtractor:
         # Ensure window size is odd
         if window_size % 2 == 0:
             window_size += 1
-            
+
         if target_base is not None:
             if not target_base:
-                target_base==None
+                target_base == None
             else:
                 if isinstance(target_base, str):
-                    target_base=[target_base.upper()]
+                    target_base = [target_base.upper()]
                 else:
-                    target_base=[base.upper() for base in target_base]
-            
+                    target_base = [base.upper() for base in target_base]
+
         self.logger.info(f"Processing reads from bam file")
         self.logger.info(f"Looking in region {contig}:{target_position}")
 
@@ -140,7 +142,9 @@ class AlignmentExtractor:
 
                     # Only fetch reads with the specified target base if target base is provided
                     if target_base is not None:
-                        aligned_base = read_alignment.get_base_at_ref_pos(target_position)
+                        aligned_base = read_alignment.get_base_at_ref_pos(
+                            target_position
+                        )
                         if (
                             aligned_base is None
                             or aligned_base.query_base is None

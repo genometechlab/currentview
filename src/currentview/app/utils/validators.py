@@ -10,15 +10,17 @@ def validate_window_size(value: Optional[int]) -> bool:
     return value is None or value % 2 == 0
 
 
-def validate_json_string(json_str: str) -> tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
+def validate_json_string(
+    json_str: str,
+) -> tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
     """Validate JSON string and return parsed result.
-    
+
     Returns:
         Tuple of (is_valid, parsed_data, error_message)
     """
     if not json_str:
         return True, None, None
-    
+
     try:
         data = json.loads(json_str)
         return True, data, None
@@ -26,17 +28,19 @@ def validate_json_string(json_str: str) -> tuple[bool, Optional[Dict[str, Any]],
         return False, None, f"Invalid JSON: {str(e)}"
 
 
-def validate_kmer_labels(kmer_text: str, k: int) -> tuple[bool, Optional[list[str]], Optional[str]]:
+def validate_kmer_labels(
+    kmer_text: str, k: int
+) -> tuple[bool, Optional[list[str]], Optional[str]]:
     """Validate k-mer labels match the window size.
-    
+
     Returns:
         Tuple of (is_valid, parsed_labels, error_message)
     """
     if not kmer_text:
         return True, None, None
-    
-    kmers = [l.strip() for l in kmer_text.strip().split(',') if l.strip()]
+
+    kmers = [l.strip() for l in kmer_text.strip().split(",") if l.strip()]
     if len(kmers) != k:
         return False, None, f"Need {k} labels, got {len(kmers)}"
-    
+
     return True, kmers, None
