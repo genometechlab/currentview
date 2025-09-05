@@ -382,7 +382,8 @@ def get_dark_mode_styles():
         color: inherit !important;
     }
     """
-    
+
+
 def get_light_mode_styles():
     """Get light mode specific styles with flat design."""
     return """
@@ -417,13 +418,14 @@ def get_light_mode_styles():
         float: none !important;
     }
     """
-    
+
+
 def get_theme_clientside_callback():
     """Get the clientside callback for theme switching."""
     base_styles = get_base_styles()
     dark_styles = get_dark_mode_styles()
     light_styles = get_light_mode_styles()
-    
+
     return f"""
     function(theme) {{
         // Remove existing theme style if any
