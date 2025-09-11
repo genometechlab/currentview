@@ -208,7 +208,9 @@ class DataProcessor:
         if pod5_path not in self._signal_cache:
             self.logger.debug(f"Creating new SignalExtractor for {pod5_path.name}")
             self._signal_cache[pod5_path] = SignalExtractor(
-                pod5_path, transforms_fn=self.signal_processing_fn, logger=self.logger
+                pod5_path,
+                signal_processing_fn=self.signal_processing_fn,
+                logger=self.logger,
             )
         else:
             self.logger.debug(f"Using cached SignalExtractor for {pod5_path.name}")
