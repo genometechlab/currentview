@@ -57,6 +57,7 @@ class GenomicPositionVisualizer:
         K: int = 9,
         kmer: Optional[List[Union[str, int]]] = None,
         stats: Optional[List[Union[str, Callable]]] = None,
+        signal_processing_fn: Optional[callable] = None,
         signals_plot_style: Optional[PlotStyle] = None,
         stats_plot_style: Optional[PlotStyle] = None,
         title: Optional[str] = None,
@@ -88,7 +89,7 @@ class GenomicPositionVisualizer:
         self.logger = logger or self._setup_logger_with_verbosity(self.verbosity)
 
         # Create data processor (handles K adjustment)
-        self.processor = DataProcessor(K, self.logger)
+        self.processor = DataProcessor(K, signal_processing_fn, self.logger)
         self.K = self.processor.K  # Use adjusted K
         self.half_window = (self.K - 1) // 2
 

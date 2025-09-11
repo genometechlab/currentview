@@ -13,12 +13,27 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
 !['KDE sample'](images/sample_kde.png)
 
 ## Table of Contents
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Core API](#core-api)
-  - [GenomicPositionVisualizer](#genomicpositionvisualizer)
-  - [Styling and Customization using PlotStyle](#styling-and-customization-using-plotstyle)
-- [Practical considerations](#practical-considerations)
+- [Current View](#current-view)
+  - [Features](#features)
+  - [Output sample](#output-sample)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+    - [Dependencies](#dependencies)
+  - [Quick Start](#quick-start)
+  - [Core API](#core-api)
+    - [GenomicPositionVisualizer](#genomicpositionvisualizer)
+      - [Main Methods](#main-methods)
+        - [plot\_condition()](#plot_condition)
+        - [show(), show\_signals(), and show\_stats()](#show-show_signals-and-show_stats)
+      - [Other Methods](#other-methods)
+    - [Styling and Customization using PlotStyle](#styling-and-customization-using-plotstyle)
+      - [Examples](#examples)
+  - [Practical Considerations](#practical-considerations)
+    - [Performance Optimization](#performance-optimization)
+    - [Visual Clarity](#visual-clarity)
+    - [Common Issues](#common-issues)
+  - [License](#license)
+  - [Citation](#citation)
 
 ## Installation
 

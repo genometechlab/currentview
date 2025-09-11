@@ -9,7 +9,10 @@ from ..utils.data_classes import ReadAlignment
 
 class SignalExtractor:
     def __init__(
-        self, pod5_pth: Union[str, Path], logger: Optional[logging.Logger] = None
+        self,
+        pod5_pth: Union[str, Path],
+        signal_processing_fn: Optional[callable] = None,
+        logger: Optional[logging.Logger] = None,
     ):
         """
         Initialize the alignment extractor with BAM file path.
@@ -19,6 +22,9 @@ class SignalExtractor:
         """
         self.pod5_pth = pod5_pth
         self.logger = logger
+        self.signal_processing_fn = (
+            signal_processing_fn if signal_processing_fn else lambda x: x
+        )
 
     def extract_signals(self, aligned_reads: List[ReadAlignment]):
         self.logger.info(
@@ -38,6 +44,7 @@ class SignalExtractor:
                     if aligned_base.query_base is None:
                         continue
                     signal = read_record.signal_pa
+                    signal = self.signal_processing_fn(signal)
                     start, end = aligned_base.signal_range.range
                     base_signal = signal[start:end]
                     aligned_base.signal = base_signal

@@ -16,7 +16,12 @@ from .utils import PlotStyle, ColorScheme
 class DataProcessor:
     """Handles all file I/O, extraction, and data processing."""
 
-    def __init__(self, K: int, logger: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        K: int,
+        signal_processing_fn: Optional[callable] = None,
+        logger: Optional[logging.Logger] = None,
+    ):
         """
         Initialize the data processor.
 
@@ -24,6 +29,7 @@ class DataProcessor:
             K: Number of bases in window (will be made odd)
             logger: Optional logger instance
         """
+        self.signal_processing_fn = signal_processing_fn
         self.logger = logger or logging.getLogger(__name__)
         self.logger.debug(f"Initializing DataProcessor with K={K}")
 
@@ -202,7 +208,7 @@ class DataProcessor:
         if pod5_path not in self._signal_cache:
             self.logger.debug(f"Creating new SignalExtractor for {pod5_path.name}")
             self._signal_cache[pod5_path] = SignalExtractor(
-                pod5_path, logger=self.logger
+                pod5_path, transforms_fn=self.signal_processing_fn, logger=self.logger
             )
         else:
             self.logger.debug(f"Using cached SignalExtractor for {pod5_path.name}")
