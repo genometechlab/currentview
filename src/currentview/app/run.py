@@ -1,8 +1,15 @@
 import dash
 import dash_bootstrap_components as dbc
+import webbrowser
+from threading import Timer
+import argparse
+import os
 
 from .layout.main_layout import create_layout
-from .callbacks.file_browser import register_file_browser_callbacks, register_file_saver_callbacks
+from .callbacks.file_browser import (
+    register_file_browser_callbacks,
+    register_file_saver_callbacks,
+)
 from .callbacks.initialization import register_initialization_callbacks
 from .callbacks.conditions import register_condition_callbacks
 from .callbacks.visualization import register_visualization_callbacks
@@ -11,44 +18,72 @@ from .callbacks.theme import register_theme_callbacks
 from .callbacks.ui_interactions import register_ui_callbacks
 from .utils.visualizer_extensions import apply_plot_style_extensions
 
+from dash import Dash, html, Input, Output
+
 
 def create_app() -> dash.Dash:
     """Create and configure the Dash application."""
-    
-    # Apply visualizer extensions
     apply_plot_style_extensions()
-    
-    # Initialize Dash app with Bootstrap theme
+
     app = dash.Dash(
-        __name__, 
+        __name__,
         external_stylesheets=[
             dbc.themes.BOOTSTRAP,
-            "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"  # For icons
+            "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css",
         ],
-        suppress_callback_exceptions=True,  # Needed for dynamic callbacks,
+        suppress_callback_exceptions=True,
         title="CurrentView",
-        assets_folder='assets',
-        assets_url_path='/assets/'  # URL path for assets
+        assets_folder="assets",
+        assets_url_path="/assets/",
     )
-    
-    # Set the layout
+
+    app.clientside_callback(
+        """
+        function(n_clicks) {
+            if (n_clicks) {
+                window.location.reload();
+            }
+            return null;
+        }
+        """,
+        Output("app-title", "children"),
+        Input("app-title", "n_clicks"),
+        prevent_initial_call=True,
+    )
+
     app.layout = create_layout()
-    
-    # Register all callbacks
+
+    # Register callbacks
     register_file_browser_callbacks()
     register_file_saver_callbacks()
     register_initialization_callbacks()
     register_condition_callbacks()
     register_visualization_callbacks()
     register_plot_settings_callbacks()
-    register_theme_callbacks(app)  # Pass app for clientside callback
+    register_theme_callbacks(app)
     register_ui_callbacks()
-    
+
     return app
 
+
+def open_browser(port: int):
+    webbrowser.open_new(f"http://127.0.0.1:{port}")
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Run CurrentView Dash App")
+    parser.add_argument("--port", type=int, default=8050, help="Port to serve on")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+
+    args = parser.parse_args()
     app = create_app()
-    app.run(debug=True, host="0.0.0.0", port=8050)
+
+    # Only open the browser once, not on each reloader cycle
+    if not args.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        Timer(1, open_browser, args=(args.port,)).start()
+
+    app.run(debug=args.debug, host="0.0.0.0", port=args.port)
+
 
 if __name__ == "__main__":
     main()

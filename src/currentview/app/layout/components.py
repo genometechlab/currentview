@@ -59,6 +59,7 @@ def create_top_bar() -> html.Div:
                                     "letterSpacing": "3px",
                                     "fontSize": "1.8rem",
                                     "textShadow": "2px 2px 4px rgba(0,0,0,0.3)",
+                                    "cursor": "pointer",
                                 },
                             ),
                         ],
