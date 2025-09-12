@@ -79,7 +79,7 @@ def main():
     app = create_app()
 
     # Only open the browser once, not on each reloader cycle
-    if not args.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    if not args.debug:
         Timer(1, open_browser, args=(args.port,)).start()
 
     app.run(debug=args.debug, host="0.0.0.0", port=args.port)

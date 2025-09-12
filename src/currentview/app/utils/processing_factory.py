@@ -36,6 +36,23 @@ def bessel_filter_smoothing(signal, order=4, cutoff=0.1):
     return smoothed_signal
 
 
+def gaussian_filter_smoothing(signal, sigma=1):
+    """
+    Apply a Gaussian filter to smooth the input signal.
+
+    Parameters:
+    signal (np.ndarray): The input signal array.
+    sigma (float): The standard deviation of the Gaussian kernel.
+
+    Returns:
+    np.ndarray: The smoothed signal.
+    """
+    from scipy.ndimage import gaussian_filter1d
+
+    smoothed_signal = gaussian_filter1d(signal, sigma=sigma)
+    return smoothed_signal
+
+
 def min_max_normalization(signal):
     """
     Apply min-max normalization to the input signal.
@@ -87,7 +104,12 @@ def filter_signal(signal, method="none", **kwargs):
     np.ndarray: The filtered signal.
     """
     if method == "bessel":
-        return bessel_filter_smoothing(signal, **kwargs)
+        cutoff = kwargs.get("bessel_cutoff", 0.2)
+        order = kwargs.get("bessel_order", 4)
+        return bessel_filter_smoothing(signal, order=order, cutoff=cutoff)
+    elif method == "gaussian":
+        sigma = kwargs.get("sigma", 1)
+        return gaussian_filter_smoothing(signal, sigma=sigma)
     elif method == "none":
         return signal
     else:

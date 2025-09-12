@@ -12,6 +12,7 @@ from ..config import (
     STATISTICS_OPTIONS,
     STYLE_OPTIONS,
     NORMALIZATION_METHODS,
+    FILTERING_OPTIONS,
     DEFAULT_COLOR,
     DEFAULT_LINE_WIDTH,
     DEFAULT_OPACITY,
@@ -233,8 +234,7 @@ def create_initialization_card() -> html.Div:
                             ),
                             dbc.Button(
                                 [
-                                    html.I(className="bi bi-gear me-2"),
-                                    "Advanced Options",
+                                    "▼ Advanced Options",
                                 ],
                                 id="toggle-adv",
                                 color="link",
@@ -285,6 +285,101 @@ def create_advanced_options() -> html.Div:
                         ],
                         width=6,
                     ),
+                    dbc.Col(
+                        [
+                            html.Label(
+                                "Signal Normalization", className="modern-label"
+                            ),
+                            dbc.RadioItems(
+                                id="normalization-options",
+                                options=NORMALIZATION_METHODS,
+                                value="none",
+                                inline=True,
+                                className="modern-checklist",
+                            ),
+                            html.Br(),
+                            html.Label("Signal Filtering", className="modern-label"),
+                            # Bessel filter toggle
+                            dbc.RadioItems(
+                                id="filtering-options",
+                                options=FILTERING_OPTIONS,
+                                value="none",
+                                className="modern-checklist",
+                                inline=True,
+                            ),
+                            # Bessel params (disabled until checked)
+                            dbc.Collapse(
+                                id="gaussian-params",
+                                is_open=False,
+                                children=[
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                [
+                                                    html.Label(
+                                                        "Sigma", className="small-label"
+                                                    ),
+                                                    dbc.Input(
+                                                        id="gaussian-sigma",
+                                                        type="number",
+                                                        min=0,
+                                                        step=0.1,
+                                                        value=1,
+                                                    ),
+                                                ],
+                                                width=6,
+                                            ),
+                                        ],
+                                        className="g-2",
+                                    ),
+                                ],
+                            ),
+                            dbc.Collapse(
+                                id="bessel-params",
+                                is_open=False,
+                                children=[
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                [
+                                                    html.Label(
+                                                        "Order", className="small-label"
+                                                    ),
+                                                    dbc.Input(
+                                                        id="bessel-order",
+                                                        type="number",
+                                                        min=1,
+                                                        step=1,
+                                                        value=4,
+                                                    ),
+                                                ],
+                                                width=6,
+                                            ),
+                                            dbc.Col(
+                                                [
+                                                    html.Label(
+                                                        "Cutoff (0–1)",
+                                                        className="small-label",
+                                                    ),
+                                                    dbc.Input(
+                                                        id="bessel-cutoff",
+                                                        type="number",
+                                                        min=0,
+                                                        max=1,
+                                                        step=0.01,
+                                                        value=0.2,
+                                                    ),
+                                                ],
+                                                width=6,
+                                            ),
+                                        ],
+                                        className="g-2",
+                                    ),
+                                ],
+                            ),
+                        ],
+                        width=6,
+                    ),
                 ]
             ),
             html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
@@ -318,71 +413,6 @@ def create_advanced_options() -> html.Div:
                             ),
                             dbc.FormText(
                                 "Optional: JSON format for PlotStyle parameters"
-                            ),
-                        ],
-                        width=6,
-                    ),
-                    dbc.Col(
-                        [
-                            html.Label(
-                                "Signal Normalization", className="modern-label"
-                            ),
-                            dbc.RadioItems(
-                                id="normalization-options",
-                                options=NORMALIZATION_METHODS,
-                                value="none",
-                                inline=True,
-                                className="modern-checklist",
-                            ),
-                            html.Br(),
-                            html.Label("Signal Filtering", className="modern-label"),
-                            # Bessel filter toggle
-                            dbc.Checkbox(
-                                id="bessel-enable",
-                                label="Bessel Filter",
-                                value=False,
-                                className="modern-checklist",
-                            ),
-                            # Bessel params (disabled until checked)
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Order", className="modern-label"
-                                            ),
-                                            dbc.Input(
-                                                id="bessel-order",
-                                                type="number",
-                                                min=1,
-                                                step=1,
-                                                value=4,
-                                                placeholder="e.g., 4",
-                                                disabled=True,
-                                            ),
-                                        ],
-                                        width=6,
-                                    ),
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Cutoff (0–1)", className="modern-label"
-                                            ),
-                                            dbc.Input(
-                                                id="bessel-cutoff",
-                                                type="number",
-                                                min=0,
-                                                max=1,
-                                                step=0.01,
-                                                value=0.2,
-                                                placeholder="e.g., 0.2",
-                                                disabled=True,
-                                            ),
-                                        ],
-                                        width=6,
-                                    ),
-                                ],
-                                className="g-2",
                             ),
                         ],
                         width=6,

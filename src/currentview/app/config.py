@@ -50,6 +50,12 @@ NORMALIZATION_METHODS = [
     {"label": "Min-Max normalization", "value": "minmax"},
 ]
 
+FILTERING_OPTIONS = [
+    {"label": "No filtering", "value": "none"},
+    {"label": "Bessel Filter", "value": "bessel"},
+    {"label": "Gaussian Filter", "value": "gaussian"},
+]
+
 # Plot settings
 DEFAULT_PLOT_HEIGHT = "800"
 DEFAULT_COLOR = "#3498db"

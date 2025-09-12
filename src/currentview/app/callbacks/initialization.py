@@ -19,12 +19,18 @@ def register_initialization_callbacks():
     """Register all initialization related callbacks."""
 
     @callback(
-        Output("bessel-order", "disabled"),
-        Output("bessel-cutoff", "disabled"),
-        Input("bessel-enable", "value"),
+        Output("bessel-params", "is_open"),
+        Input("filtering-options", "value"),
     )
-    def toggle_bessel_inputs(bessel_enables):
-        return (not bessel_enables, not bessel_enables)
+    def toggle_bessel_inputs(filtering_options):
+        return "bessel" in filtering_options
+
+    @callback(
+        Output("gaussian-params", "is_open"),
+        Input("filtering-options", "value"),
+    )
+    def toggle_gaussian_inputs(filtering_options):
+        return "gaussian" in filtering_options
 
     @callback(
         [Output("advanced", "is_open"), Output("toggle-adv", "children")],
@@ -35,7 +41,9 @@ def register_initialization_callbacks():
     def toggle_advanced(n_clicks, is_open):
         """Toggle advanced options visibility."""
         is_open = not is_open
-        return is_open, "Advanced ▲" if is_open else "Advanced ▼"
+        if_closed = "▼ Advanced Options"
+        if_opened = "▲ Advanced Options"
+        return is_open, if_opened if is_open else if_closed
 
     @callback(Output("window-size", "invalid"), Input("window-size", "value"))
     def validate_window(value):
@@ -95,9 +103,10 @@ def register_initialization_callbacks():
             State("custom-title", "value"),
             State("verbosity", "value"),
             State("style-options", "value"),
-            State("bessel-enable", "value"),
+            State("filtering-options", "value"),
             State("bessel-order", "value"),
             State("bessel-cutoff", "value"),
+            State("gaussian-sigma", "value"),
             State("normalization-options", "value"),
             State("custom-style", "value"),
             State("session-id", "data"),
@@ -112,9 +121,10 @@ def register_initialization_callbacks():
         title,
         verbosity,
         style_opts,
-        bessel_enable,
+        filtering_options,
         bessel_order,
         bessel_cutoff,
+        gaussian_sigma,
         normalization,
         custom_style,
         session_id,
@@ -187,10 +197,11 @@ def register_initialization_callbacks():
         def signal_processing_fn(signal):
             process_signal(
                 signal,
-                filter_method="bessel" if bessel_enable else "none",
-                filter_order=bessel_order if bessel_enable else None,
-                filter_cutoff=bessel_cutoff if bessel_enable else None,
                 normalization_method=normalization,
+                filter_method=filtering_options,
+                bessel_order=bessel_order,
+                bessel_cutoff=bessel_cutoff,
+                gaussian_sigma=gaussian_sigma,
             )
 
         params["signal_processing_fn"] = signal_processing_fn
