@@ -22,7 +22,7 @@ VERBOSITY_LEVELS = [
     {"label": "Error (1)", "value": "1"},
     {"label": "Warning (2)", "value": "2"},
     {"label": "Info (3)", "value": "3"},
-    {"label": "Debug (4)", "value": "4"}
+    {"label": "Debug (4)", "value": "4"},
 ]
 
 STATISTICS_OPTIONS = [
@@ -42,6 +42,12 @@ STYLE_OPTIONS = [
     {"label": "Show grid", "value": "grid"},
     {"label": "Show legend", "value": "legend"},
     {"label": "Use WebGL renderer", "value": "webgl"},
+]
+
+NORMALIZATION_METHODS = [
+    {"label": "No normalization", "value": "none"},
+    {"label": "Z-score normalization", "value": "zscore"},
+    {"label": "Min-Max normalization", "value": "minmax"},
 ]
 
 # Plot settings

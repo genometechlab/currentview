@@ -500,7 +500,7 @@ class PlotStyle:
             # Detailed grid for exploration
             show_grid=False,
             grid_color="rgba(128, 128, 128, 0.2)",
-            zeroline=True,
+            zeroline=False,
             # Comfortable margins
             margin={"l": 80, "r": 80, "t": 100, "b": 80},
             # Readable fonts

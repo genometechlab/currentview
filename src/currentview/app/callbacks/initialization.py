@@ -3,11 +3,12 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 from currentview import GenomicPositionVisualizer, PlotStyle
-from ..utils.validators import (
+from ..utils import (
     validate_window_size,
     validate_json_string,
     validate_kmer_labels,
 )
+from ..utils.processing_factory import process_signal
 
 
 # Global storage for visualizers
@@ -16,6 +17,14 @@ visualizers = {}
 
 def register_initialization_callbacks():
     """Register all initialization related callbacks."""
+
+    @callback(
+        Output("bessel-order", "disabled"),
+        Output("bessel-cutoff", "disabled"),
+        Input("bessel-enable", "value"),
+    )
+    def toggle_bessel_inputs(bessel_enables):
+        return (not bessel_enables, not bessel_enables)
 
     @callback(
         [Output("advanced", "is_open"), Output("toggle-adv", "children")],
@@ -86,6 +95,10 @@ def register_initialization_callbacks():
             State("custom-title", "value"),
             State("verbosity", "value"),
             State("style-options", "value"),
+            State("bessel-enable", "value"),
+            State("bessel-order", "value"),
+            State("bessel-cutoff", "value"),
+            State("normalization-options", "value"),
             State("custom-style", "value"),
             State("session-id", "data"),
         ],
@@ -99,6 +112,10 @@ def register_initialization_callbacks():
         title,
         verbosity,
         style_opts,
+        bessel_enable,
+        bessel_order,
+        bessel_cutoff,
+        normalization,
         custom_style,
         session_id,
     ):
@@ -166,6 +183,17 @@ def register_initialization_callbacks():
 
         params["signals_plot_style"] = plot_style
         params["stats_plot_style"] = plot_style
+
+        def signal_processing_fn(signal):
+            process_signal(
+                signal,
+                filter_method="bessel" if bessel_enable else "none",
+                filter_order=bessel_order if bessel_enable else None,
+                filter_cutoff=bessel_cutoff if bessel_enable else None,
+                normalization_method=normalization,
+            )
+
+        params["signal_processing_fn"] = signal_processing_fn
 
         # Create visualizer instance
         viz = GenomicPositionVisualizer(**params)
