@@ -195,7 +195,7 @@ def register_initialization_callbacks():
         params["stats_plot_style"] = plot_style
 
         def signal_processing_fn(signal):
-            process_signal(
+            return process_signal(
                 signal,
                 normalization_method=normalization,
                 filter_method=filtering_options,

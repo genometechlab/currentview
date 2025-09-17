@@ -180,6 +180,8 @@ def register_visualization_callbacks():
         path = Path(path).resolve()
         if not path.suffix == format:
             return f"File extension must be {format}", True
+        
+        format = format.lstrip(".").lower()
 
         if active_tab == "signals":
             viz.save_signals(path=path, format=format)
