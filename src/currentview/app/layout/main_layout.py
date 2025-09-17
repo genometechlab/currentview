@@ -10,8 +10,13 @@ from .components import (
     create_add_condition_alert_box,
 )
 from .plot_style_settings import create_plot_style_settings
-from .modals import create_file_browser_modal, create_file_saver_modal
-from ..config import DEFAULT_BAM_PATH, DEFAULT_POD5_PATH, DEFAULT_PLOT_HEIGHT
+from .modals import create_input_modal, create_export_modal
+from ..config import (
+    DEFAULT_BAM_PATH,
+    DEFAULT_POD5_PATH,
+    DEFAULT_PLOT_HEIGHT,
+    EXPORT_FORMATS,
+)
 
 # Assuming you'll add this import:
 from .elements import create_card, create_button
@@ -73,24 +78,25 @@ def create_layout() -> html.Div:
                     # Custom CSS for dark mode
                     html.Div(id="theme-styles", style={"display": "none"}),
                     # File browser modals
-                    create_file_browser_modal(
+                    create_input_modal(
                         "bam-modal",
                         "Select BAM File",
                         file_extension=".bam",
                         default=DEFAULT_BAM_PATH,
                     ),
-                    create_file_browser_modal(
+                    create_input_modal(
                         "pod5-modal",
                         "Select POD5 File",
                         allow_dir=True,
                         file_extension=None,
                         default=DEFAULT_POD5_PATH,
                     ),
-                    create_file_saver_modal(
-                        "html-modal",
+                    create_export_modal(
+                        "export-modal",
                         "Select the output file",
                         allow_dir=False,
-                        file_extension="html",
+                        file_extensions=EXPORT_FORMATS,
+                        default_extension=".html",
                         default="./",
                     ),
                     # Initialization Card

@@ -938,20 +938,8 @@ def create_visualization_card() -> html.Div:
                                     dbc.Col(
                                         [
                                             create_button(
-                                                "Export (HTML)",
-                                                id="html-browse",
-                                                color="success",
-                                                size="sm",
-                                                icon="bi bi-save",
-                                            ),
-                                        ],
-                                        width="auto",
-                                    ),
-                                    dbc.Col(
-                                        [
-                                            create_button(
-                                                "Export (PNG)",
-                                                id="export-png",
+                                                "Export",
+                                                id="export-browse",
                                                 color="success",
                                                 size="sm",
                                                 icon="bi bi-save",

@@ -156,3 +156,35 @@ def create_switch(id: str, label: str, value: bool = False) -> html.Div:
             "transition": "all 0.2s ease",
         },
     )
+
+
+def create_dropdown(
+    id: str,
+    options: list,
+    value: Optional[Any] = None,
+    multi: bool = False,
+    placeholder: str = "Select...",
+    className: str = "",
+    **kwargs,
+) -> dcc.Dropdown:
+    """Create a flat styled dropdown component."""
+    return html.Div(
+        [
+            dcc.Dropdown(
+                id=id,
+                options=options,
+                value=value,
+                multi=multi,
+                placeholder=placeholder,
+                className=f"modern-dropdown {className}",
+            ),
+        ],
+        style={
+            "borderRadius": "8px",
+            "border": "1px solid #e5e7eb",
+            "background": "#ffffff",
+            "padding": "4px 8px",
+            "transition": "all 0.2s ease",
+            "fontSize": "0.95rem",
+        },
+    )

@@ -152,15 +152,16 @@ def register_visualization_callbacks():
             Output("alert", "children", allow_duplicate=True),
             Output("alert", "is_open", allow_duplicate=True),
         ],
-        [Input("html-modal-save", "n_clicks")],
+        [Input("export-modal-save", "n_clicks")],
         [
             State("session-id", "data"),
             State("tabs", "active_tab"),
-            State("html-modal-input-path", "value"),
+            State("export-modal-input-path", "value"),
+            State("export-modal-format", "value"),
         ],
         prevent_initial_call=True,
     )
-    def export_html(n_clicks, session_id, active_tab, created):
+    def export_plot(n_clicks, session_id, active_tab, created, format):
         """Export the plot as an HTML file"""
         if not n_clicks:
             raise PreventUpdate
@@ -177,12 +178,14 @@ def register_visualization_callbacks():
 
         path = created
         path = Path(path).resolve()
+        if not path.suffix == format:
+            return f"File extension must be {format}", True
 
         if active_tab == "signals":
-            viz.save_signals(path=path, format="html")
+            viz.save_signals(path=path, format=format)
             return f"Signals plot exported to {path}", True
         elif active_tab == "stats":
-            viz.save_stats(path=path, format="html")
-            return f"Signals plot exported to {path}", True
+            viz.save_stats(path=path, format=format)
+            return f"Statistics plot exported to {path}", True
         else:
             return f"Invalid plot to export", True

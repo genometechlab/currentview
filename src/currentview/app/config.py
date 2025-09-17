@@ -56,6 +56,13 @@ FILTERING_OPTIONS = [
     {"label": "Gaussian Filter", "value": "gaussian"},
 ]
 
+EXPORT_FORMATS = [
+    {"label": "HTML", "value": ".html"},
+    {"label": "PNG", "value": ".png"},
+    {"label": "SVG", "value": ".svg"},
+    {"label": "PDF", "value": ".pdf"},
+]
+
 # Plot settings
 DEFAULT_PLOT_HEIGHT = "800"
 DEFAULT_COLOR = "#3498db"

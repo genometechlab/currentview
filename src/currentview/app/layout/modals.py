@@ -2,10 +2,10 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 from pathlib import Path
 from typing import Optional
-from .elements import create_input, create_button
+from .elements import create_input, create_button, create_dropdown
 
 
-def create_file_browser_modal(
+def create_input_modal(
     modal_id: str,
     title: str,
     file_extension: Optional[str] = None,
@@ -65,13 +65,7 @@ def create_file_browser_modal(
                     #    placeholder=placeholder,
                     #    disabled=True,
                     #    className="mt-3"
-                    # ),
-                    create_input(
-                        id=f"{modal_id}-selected",
-                        placeholder=placeholder,
-                        disabled=True,
-                        className="mt-3",
-                    ),
+                    # )
                     # Store modal configuration
                     dcc.Store(
                         id=f"{modal_id}-config",
@@ -81,6 +75,19 @@ def create_file_browser_modal(
             ),
             dbc.ModalFooter(
                 [
+                    dbc.InputGroup(
+                        [
+                            dbc.Col(
+                                create_input(
+                                    id=f"{modal_id}-selected",
+                                    placeholder=placeholder,
+                                    disabled=True,
+                                    className="mt-3",
+                                ),
+                            ),
+                        ],
+                        className="g-2",  # small gutter spacing
+                    ),
                     # dbc.Button("Cancel", id=f"{modal_id}-cancel", color="secondary"),
                     create_button("Cancel", id=f"{modal_id}-cancel", color="danger"),
                     # dbc.Button("Select", id=f"{modal_id}-select", color="primary"),
@@ -94,10 +101,11 @@ def create_file_browser_modal(
     )
 
 
-def create_file_saver_modal(
+def create_export_modal(
     modal_id: str,
     title: str,
-    file_extension: Optional[str] = None,
+    file_extensions: Optional[str] = None,
+    default_extension: Optional[str] = None,
     allow_dir: bool = False,
     default: str = "/data/tRNA",
 ) -> dbc.Modal:
@@ -113,7 +121,7 @@ def create_file_saver_modal(
     Returns:
         dbc.Modal component
     """
-    value = f"out.{file_extension}"
+    value = f"out{default_extension}"
 
     return dbc.Modal(
         [
@@ -155,25 +163,56 @@ def create_file_saver_modal(
                     #    disabled=True,
                     #    className="mt-3"
                     # ),
-                    create_input(
-                        id=f"{modal_id}-input-path",
-                        value=value,
-                        disabled=False,
-                        className="mt-3",
-                    ),
                     # Store modal configuration
                     dcc.Store(
                         id=f"{modal_id}-config",
-                        data={"extension": file_extension, "allow_dir": allow_dir},
+                        data={"extension": default_extension, "allow_dir": allow_dir},
                     ),
                 ]
             ),
             dbc.ModalFooter(
                 [
-                    # dbc.Button("Cancel", id=f"{modal_id}-cancel", color="secondary"),
-                    create_button("Cancel", id=f"{modal_id}-cancel", color="danger"),
-                    # dbc.Button("Select", id=f"{modal_id}-select", color="primary"),
-                    create_button("Save", id=f"{modal_id}-save", color="success"),
+                    # First row: input + dropdown
+                    dbc.InputGroup(
+                        [
+                            dbc.Col(
+                                create_input(
+                                    id=f"{modal_id}-input-path",
+                                    value=value,
+                                    disabled=False,
+                                    className="mt-3",
+                                ),
+                                width=9,
+                            ),
+                            dbc.Col(
+                                create_dropdown(
+                                    id=f"{modal_id}-format",
+                                    options=file_extensions,
+                                    value=default_extension,
+                                    clearable=False,
+                                    style={"marginTop": "16px"},
+                                ),
+                                width=3,
+                            ),
+                        ],
+                        className="g-2",  # small gutter spacing
+                    ),
+                    # Second row: buttons aligned right
+                    dbc.Row(
+                        dbc.Col(
+                            [
+                                create_button(
+                                    "Cancel", id=f"{modal_id}-cancel", color="danger"
+                                ),
+                                create_button(
+                                    "Save", id=f"{modal_id}-save", color="success"
+                                ),
+                            ],
+                            width="auto",
+                            className="d-flex justify-content-end gap-2",  # align right + spacing
+                        ),
+                        className="mt-3",
+                    ),
                 ]
             ),
         ],

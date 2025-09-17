@@ -185,11 +185,11 @@ def register_file_saver_callbacks():
     """Register all file browser related callbacks."""
 
     # Register callbacks for both file types
-    for prefix, ext in [("html", ".html")]:
-        register_single_saver_callbacks(prefix, ext)
+    for prefix in ["export"]:
+        register_single_saver_callbacks(prefix)
 
 
-def register_single_saver_callbacks(prefix: str, extension: str):
+def register_single_saver_callbacks(prefix: str):
     """Register callbacks for a single file browser type."""
 
     @callback(
@@ -232,6 +232,7 @@ def register_single_saver_callbacks(prefix: str, extension: str):
             Input(f"{prefix}-modal-go", "n_clicks"),
             Input(f"{prefix}-modal-up", "n_clicks"),
             Input({"type": f"{prefix}-dir", "path": ALL}, "n_clicks"),
+            Input(f"{prefix}-modal-format", "value"),
         ],
         [
             State(f"{prefix}-modal-path", "value"),
@@ -239,7 +240,7 @@ def register_single_saver_callbacks(prefix: str, extension: str):
         ],
         prevent_initial_call=True,
     )
-    def update_browser(browse, go, up, dir_clicks, current, config):
+    def update_browser(browse, go, up, dir_clicks, format, current, config):
         """Update file browser contents."""
         trigger = ctx.triggered_id
 
@@ -255,10 +256,9 @@ def register_single_saver_callbacks(prefix: str, extension: str):
             path = Path(current).resolve()
 
         # Get config or use defaults
-        ext = config.get("extension") if config else extension
+        ext = format
         allow_dir = config.get("allow_dir", False) if config else False
         show_files = not allow_dir
-
         items, actual_path = get_directory_contents(path, ext, show_files)
 
         children = []
@@ -316,25 +316,18 @@ def register_single_saver_callbacks(prefix: str, extension: str):
         return dbc.ListGroup(children, flush=True), actual_path
 
     @callback(
-        Output(f"{prefix}-modal-inout-path", "value"),
+        Output(f"{prefix}-modal-input-path", "value"),
         [
-            Input({"type": f"{prefix}-file", "path": ALL}, "n_clicks"),
-            Input({"type": f"{prefix}-select-dir", "path": ALL}, "n_clicks"),
+            Input(f"{prefix}-modal-format", "value"),
         ],
         [
-            State({"type": f"{prefix}-file", "path": ALL}, "id"),
-            State({"type": f"{prefix}-select-dir", "path": ALL}, "id"),
+            State(f"{prefix}-modal-input-path", "value"),
         ],
         prevent_initial_call=True,
     )
-    def select_item(file_clicks, dir_clicks, file_ids, dir_ids):
+    def select_item(format, current):
         """Handle item selection in the browser."""
         # Check files
-        if any(file_clicks):
-            idx = next(i for i, c in enumerate(file_clicks) if c)
-            return file_ids[idx]["path"]
-        # Check directories
-        if any(dir_clicks):
-            idx = next(i for i, c in enumerate(dir_clicks) if c)
-            return dir_ids[idx]["path"]
-        raise PreventUpdate
+        if current and not current.endswith(format):
+            return str(Path(current).with_suffix(format))
+        return current
