@@ -98,7 +98,7 @@ class AlignmentExtractor:
         search_window = window_size * 3
 
         half_window = (search_window - 1) // 2
-        start_pos = target_position - half_window
+        start_pos = max(target_position - half_window, 0)
         end_pos = target_position + half_window
 
         read_alignments = []
@@ -111,8 +111,8 @@ class AlignmentExtractor:
 
             region = {
                 "contig": contig,
-                "start": target_position - half_window,
-                "stop": target_position + half_window + 1,
+                "start": start_pos,
+                "stop": end_pos + 1,
             }
 
             # Fetching reads
