@@ -279,8 +279,9 @@ class StatsCalculator:
         """Get human-readable name for a statistic."""
         if isinstance(stat, StatisticsFuncs):
             return stat.value
-        else:
-            return getattr(stat, "__name__", "custom_stat")
+        if isinstance(stat, str):
+            return stat
+        return getattr(stat, "__name__", "custom_stat")
 
     def get_summary(
         self,

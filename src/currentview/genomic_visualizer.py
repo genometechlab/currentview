@@ -767,6 +767,7 @@ class GenomicPositionVisualizer:
             condition_stats = self.stats_calculator.calculate_condition_stats(
                 aligned_reads=aligned_reads, target_position=target_position, K=self.K
             )
+            print(condition_stats[target_position])
 
         return {
             "label": label,
