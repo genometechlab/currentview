@@ -77,8 +77,6 @@ class GenomicPositionVisualizer:
             signals_plot_style: Style configuration for plots
             stats_plot_style: Specific style for KDE plots (defaults to signals_plot_style)
             title: Default title for plots
-            width: Figure width in pixels
-            height: Figure height in pixels
             verbosity: Logging verbosity level (0-4 or VerbosityLevel enum)
             logger: Optional custom logger (overrides verbosity if provided)
         """
@@ -89,7 +87,7 @@ class GenomicPositionVisualizer:
         self.logger = logger or self._setup_logger_with_verbosity(self.verbosity)
 
         # Create data processor (handles K adjustment)
-        self.processor = DataProcessor(K, signal_processing_fn, self.logger)
+        self.processor = DataProcessor(K, signal_processing_fn, logger=self.logger)
         self.K = self.processor.K  # Use adjusted K
         self.half_window = (self.K - 1) // 2
 
@@ -100,7 +98,7 @@ class GenomicPositionVisualizer:
 
         if self._stats_enabled:
             self.logger.debug(f"Initializing statistics with {len(stats)} functions")
-            self.stats_calculator = StatsCalculator(stats)
+            self.stats_calculator = StatsCalculator(stats, logger=self.logger)
             self._stats_names = self.stats_calculator.stats_names
             self._n_stats = self.stats_calculator.num_stats
 
@@ -484,6 +482,7 @@ class GenomicPositionVisualizer:
             self._signal_viz.clear_highlights()
         else:
             self._pending_modifications.append(("clear_highlights", (), {}))
+        return self
 
     def add_annotation(
         self,
@@ -524,14 +523,14 @@ class GenomicPositionVisualizer:
                     {"y_position": y_position, **kwargs},
                 )
             )
-
         return self
 
-    def clear_annotation(self) -> "GenomicPositionVisualizer":
+    def clear_annotations(self) -> "GenomicPositionVisualizer":
         if self._signal_viz and not self._update_signal_viz:
             self._signal_viz.clear_annotations()
         else:
             self._pending_modifications.append(("clear_annotations", (), {}))
+        return self
 
     def set_title(self, title: str) -> "GenomicPositionVisualizer":
         """Set plot title."""
@@ -767,7 +766,6 @@ class GenomicPositionVisualizer:
             condition_stats = self.stats_calculator.calculate_condition_stats(
                 aligned_reads=aligned_reads, target_position=target_position, K=self.K
             )
-            print(condition_stats[target_position])
 
         return {
             "label": label,
@@ -839,7 +837,7 @@ class GenomicPositionVisualizer:
         self, style: Union[PlotStyle, str]
     ) -> "GenomicPositionVisualizer":
         """
-        Update the style for signal plots.
+        Update the style for stats plots.
 
         Args:
             style: PlotStyle instance or predefined style name

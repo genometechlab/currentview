@@ -426,7 +426,7 @@ class SignalVisualizer:
                 current_idx += 1
             condition.trace_indices = new_indices
 
-    def clear_conditions(self):
+    def clear_conditions(self) -> "SignalVisualizer":
         """Remove all plotted conditions."""
         self.logger.info("Clearing all conditions from plot")
 
@@ -446,6 +446,8 @@ class SignalVisualizer:
         # Update position labels
         if not self.window_labels:
             self._update_position_labels()
+            
+        return self
 
     def set_auto_ylim(self, enabled: bool = True) -> "SignalVisualizer":
         """Enable or disable automatic y-axis limit adjustment."""
@@ -542,7 +544,7 @@ class SignalVisualizer:
 
         return self
 
-    def clear_annotations(self):
+    def clear_annotations(self) -> "SignalVisualizer":
         """Remove all annotations."""
         # Filter out our annotations
         new_annotations = [
@@ -552,6 +554,7 @@ class SignalVisualizer:
         ]
         self.fig.layout.annotations = new_annotations
         self._annotation_indices.clear()
+        return self
 
     def set_title(self, title: str) -> "SignalVisualizer":
         """Set or update the plot title."""
@@ -576,7 +579,7 @@ class SignalVisualizer:
         self.fig.update_yaxes(range=[bottom, top])
         return self
 
-    def reset_view(self):
+    def reset_view(self) -> "SignalVisualizer":
         """Reset the view to default."""
         self.logger.info("Resetting view to default")
 
@@ -589,7 +592,9 @@ class SignalVisualizer:
         self._update_global_ylim()
 
         # Reset x-axis
-        self.fig.update_xaxes(range=[-0.1, self.K - 0.025 + 0.1])
+        self.fig.update_xaxes(range=[-0.1, self.K - self.style.padding + 0.1])
+        
+        return self
 
     def show(self):
         """Display the plot."""
