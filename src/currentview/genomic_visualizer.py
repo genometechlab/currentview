@@ -216,11 +216,11 @@ class GenomicPositionVisualizer:
         )
 
         # Calculate opacity if not specified
-        if opacity is None:
+        if alpha is None:
             if self.signals_plot_style.opacity_mode == "fixed":
-                opacity = self.style.fixed_opacity
+                alpha = self.signals_plot_style.fixed_opacity
             elif self.signals_plot_style.opacity_mode == "auto":
-                opacity = calculate_opacity(len(processed_data["reads"]))
+                alpha = calculate_opacity(len(processed_data["reads"]))
 
         if processed_data:
             # Store the condition with visualization parameters
