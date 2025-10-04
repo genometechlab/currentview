@@ -5,16 +5,6 @@ from matplotlib.colors import to_rgba
 import re
 
 
-class ColorScheme(Enum):
-    """Predefined color schemes for Plotly visualization."""
-
-    TAB10 = "tab10"  # Matplotlib's tab10 color scheme
-    PLOTLY_DARK = "plotly_dark"
-    PASTEL = "Pastel"
-    DARK = "Dark2"
-    COLORBLIND = "Safe"  # Colorblind-friendly palette
-
-
 @dataclass
 class PlotStyle:
     """Configuration for Plotly plot styling."""
@@ -53,7 +43,6 @@ class PlotStyle:
 
     # Colors and themes
     template: str = "plotly_white"  # Plotly template
-    color_scheme: Union[ColorScheme, str] = ColorScheme.TAB10
     colorway: Optional[List[str]] = None  # Custom color sequence
 
     # Fonts
@@ -115,16 +104,6 @@ class PlotStyle:
             "scale": 2,  # For higher resolution
         }
     )
-
-    def __post_init__(self):
-        if isinstance(self.color_scheme, str):
-            try:
-                self.color_scheme = ColorScheme[self.color_scheme.upper()]
-            except KeyError:
-                raise ValueError(
-                    f"Invalid color_scheme '{self.color_scheme}'. "
-                    f"Must be one of: {[e.name.lower() for e in ColorScheme]}"
-                )
 
     def get_layout_dict(self) -> Dict:
         """Convert style settings to Plotly layout dictionary."""
@@ -197,79 +176,6 @@ class PlotStyle:
 
         return layout
 
-    def get_color_sequence(self) -> List[str]:
-        """Get color sequence based on color scheme."""
-        if self.colorway:
-            return self.colorway
-
-        # Plotly's built-in color sequences
-        color_sequences = {
-            ColorScheme.TAB10: [
-                "#1f77b4",
-                "#ff7f0e",
-                "#2ca02c",
-                "#d62728",
-                "#9467bd",
-                "#8c564b",
-                "#e377c2",
-                "#7f7f7f",
-                "#bcbd22",
-                "#17becf",
-            ],
-            ColorScheme.PLOTLY_DARK: [
-                "#636EFA",
-                "#EF553B",
-                "#00CC96",
-                "#AB63FA",
-                "#FFA15A",
-                "#19D3F3",
-                "#FF6692",
-                "#B6E880",
-                "#FF97FF",
-                "#FECB52",
-            ],
-            ColorScheme.COLORBLIND: [
-                "#0173B2",
-                "#DE8F05",
-                "#029E73",
-                "#CC78BC",
-                "#CA9161",
-                "#FBAFE4",
-                "#949494",
-                "#ECE133",
-                "#56B4E9",
-                "#208F90",
-            ],
-            ColorScheme.PASTEL: [
-                "#FBB4AE",
-                "#B3CDE3",
-                "#CCEBC5",
-                "#DECBE4",
-                "#FED9A6",
-                "#FFFFCC",
-                "#E5D8BD",
-                "#FDDAEC",
-                "#F2F2F2",
-                "#B3E2CD",
-            ],
-            ColorScheme.DARK: [
-                "#1B9E77",
-                "#D95F02",
-                "#7570B3",
-                "#E7298A",
-                "#66A61E",
-                "#E6AB02",
-                "#A6761D",
-                "#666666",
-                "#FF7F00",
-                "#6A3D9A",
-            ],
-        }
-
-        return color_sequences.get(
-            self.color_scheme, color_sequences[ColorScheme.TAB10]
-        )
-
     @staticmethod
     def _paper_single_column() -> "PlotStyle":
         """
@@ -287,7 +193,6 @@ class PlotStyle:
             renderer="WebGL",
             # Professional appearance
             template="plotly_white",
-            color_scheme=ColorScheme.TAB10,
             # Crisp lines for print
             line_width=1.5,
             show_grid=False,
@@ -338,7 +243,6 @@ class PlotStyle:
             renderer="WebGL",
             # Professional appearance
             template="plotly_white",
-            color_scheme=ColorScheme.TAB10,
             # Crisp lines for print
             line_width=1.5,
             show_grid=False,
@@ -389,7 +293,6 @@ class PlotStyle:
             renderer="WebGL",
             # Bold appearance
             template="plotly_white",
-            color_scheme=ColorScheme.PLOTLY_DARK,  # Vibrant colors
             # Thick lines for visibility
             line_width=4.0,
             show_grid=False,
@@ -440,7 +343,6 @@ class PlotStyle:
             renderer="WebGL",
             # High contrast
             template="plotly_white",
-            color_scheme=ColorScheme.PLOTLY_DARK,
             # Visible lines
             line_width=3.0,
             show_grid=False,
@@ -493,7 +395,6 @@ class PlotStyle:
             renderer="WebGL",
             # Modern appearance
             template="plotly_white",
-            color_scheme=ColorScheme.TAB10,
             # Standard lines
             line_width=2.0,
             opacity_mode="auto",
@@ -541,7 +442,6 @@ class PlotStyle:
         style.template = "plotly_dark"
         style.plot_bgcolor = "#111111"
         style.paper_bgcolor = "#0a0a0a"
-        style.color_scheme = ColorScheme.PLOTLY_DARK
         style.grid_color = "rgba(255, 255, 255, 0.1)"
         style.linecolor = "white"
         style.tickcolor = "white"

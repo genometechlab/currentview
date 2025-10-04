@@ -12,7 +12,7 @@ from .readers import AlignmentExtractor
 from .readers import SignalExtractor
 from .utils import ReadAlignment, Condition
 from .utils import validate_files
-from .utils import PlotStyle, ColorScheme
+from .utils import PlotStyle
 from .utils import to_rgba_str
 
 
@@ -71,9 +71,6 @@ class StatsVisualizer:
         # Store initial title
         self.title = title or "Nanopore Signal Statistics"
 
-        # Initialize color palette
-        self.color_sequence = self.style.get_color_sequence()
-
         # Create figure
         self.logger.debug(f"Creating Plotly figure")
         self._create_figure()
@@ -81,9 +78,6 @@ class StatsVisualizer:
         # Track plotting state
         self._plot_count = 0
         self._plotted_conditions_map: Dict[str, PlottedCondition] = OrderedDict()
-
-        # Store color assignments to maintain consistency
-        self._color_assignments: Dict[str, str] = {}
 
         self.logger.info(f"Initialized StatsVisualizer with K={K}, n_stats={n_stats}")
 
@@ -197,27 +191,6 @@ class StatsVisualizer:
         if label in self._plotted_conditions_map:
             self.logger.warning(f"Condition '{label}' already plotted. Updating it.")
             self.remove_condition(label)
-
-        # Assign color if not specified
-        if color is None:
-            if label in self._color_assignments:
-                color = self._color_assignments[label]
-                self.logger.debug(f"Reusing previous color for '{label}'")
-            else:
-                color = self._get_next_color()
-                self._color_assignments[label] = color
-                self.logger.debug(f"Auto-assigned new color for '{label}'")
-            condition.color = color
-        else:
-            self._color_assignments[label] = color
-
-        # Calculate opacity if not specified
-        if opacity is None:
-            if self.style.opacity_mode == "fixed":
-                opacity = self.style.fixed_opacity
-            elif self.style.opacity_mode == "auto":
-                opacity = self._calculate_opacity(len(reads))
-            condition.alpha = opacity
 
         # Extract reference bases
         self.logger.debug("Extracting reference bases for k-mer labels")
@@ -570,21 +543,3 @@ class StatsVisualizer:
                 break
 
         return kmer_dict
-
-    def _calculate_opacity(self, n_reads: int) -> float:
-        """Calculate appropriate opacity value based on number of reads."""
-        if n_reads <= 1:
-            opacity = 1.0
-        elif n_reads <= 3:
-            opacity = 0.9
-        elif n_reads <= 10:
-            opacity = 0.7
-        elif n_reads <= 50:
-            opacity = 0.5
-        elif n_reads <= 100:
-            opacity = 0.3
-        else:
-            opacity = 0.2
-
-        self.logger.debug(f"Calculated opacity={opacity:.2f} for {n_reads} reads")
-        return opacity

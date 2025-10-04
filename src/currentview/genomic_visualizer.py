@@ -7,7 +7,7 @@ from enum import IntEnum
 from collections import OrderedDict
 
 from .utils import validate_files
-from .utils import ReadAlignment, PlotStyle, ColorScheme, Condition
+from .utils import ReadAlignment, PlotStyle, Condition, ColorPalette, calculate_opacity
 
 from .io_processor import DataProcessor
 from .signal_visualizer import SignalVisualizer
@@ -60,6 +60,7 @@ class GenomicPositionVisualizer:
         signal_processing_fn: Optional[callable] = None,
         signals_plot_style: Optional[PlotStyle] = None,
         stats_plot_style: Optional[PlotStyle] = None,
+        color_palette: Optional[Union[str, ColorPalette]] = None,
         title: Optional[str] = None,
         verbosity: Union[VerbosityLevel, int] = VerbosityLevel.SILENT,
         logger: Optional[logging.Logger] = None,
@@ -106,6 +107,12 @@ class GenomicPositionVisualizer:
         self.kmer = kmer
         self.signals_plot_style = signals_plot_style or PlotStyle()
         self.stats_plot_style = stats_plot_style or self.signals_plot_style
+        if isinstance(color_palette, str):
+            self.color_palette = ColorPalette.from_name(color_palette)
+        elif isinstance(color_palette, ColorPalette):
+            self.color_palette = color_palette
+        else:
+            self.color_palette = ColorPalette.default_palette()
         self.title = title
 
         # Lazy-initialized visualizers
@@ -190,6 +197,11 @@ class GenomicPositionVisualizer:
             else:
                 self.logger.info(f"Overwriting the previous label: {label}")
 
+        # Assign color if not specified
+        if color is None:
+            color_index = len(self._conditions) % len(self.color_palette.colors)
+            color = self.color_palette.colors[color_index]
+
         # Process the data
         processed_data = self._process_condition_data(
             bam_path=bam_path,
@@ -202,6 +214,13 @@ class GenomicPositionVisualizer:
             exclude_reads_with_indels=exclude_reads_with_indels,
             label=label,
         )
+
+        # Calculate opacity if not specified
+        if opacity is None:
+            if self.signals_plot_style.opacity_mode == "fixed":
+                opacity = self.style.fixed_opacity
+            elif self.signals_plot_style.opacity_mode == "auto":
+                opacity = calculate_opacity(len(processed_data["reads"]))
 
         if processed_data:
             # Store the condition with visualization parameters
@@ -1010,3 +1029,9 @@ class GenomicPositionVisualizer:
 
         logger.propagate = False
         return logger
+
+    def plot_gmm(self, stat1: str, stat2: str):
+        from .gmm_visualizer import GMMVisualizer
+
+        gmm_viz = GMMVisualizer()
+        gmm_viz.plot_gmms(self._conditions)

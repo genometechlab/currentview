@@ -10,7 +10,7 @@ from .readers import AlignmentExtractor
 from .readers import SignalExtractor
 from .utils import ReadAlignment, Condition
 from .utils import validate_files
-from .utils import PlotStyle, ColorScheme
+from .utils import PlotStyle
 from .utils import to_rgba_str, get_contrasting_color
 
 
@@ -65,9 +65,6 @@ class SignalVisualizer:
         # Store initial title
         self.title = title or "Nanopore Signal Visualization"
 
-        # Initialize color palette
-        self.color_sequence = self.style.get_color_sequence()
-
         # Create figure
         self.logger.debug(f"Creating Plotly figure")
         self._create_figure()
@@ -79,9 +76,6 @@ class SignalVisualizer:
         # Track plotting state
         self._plot_count = 0
         self._plotted_conditions_map: Dict[str, PlottedCondition] = OrderedDict()
-
-        # Store color assignments
-        self._color_assignments: Dict[str, str] = {}
 
         # Store additional plot elements
         self._highlight_shapes = []
@@ -205,25 +199,6 @@ class SignalVisualizer:
         if label in self._plotted_conditions_map:
             self.logger.warning(f"Condition '{label}' already plotted. Updating it.")
             self.remove_condition(label)
-
-        # Assign color if not specified
-        if color is None:
-            if label in self._color_assignments:
-                color = self._color_assignments[label]
-            else:
-                color = self._get_next_color()
-                self._color_assignments[label] = color
-            condition.color = color
-        else:
-            self._color_assignments[label] = color
-
-        # Calculate opacity if not specified
-        if opacity is None:
-            if self.style.opacity_mode == "fixed":
-                opacity = self.style.fixed_opacity
-            elif self.style.opacity_mode == "auto":
-                opacity = self._calculate_opacity(len(reads))
-            condition.alpha = opacity
 
         # Extract reference bases
         self.logger.debug("Extracting reference bases")
@@ -446,7 +421,7 @@ class SignalVisualizer:
         # Update position labels
         if not self.window_labels:
             self._update_position_labels()
-            
+
         return self
 
     def set_auto_ylim(self, enabled: bool = True) -> "SignalVisualizer":
@@ -593,7 +568,7 @@ class SignalVisualizer:
 
         # Reset x-axis
         self.fig.update_xaxes(range=[-0.1, self.K - self.style.padding + 0.1])
-        
+
         return self
 
     def show(self):
@@ -643,11 +618,6 @@ class SignalVisualizer:
     def has_condition(self, label: str) -> bool:
         """Check if a condition is currently plotted."""
         return label in self._plotted_conditions_map
-
-    def _get_next_color(self) -> str:
-        """Get the next color from the palette."""
-        color_index = len(self._color_assignments) % len(self.color_sequence)
-        return self.color_sequence[color_index]
 
     def _extract_reference_bases(
         self, positions: List[int], reads: List[ReadAlignment]
@@ -701,21 +671,3 @@ class SignalVisualizer:
         self.fig.update_xaxes(
             tickmode="array", tickvals=tick_positions, ticktext=tick_text
         )
-
-    def _calculate_opacity(self, n_reads: int) -> float:
-        """Calculate appropriate opacity value."""
-        if n_reads <= 1:
-            opacity = 1.0
-        elif n_reads <= 3:
-            opacity = 0.9
-        elif n_reads <= 10:
-            opacity = 0.6
-        elif n_reads <= 50:
-            opacity = 0.4
-        elif n_reads <= 100:
-            opacity = 0.3
-        else:
-            opacity = 0.2
-
-        self.logger.debug(f"Calculated opacity={opacity:.2f} for {n_reads} reads")
-        return opacity
