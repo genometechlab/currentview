@@ -152,6 +152,7 @@ class ColorPalette:
     def __init__(self, scheme: ColorScheme):
         self.scheme = scheme
 
+    @property
     def colors(self) -> List[str]:
         return _COLOR_MAP[self.scheme]
 
