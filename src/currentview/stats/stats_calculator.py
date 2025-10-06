@@ -7,7 +7,7 @@ import warnings
 import logging
 
 from .stats_funcs import StatisticsFuncs
-from ..utils import ReadAlignment
+from ..utils.data_classes import ReadAlignment
 
 
 class StatsCalculator:
@@ -51,8 +51,32 @@ class StatsCalculator:
         self.logger.debug(
             f"Initialized StatsCalculator with {len(self.statistics)} statistics"
         )
+        
+    def calculate_multi_position_stats(
+        self, aligned_reads: List[ReadAlignment], K: Optional[int] = None
+    ):
+        stats_dict = {self._get_stat_name(stat): [] for stat in self.statistics}
 
-    def calculate_condition_stats(
+        for read in aligned_reads:
+            signal = read.get_signal(K=K)
+            for stat, compiled_func in zip(self.statistics, self._compiled_stats):
+                stat_name = self._get_stat_name(stat)
+                try:
+                    value = compiled_func(signal)
+                    # Ensure scalar
+                    if isinstance(value, np.ndarray):
+                        value = float(value)
+                except Exception as e:
+                    if self.logger.isEnabledFor(logging.DEBUG):
+                        self.logger.debug(f"Failed to calculate {stat_name}: {e}")
+
+                stats_dict[stat_name].append(value)
+                
+        stats_dict = {k: np.array(v, dtype=np.float32) for k,v in stats_dict.items()}
+
+        return stats_dict
+
+    def calculate_per_position_stats(
         self, aligned_reads: List[ReadAlignment], target_position: int, K: int
     ) -> Dict[int, Dict[str, np.ndarray]]:
         """
@@ -81,59 +105,40 @@ class StatsCalculator:
             f"Calculating stats for {n_reads} reads across {n_positions} positions"
         )
 
+        stats_by_position = {}
         # Use parallel processing for positions if worthwhile
         if n_positions < 3 or n_reads < 10:
             # Small dataset - sequential is faster
-            return self._calculate_sequential(aligned_reads, positions)
+            for pos in positions:
+                pos_stats = self._calculate_position_stats(aligned_reads, pos)
+                stats_by_position[pos] = pos_stats
         else:
             # Parallel processing across positions
-            return self._calculate_parallel(aligned_reads, positions)
+            chunk_size = max(1, len(positions) // (self._n_workers * 2))
 
-    def _calculate_sequential(
-        self, reads: List[ReadAlignment], positions: List[int]
-    ) -> Dict[int, Dict[str, np.ndarray]]:
-        """Sequential calculation for small datasets."""
-        stats_by_position = {}
+            with ThreadPoolExecutor(max_workers=self._n_workers) as executor:
+                # Submit position chunks for processing
+                future_to_positions = {}
 
-        for pos in positions:
-            pos_stats = self._calculate_position_stats(reads, pos)
-            stats_by_position[pos] = pos_stats
+                for i in range(0, len(positions), chunk_size):
+                    chunk_positions = positions[i : i + chunk_size]
+                    future = executor.submit(
+                        self._process_position_chunk, aligned_reads, chunk_positions
+                    )
+                    future_to_positions[future] = chunk_positions
 
-        return stats_by_position
-
-    def _calculate_parallel(
-        self, reads: List[ReadAlignment], positions: List[int]
-    ) -> Dict[int, Dict[str, np.ndarray]]:
-        """Parallel calculation across positions."""
-        stats_by_position = {}
-
-        # Determine chunk size - balance between overhead and parallelism
-        chunk_size = max(1, len(positions) // (self._n_workers * 2))
-
-        with ThreadPoolExecutor(max_workers=self._n_workers) as executor:
-            # Submit position chunks for processing
-            future_to_positions = {}
-
-            for i in range(0, len(positions), chunk_size):
-                chunk_positions = positions[i : i + chunk_size]
-                future = executor.submit(
-                    self._process_position_chunk, reads, chunk_positions
-                )
-                future_to_positions[future] = chunk_positions
-
-            # Collect results as they complete
-            for future in as_completed(future_to_positions):
-                try:
-                    chunk_results = future.result()
-                    stats_by_position.update(chunk_results)
-                except Exception as e:
-                    self.logger.error(f"Error processing position chunk: {e}")
-                    # Fall back to sequential for failed chunks
-                    for pos in future_to_positions[future]:
-                        stats_by_position[pos] = self._calculate_position_stats(
-                            reads, pos
-                        )
-
+                # Collect results as they complete
+                for future in as_completed(future_to_positions):
+                    try:
+                        chunk_results = future.result()
+                        stats_by_position.update(chunk_results)
+                    except Exception as e:
+                        self.logger.error(f"Error processing position chunk: {e}")
+                        # Fall back to sequential for failed chunks
+                        for pos in future_to_positions[future]:
+                            stats_by_position[pos] = self._calculate_position_stats(
+                                aligned_reads, pos
+                            )
         return stats_by_position
 
     def _process_position_chunk(
@@ -292,7 +297,7 @@ class StatsCalculator:
         Get summary of statistics across all positions.
 
         Args:
-            stats_by_position: Output from calculate_condition_stats
+            stats_by_position: Output from calculate_per_position_stats
             condition_label: Optional label for the condition
 
         Returns:
