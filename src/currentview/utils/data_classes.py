@@ -90,15 +90,13 @@ class ReadAlignment:
     def get_base_at_ref_pos(self, ref_pos: int) -> Optional[AlignedBase]:
         """Convenience method to get base at specific reference position."""
         return self.bases_by_ref_pos.get(ref_pos)
-        
+
     def get_signal(self, K: Optional[int] = None) -> np.ndarray:
         """Get the raw signal segment for the read from start to end."""
-        window_size = K//2 if K is not None else self.window_size
+        window_size = K // 2 if K is not None else self.window_size
         start = self.target_position - window_size // 2
         end = self.target_position + window_size // 2 + 1
-        bases_in_range = [
-            self.get_base_at_ref_pos(pos) for pos in range(start, end)
-        ]
+        bases_in_range = [self.get_base_at_ref_pos(pos) for pos in range(start, end)]
         signal_segments = [
             base.signal for base in bases_in_range if base and base.has_signal
         ]
@@ -143,7 +141,9 @@ class Condition:
     target_position: int
     bam_path: Path
     pod5_path: Path
-    stats: Optional[Dict[int, Dict[str, List[float]]]] = field(default=None, repr=False, compare=False)
+    stats: Optional[Dict[int, Dict[str, List[float]]]] = field(
+        default=None, repr=False, compare=False
+    )
     color: Optional[Any] = None
     alpha: Optional[float] = None
     line_width: Optional[float] = None

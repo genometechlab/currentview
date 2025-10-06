@@ -1034,7 +1034,7 @@ class GenomicPositionVisualizer:
 
         logger.propagate = False
         return logger
-    
+
     def _get_gmm_handler(
         self,
         stat1: str,
@@ -1051,19 +1051,22 @@ class GenomicPositionVisualizer:
             raise ValueError(
                 f"Specified K ({K}) cannot be larger than the GenomicPositionVisualizer window size ({self.K})"
             )
-            
-        if len(self._conditions)==0:
+
+        if len(self._conditions) == 0:
             raise SystemError(f"No conditions are added yet.")
 
         cfg, pp_cfg = _split_and_normalize_configs(
-            gmm_config, preprocess_config, gmm_kwargs,
+            gmm_config,
+            preprocess_config,
+            gmm_kwargs,
             logger=self.logger,
             GMMConfig=GMMConfig,
             PreprocessConfig=PreprocessConfig,
         )
 
         handler = GMMHandler(
-            stat1, stat2,
+            stat1,
+            stat2,
             K=K,
             gmm_config=cfg,
             preprocess_config=pp_cfg,
@@ -1071,7 +1074,7 @@ class GenomicPositionVisualizer:
         )
         handler.fit_gmms(self._conditions.values())
         return handler
-    
+
     def fit_gmms(
         self,
         stat1: str,
@@ -1083,13 +1086,15 @@ class GenomicPositionVisualizer:
         **gmm_kwargs,
     ):
         handler = self._get_gmm_handler(
-            stat1, stat2, K,
+            stat1,
+            stat2,
+            K,
             gmm_config=gmm_config,
             preprocess_config=preprocess_config,
-            **gmm_kwargs
+            **gmm_kwargs,
         )
         return handler.conditions_gmms_
-    
+
     def plot_gmms(
         self,
         stat1: str,
@@ -1102,14 +1107,16 @@ class GenomicPositionVisualizer:
     ):
         # Pass keyword-only args as keywords, and expand **gmm_kwargs
         handler = self._get_gmm_handler(
-            stat1, stat2, K,
+            stat1,
+            stat2,
+            K,
             gmm_config=gmm_config,
             preprocess_config=preprocess_config,
-            **gmm_kwargs
+            **gmm_kwargs,
         )
 
         from .gmm import GMMVisualizer
+
         gmm_viz = GMMVisualizer.from_handler(handler)
         gmm_viz.show()
         return gmm_viz
-

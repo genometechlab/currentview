@@ -31,14 +31,14 @@ class GMMVisualizer:
     # Fixed internal defaults (not in PlotStyle)
     _NX: int = 250
     _NY: int = 250
-    _PAD_FRAC: float = 0.05   # 5% of data range per axis
-    _PAD_MIN: float = 0.5     # absolute minimum pad per axis
+    _PAD_FRAC: float = 0.05  # 5% of data range per axis
+    _PAD_MIN: float = 0.5  # absolute minimum pad per axis
     _N_LEVELS: int = 7
     _MASS_START: float = 0.60
     _MASS_END: float = 0.98
     _MARKER_SIZE: int = 6
     _MEAN_MARKER_SIZE: int = 12
-    _EPS_NUM: float = 1e-12   # numerical floor for exp(logp)
+    _EPS_NUM: float = 1e-12  # numerical floor for exp(logp)
 
     def __init__(
         self,
@@ -58,7 +58,7 @@ class GMMVisualizer:
         self.fig: Optional[go.Figure] = None
         # Shared grid cache (built when plotting)
         self._x = self._y = self._Xg = self._Yg = self._XX = None
-        
+
         self._create_figure()
 
     @classmethod
@@ -99,9 +99,15 @@ class GMMVisualizer:
         layout["title"]["text"] = self.title
         # Newer Plotly expects 'title' inside xaxis/yaxis dicts
         layout.setdefault("xaxis", layout.get("xaxis", {}))
-        layout["xaxis"]["title"] = {"text": self.x_label, **layout["xaxis"].get("title", {})}
+        layout["xaxis"]["title"] = {
+            "text": self.x_label,
+            **layout["xaxis"].get("title", {}),
+        }
         layout.setdefault("yaxis", layout.get("yaxis", {}))
-        layout["yaxis"]["title"] = {"text": self.y_label, **layout["yaxis"].get("title", {})}
+        layout["yaxis"]["title"] = {
+            "text": self.y_label,
+            **layout["yaxis"].get("title", {}),
+        }
 
         self.fig.update_layout(**layout)
         return self.fig
@@ -114,13 +120,19 @@ class GMMVisualizer:
         self._warn_if_all_invalid(records)
 
         # Build shared grid over *valid* records
-        self._x, self._y, self._Xg, self._Yg, self._XX = self._build_shared_grid(records)
+        self._x, self._y, self._Xg, self._Yg, self._XX = self._build_shared_grid(
+            records
+        )
 
         # Choose shared iso-mass semantics; thresholds per-condition
         mass_levels = np.linspace(self._MASS_START, self._MASS_END, self._N_LEVELS)
 
         # Choose scatter class based on PlotStyle.renderer
-        scatter_cls = go.Scattergl if getattr(self.style, "renderer", "WebGL") == "WebGL" else go.Scatter
+        scatter_cls = (
+            go.Scattergl
+            if getattr(self.style, "renderer", "WebGL") == "WebGL"
+            else go.Scatter
+        )
 
         for rec in records:
             if (rec.model is None) or (rec.X is None) or (rec.X.size == 0):
@@ -147,7 +159,9 @@ class GMMVisualizer:
                         line=dict(width=self.style.line_width, color=color),
                         colorscale=[[0, color], [1, color]],
                         showscale=False,
-                        name=(f"{label} isomass" if i == 0 else None),  # one legend entry per condition
+                        name=(
+                            f"{label} isomass" if i == 0 else None
+                        ),  # one legend entry per condition
                         hoverinfo="skip",
                         showlegend=self.style.show_legend and (i == 0),
                         legendgroup=label,
@@ -181,7 +195,9 @@ class GMMVisualizer:
                         y=rec.model.means_[:, 1],
                         mode="markers",
                         name=f"{label} means (k={k})",
-                        marker=dict(size=self._MEAN_MARKER_SIZE, symbol="x", color=color),
+                        marker=dict(
+                            size=self._MEAN_MARKER_SIZE, symbol="x", color=color
+                        ),
                         showlegend=self.style.show_legend,
                         legendgroup=label,
                     )
@@ -246,9 +262,13 @@ class GMMVisualizer:
             if (r.model is None) or (r.X is None) or (r.X.size == 0)
         ]
         if len(invalid) == len(recs):
-            raise ValueError("All records have empty data or missing models; nothing to visualize.")
+            raise ValueError(
+                "All records have empty data or missing models; nothing to visualize."
+            )
         if invalid:
-            print(f"[GMMVisualizer] Warning: Skipping records without data/model: {invalid}")
+            print(
+                f"[GMMVisualizer] Warning: Skipping records without data/model: {invalid}"
+            )
 
     def _build_shared_grid(
         self, recs: List[ConditionGMM]
@@ -296,7 +316,7 @@ class GMMVisualizer:
         if not np.all(np.isfinite(p)):
             p = np.nan_to_num(p, nan=0.0, posinf=0.0, neginf=0.0)
 
-        order = np.argsort(p)[::-1]   # descending by density
+        order = np.argsort(p)[::-1]  # descending by density
         p_sorted = p[order]
         c = np.cumsum(p_sorted)
         total = c[-1]

@@ -14,7 +14,7 @@ from ..utils.data_classes import Condition
 # ----------------------------
 @dataclass
 class GMMConfig:
-    n_components: Union[int, Dict[str, int], str] = "auto"   # integer, dict, or "auto"
+    n_components: Union[int, Dict[str, int], str] = "auto"  # integer, dict, or "auto"
     candidate_components: List[int] = field(default_factory=lambda: [1, 2])
     selection_criterion: str = "bic"  # "bic" or "aic"
 
@@ -37,16 +37,16 @@ class PreprocessConfig:
     # Outlier removal
     enable_outliers: bool = False
     outlier_method: Literal["zscore", "mad", "iqr"] = "zscore"
-    z_thresh: float = 3.0             # for zscore
-    mad_thresh: float = 3.5           # for MAD (≈ 3σ equivalent when scaled)
-    iqr_k: float = 1.5                # for IQR fences
-    drop_if_any_axis: bool = True     # drop row if any axis flagged (else both)
+    z_thresh: float = 3.0  # for zscore
+    mad_thresh: float = 3.5  # for MAD (≈ 3σ equivalent when scaled)
+    iqr_k: float = 1.5  # for IQR fences
+    drop_if_any_axis: bool = True  # drop row if any axis flagged (else both)
 
     # Standardization
     enable_standardize: bool = False
     standardize_center: bool = True
     standardize_scale: Literal["std", "mad"] = "std"
-    eps: float = 1e-9                 # numerical floor
+    eps: float = 1e-9  # numerical floor
 
 
 # ----------------------------
@@ -55,11 +55,13 @@ class PreprocessConfig:
 @dataclass
 class ConditionGMM:
     condition: Condition
-    X: np.ndarray                                   # (N, 2) stat matrix (post-preprocess)
-    model: Optional[GaussianMixture] = None         # fitted GMM (or None if skipped)
-    selected_n_components: Optional[int] = None     # chosen number of components
-    converged: Optional[bool] = None                # sklearn converged_ flag
-    meta: Dict[str, Union[int, float, str, Dict]] = field(default_factory=dict)  # preprocessing & fit metadata
+    X: np.ndarray  # (N, 2) stat matrix (post-preprocess)
+    model: Optional[GaussianMixture] = None  # fitted GMM (or None if skipped)
+    selected_n_components: Optional[int] = None  # chosen number of components
+    converged: Optional[bool] = None  # sklearn converged_ flag
+    meta: Dict[str, Union[int, float, str, Dict]] = field(
+        default_factory=dict
+    )  # preprocessing & fit metadata
 
 
 # ----------------------------
@@ -122,7 +124,9 @@ class GMMHandler:
             self.conditions_gmms_[label] = rec
 
             if X.shape[0] == 0:
-                self.logger.warning(f"No usable data for condition '{label}' after preprocessing; skipping GMM fit.")
+                self.logger.warning(
+                    f"No usable data for condition '{label}' after preprocessing; skipping GMM fit."
+                )
                 continue
 
             # choose k
@@ -141,7 +145,9 @@ class GMMHandler:
 
     def get_condition_data(self, label: str) -> np.ndarray:
         if label not in self.conditions_gmms_:
-            raise KeyError(f"Condition '{label}' not found. Available: {list(self.conditions_gmms_.keys())}")
+            raise KeyError(
+                f"Condition '{label}' not found. Available: {list(self.conditions_gmms_.keys())}"
+            )
         return self.conditions_gmms_[label].X
 
     def get_condition_gmm(self, label: str) -> GaussianMixture:
@@ -164,7 +170,9 @@ class GMMHandler:
     # -------- data & preprocessing --------
     def _fetch_condition_data(self, condition: Condition) -> np.ndarray:
         """Compute per-read stats for a condition and return Nx2 array: [stat1, stat2]."""
-        stats = self.stats_calculator.calculate_multi_position_stats(condition.reads, K=self.K)
+        stats = self.stats_calculator.calculate_multi_position_stats(
+            condition.reads, K=self.K
+        )
         s1 = np.asarray(stats[self.stat1_name], dtype=float)
         s2 = np.asarray(stats[self.stat2_name], dtype=float)
 
@@ -192,8 +200,16 @@ class GMMHandler:
         meta["n_raw"] = int(n0)
 
         # 1) Downsample
-        if self.pp.enable_downsample and self.pp.max_samples is not None and n0 > self.pp.max_samples:
-            rng = np.random.default_rng(self.pp.random_state if self.pp.random_state is not None else self.config.random_state)
+        if (
+            self.pp.enable_downsample
+            and self.pp.max_samples is not None
+            and n0 > self.pp.max_samples
+        ):
+            rng = np.random.default_rng(
+                self.pp.random_state
+                if self.pp.random_state is not None
+                else self.config.random_state
+            )
             idx = rng.choice(n0, size=self.pp.max_samples, replace=False)
             X = X[idx]
             meta["downsampled"] = True
@@ -211,7 +227,9 @@ class GMMHandler:
             meta["outliers_removed"] = removed
             meta["n_after_outliers"] = int(len(X))
             if removed > 0:
-                self.logger.info(f"'{label}': removed {removed} outliers ({removed/n_before_out:.1%})")
+                self.logger.info(
+                    f"'{label}': removed {removed} outliers ({removed/n_before_out:.1%})"
+                )
 
         # 3) Standardization
         if self.pp.enable_standardize and len(X) > 0:
@@ -289,7 +307,9 @@ class GMMHandler:
         )
         return model
 
-    def _n_components_for(self, label: str, n_samples: int, X: Optional[np.ndarray] = None) -> int:
+    def _n_components_for(
+        self, label: str, n_samples: int, X: Optional[np.ndarray] = None
+    ) -> int:
         cfg = self.config.n_components
         if isinstance(cfg, dict):
             desired = cfg.get(label, 1)
@@ -311,10 +331,18 @@ class GMMHandler:
         return max(1, min(desired, n_samples))
 
     def _select_n_components_auto(self, X: np.ndarray, label: str) -> int:
-        uniq = sorted({nc for nc in self.config.candidate_components if isinstance(nc, int) and nc >= 1})
+        uniq = sorted(
+            {
+                nc
+                for nc in self.config.candidate_components
+                if isinstance(nc, int) and nc >= 1
+            }
+        )
         candidates = [nc for nc in uniq if nc <= len(X)]
         if not candidates:
-            self.logger.warning(f"'{label}': no valid candidates (samples={len(X)}). Falling back to 1.")
+            self.logger.warning(
+                f"'{label}': no valid candidates (samples={len(X)}). Falling back to 1."
+            )
             return 1
 
         scores = {}
@@ -329,9 +357,15 @@ class GMMHandler:
                 n_init=self.config.n_init,
             ).fit(X)
 
-            score = model.aic(X) if self.config.selection_criterion.lower() == "aic" else model.bic(X)
+            score = (
+                model.aic(X)
+                if self.config.selection_criterion.lower() == "aic"
+                else model.bic(X)
+            )
             scores[k] = float(score)
-            self.logger.debug(f"'{label}': k={k}, {self.config.selection_criterion.upper()}={score:.2f}")
+            self.logger.debug(
+                f"'{label}': k={k}, {self.config.selection_criterion.upper()}={score:.2f}"
+            )
 
         best_k = min(scores, key=lambda k: (scores[k], k))  # prefer smaller k on ties
         self.logger.info(

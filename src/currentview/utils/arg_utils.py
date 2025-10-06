@@ -1,16 +1,17 @@
 from dataclasses import fields, is_dataclass
 
+
 def _split_and_normalize_configs(
     gmm_config, preprocess_config, gmm_kwargs, *, logger, GMMConfig, PreprocessConfig
 ):
     """Return (final_gmm_cfg, final_pp_cfg) after resolving dicts/objects/**kwargs."""
     # 1) Field name sets
     gmm_fields = {f.name for f in fields(GMMConfig)}
-    pp_fields  = {f.name for f in fields(PreprocessConfig)}
+    pp_fields = {f.name for f in fields(PreprocessConfig)}
 
     # 2) Start with empty dicts
     gmm_dict: dict = {}
-    pp_dict: dict  = {}
+    pp_dict: dict = {}
 
     # 3) If caller passed dicts, take them
     if isinstance(gmm_config, dict):
