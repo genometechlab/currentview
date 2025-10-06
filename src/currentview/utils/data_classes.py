@@ -90,13 +90,29 @@ class ReadAlignment:
     def get_base_at_ref_pos(self, ref_pos: int) -> Optional[AlignedBase]:
         """Convenience method to get base at specific reference position."""
         return self.bases_by_ref_pos.get(ref_pos)
+        
+    def get_signal(self, K: Optional[int] = None) -> np.ndarray:
+        """Get the raw signal segment for the read from start to end."""
+        window_size = K//2 if K is not None else self.window_size
+        start = self.target_position - window_size // 2
+        end = self.target_position + window_size // 2 + 1
+        bases_in_range = [
+            self.get_base_at_ref_pos(pos) for pos in range(start, end)
+        ]
+        signal_segments = [
+            base.signal for base in bases_in_range if base and base.has_signal
+        ]
+        if not signal_segments:
+            return np.array([])
+        if self.is_reversed:
+            signal_segments = [seg[::-1] for seg in signal_segments]
+        return np.concatenate(signal_segments)
 
     def has_no_indels(self, window_size: int = 3) -> bool:
         """Check if there's a contiguous window of matches (no indels) around the target position."""
         if window_size % 2 == 0:
             raise ValueError(f"window_size must be odd, got {window_size}")
 
-        # Now using the property instead of building dict each time
         matched_base = self.get_base_at_ref_pos(self.target_position)
         if matched_base is None or matched_base.query_pos is None:
             return False
@@ -127,7 +143,7 @@ class Condition:
     target_position: int
     bam_path: Path
     pod5_path: Path
-    stats: Optional[Dict[int, Dict[str, List[float]]]] = None
+    stats: Optional[Dict[int, Dict[str, List[float]]]] = field(default=None, repr=False, compare=False)
     color: Optional[Any] = None
     alpha: Optional[float] = None
     line_width: Optional[float] = None
