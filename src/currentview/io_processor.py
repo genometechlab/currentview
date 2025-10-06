@@ -8,9 +8,10 @@ from collections import OrderedDict, defaultdict
 
 from .readers import AlignmentExtractor
 from .readers import SignalExtractor
-from .utils import ReadAlignment
-from .utils import validate_files
-from .utils import PlotStyle, ColorScheme
+from .utils.data_classes import ReadAlignment
+from .utils.path_utils import validate_files
+from .utils.plotly_utils import PlotStyle
+from .utils.color_utils import ColorScheme
 
 
 class DataProcessor:

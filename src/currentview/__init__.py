@@ -1,2 +1,3 @@
-from currentview.genomic_visualizer import GenomicPositionVisualizer, VerbosityLevel
-from currentview.utils import PlotStyle
+from .genomic_visualizer import GenomicPositionVisualizer, VerbosityLevel
+from .utils.plotly_utils import PlotStyle
+from .gmm import GMMConfig, PreprocessConfig, GMMHandler, GMMVisualizer

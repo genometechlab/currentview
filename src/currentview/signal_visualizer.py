@@ -8,10 +8,11 @@ from collections import OrderedDict
 
 from .readers import AlignmentExtractor
 from .readers import SignalExtractor
-from .utils import ReadAlignment, Condition
-from .utils import validate_files
-from .utils import PlotStyle
-from .utils import to_rgba_str, get_contrasting_color
+
+from .utils.data_classes import ReadAlignment, Condition
+from .utils.path_utils import validate_files
+from .utils.plotly_utils import PlotStyle
+from .utils.color_utils import to_rgba_str, get_contrasting_color
 
 
 @dataclass
