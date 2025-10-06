@@ -1051,6 +1051,9 @@ class GenomicPositionVisualizer:
             raise ValueError(
                 f"Specified K ({K}) cannot be larger than the GenomicPositionVisualizer window size ({self.K})"
             )
+            
+        if len(self._conditions)==0:
+            raise SystemError(f"No conditions are added yet.")
 
         cfg, pp_cfg = _split_and_normalize_configs(
             gmm_config, preprocess_config, gmm_kwargs,
