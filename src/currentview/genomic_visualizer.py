@@ -6,13 +6,18 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from collections import OrderedDict
 
-from .utils import validate_files
-from .utils import ReadAlignment, PlotStyle, Condition, ColorPalette, calculate_opacity
+from .utils.path_utils import validate_files
+from .utils.arg_utils import _split_and_normalize_configs
+from .utils.data_classes import ReadAlignment, Condition
+from .utils.color_utils import ColorPalette, calculate_opacity
+from .utils.plotly_utils import PlotStyle
 
 from .io_processor import DataProcessor
 from .signal_visualizer import SignalVisualizer
 from .stats_visualizer import StatsVisualizer
 from .stats import StatsCalculator
+
+from .gmm import GMMConfig, PreprocessConfig
 
 
 class VerbosityLevel(IntEnum):
@@ -782,7 +787,7 @@ class GenomicPositionVisualizer:
         condition_stats = None
         if self._stats_enabled and self.stats_calculator:
             self.logger.debug(f"Calculating statistics for condition '{label}'")
-            condition_stats = self.stats_calculator.calculate_condition_stats(
+            condition_stats = self.stats_calculator.calculate_per_position_stats(
                 aligned_reads=aligned_reads, target_position=target_position, K=self.K
             )
 
@@ -1029,9 +1034,79 @@ class GenomicPositionVisualizer:
 
         logger.propagate = False
         return logger
+    
+    def _get_gmm_handler(
+        self,
+        stat1: str,
+        stat2: str,
+        K: Optional[int] = None,
+        *,
+        gmm_config: Optional["GMMConfig | dict"] = None,
+        preprocess_config: Optional["PreprocessConfig | dict"] = None,
+        **gmm_kwargs,
+    ):
+        from .gmm import GMMHandler, GMMConfig, PreprocessConfig
 
-    def plot_gmm(self, stat1: str, stat2: str):
-        from .gmm_visualizer import GMMVisualizer
+        if K is not None and K > self.K:
+            raise ValueError(
+                f"Specified K ({K}) cannot be larger than the GenomicPositionVisualizer window size ({self.K})"
+            )
 
-        gmm_viz = GMMVisualizer()
-        gmm_viz.plot_gmms(self._conditions)
+        cfg, pp_cfg = _split_and_normalize_configs(
+            gmm_config, preprocess_config, gmm_kwargs,
+            logger=self.logger,
+            GMMConfig=GMMConfig,
+            PreprocessConfig=PreprocessConfig,
+        )
+
+        handler = GMMHandler(
+            stat1, stat2,
+            K=K,
+            gmm_config=cfg,
+            preprocess_config=pp_cfg,
+            logger=self.logger,
+        )
+        handler.fit_gmms(self._conditions.values())
+        return handler
+    
+    def fit_gmms(
+        self,
+        stat1: str,
+        stat2: str,
+        K: Optional[int] = None,
+        *,
+        gmm_config: Optional["GMMConfig | dict"] = None,
+        preprocess_config: Optional["PreprocessConfig | dict"] = None,
+        **gmm_kwargs,
+    ):
+        handler = self._get_gmm_handler(
+            stat1, stat2, K,
+            gmm_config=gmm_config,
+            preprocess_config=preprocess_config,
+            **gmm_kwargs
+        )
+        return handler.conditions_gmms_
+    
+    def plot_gmms(
+        self,
+        stat1: str,
+        stat2: str,
+        K: Optional[int] = None,
+        *,
+        gmm_config: Optional["GMMConfig | dict"] = None,
+        preprocess_config: Optional["PreprocessConfig | dict"] = None,
+        **gmm_kwargs,  # mixed bag accepted (we'll split it)
+    ):
+        # Pass keyword-only args as keywords, and expand **gmm_kwargs
+        handler = self._get_gmm_handler(
+            stat1, stat2, K,
+            gmm_config=gmm_config,
+            preprocess_config=preprocess_config,
+            **gmm_kwargs
+        )
+
+        from .gmm import GMMVisualizer
+        gmm_viz = GMMVisualizer.from_handler(handler)
+        gmm_viz.show()
+        return gmm_viz
+
