@@ -159,6 +159,15 @@ class GMMHandler:
             )
         return rec.model
 
+    def get_condition_result(self, label: str) -> GaussianMixture:
+        rec = self.conditions_gmms_.get(label)
+        if rec is None or rec.model is None:
+            raise KeyError(
+                f"GMM for condition '{label}' not found. "
+                f"Have you called fit_gmms()? Available: {list(self.conditions_gmms_.keys())}"
+            )
+        return rec
+
     def predict_proba(self, label: str, X: np.ndarray) -> np.ndarray:
         model = self.get_condition_gmm(label)
         return model.predict_proba(self._ensure_2d(X))
