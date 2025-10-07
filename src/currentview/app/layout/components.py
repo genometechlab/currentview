@@ -590,9 +590,9 @@ def create_condition_parameters() -> dbc.Row:
             ),
             dbc.Col(
                 [
-                    html.Label("Target Base", className="modern-label"),
+                    html.Label("Matched Query Base", className="modern-label"),
                     dbc.Checklist(
-                        id="target-base",
+                        id="matched-query-base",
                         options=[
                             {"label": "A", "value": "A"},
                             {"label": "C", "value": "C"},
@@ -601,7 +601,7 @@ def create_condition_parameters() -> dbc.Row:
                         ],
                         value=[],
                         inline=False,
-                        className="target-base-grid",
+                        className="matched-query-base-grid",
                         style={
                             "display": "grid",
                             "gridTemplateColumns": "1fr 1fr",

@@ -32,7 +32,7 @@ class AlignmentExtractor:
         self,
         contig: str,
         target_position: int,
-        target_base: List[str] = None,
+        matched_query_base: List[str] = None,
         window_size: int = 9,
         exclude_reads_with_indels: bool = True,
         read_ids: Optional[Union[Set[str], List[str]]] = None,
@@ -57,14 +57,12 @@ class AlignmentExtractor:
         if window_size % 2 == 0:
             window_size += 1
 
-        if target_base is not None:
-            if not target_base:
-                target_base == None
-            else:
-                if isinstance(target_base, str):
-                    target_base = [target_base.upper()]
-                else:
-                    target_base = [base.upper() for base in target_base]
+        if not matched_query_base:
+            matched_query_base = None
+        elif isinstance(matched_query_base, str):
+            matched_query_base = [matched_query_base.upper()]
+        else:
+            matched_query_base = [s.upper() for s in matched_query_base]
 
         self.logger.info(f"Processing reads from bam file")
         self.logger.info(f"Looking in region {contig}:{target_position}")
@@ -73,7 +71,7 @@ class AlignmentExtractor:
         read_alignments = self._collect_read_alignments(
             contig,
             target_position,
-            target_base,
+            matched_query_base,
             window_size,
             exclude_reads_with_indels,
             read_ids,
@@ -86,7 +84,7 @@ class AlignmentExtractor:
         self,
         contig: str,
         target_position: int,
-        target_base: List[str],
+        matched_query_base: List[str],
         window_size: int,
         exclude_reads_with_indels: bool,
         read_ids: Optional[Set[str]],
@@ -140,15 +138,15 @@ class AlignmentExtractor:
                         is_reversed=True,
                     )
 
-                    # Only fetch reads with the specified target base if target base is provided
-                    if target_base is not None:
+                    # Only fetch reads with the specified query base base if matched_query_base is provided
+                    if matched_query_base is not None:
                         aligned_base = read_alignment.get_base_at_ref_pos(
                             target_position
                         )
                         if (
                             aligned_base is None
                             or aligned_base.query_base is None
-                            or aligned_base.query_base.upper() not in target_base
+                            or aligned_base.query_base.upper() not in matched_query_base
                         ):
                             continue
 

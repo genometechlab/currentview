@@ -25,7 +25,7 @@ def register_condition_callbacks():
             State("files-store", "data"),
             State("contig", "value"),
             State("position", "value"),
-            State("target-base", "value"),
+            State("matched-query-base", "value"),
             State("max-reads", "value"),
             State("condition-label", "value"),
             State("condition-color", "value"),
@@ -44,7 +44,7 @@ def register_condition_callbacks():
         files,
         contig,
         pos,
-        target_base,
+        matched_query_base,
         max_reads,
         label,
         color,
@@ -105,9 +105,9 @@ def register_condition_callbacks():
         # Generate label if not provided
         label = label or f"{contig}:{pos}"
 
-        # Handle target base
-        if not target_base:
-            target_base = None
+        # Handle matched_query_base
+        if not matched_query_base:
+            matched_query_base = None
 
         # Add condition to visualizer
         try:
@@ -116,7 +116,7 @@ def register_condition_callbacks():
                 pod5_path=str(files["pod5"]),
                 contig=contig,
                 target_position=int(pos),
-                target_base=target_base,
+                matched_query_base=matched_query_base,
                 max_reads=max_reads,
                 label=label,
                 color=color,
@@ -128,7 +128,7 @@ def register_condition_callbacks():
             # Create alert content with line breaks
             alert_content = str(e)
             raise e
-            
+
             return (
                 current_conditions,
                 alert_content,

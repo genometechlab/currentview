@@ -147,7 +147,7 @@ class GenomicPositionVisualizer:
         contig: str,
         target_position: int,
         *,  # Force keyword-only arguments after this
-        target_base: Optional[str] = None,
+        matched_query_base: Optional[str] = None,
         read_ids: Optional[Union[Set[str], List[str]]] = None,
         max_reads: Optional[int] = None,
         exclude_reads_with_indels: bool = False,
@@ -169,7 +169,7 @@ class GenomicPositionVisualizer:
             pod5_path: Path to POD5 signal file
             contig: Chromosome/contig name (e.g., 'chr1', 'chrX')
             target_position: Genomic position of interest (1-based)
-            target_base: Expected base at target position (for validation)
+            matched_query_base: Expected base at target position (for validation)
             read_ids: Specific read IDs to include (None = all reads)
             max_reads: Maximum number of reads to process
             exclude_reads_with_indels: Whether to exclude reads with insertions/deletions
@@ -213,7 +213,7 @@ class GenomicPositionVisualizer:
             pod5_path=pod5_path,
             contig=contig,
             target_position=target_position,
-            target_base=target_base,
+            matched_query_base=matched_query_base,
             read_ids=read_ids,
             max_reads=max_reads,
             exclude_reads_with_indels=exclude_reads_with_indels,
@@ -745,7 +745,7 @@ class GenomicPositionVisualizer:
         pod5_path: Union[str, Path],
         contig: str,
         target_position: int,
-        target_base: Optional[str],
+        matched_query_base: Optional[str],
         read_ids: Optional[Union[Set[str], List[str]]],
         max_reads: Optional[int],
         exclude_reads_with_indels: bool,
@@ -765,7 +765,7 @@ class GenomicPositionVisualizer:
             label,
             contig,
             target_position,
-            target_base,
+            matched_query_base,
             read_ids,
             max_reads,
             exclude_reads_with_indels,

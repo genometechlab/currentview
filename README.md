@@ -148,7 +148,7 @@ viz.plot_condition(
 - `pod5_path`: Path to POD5 signal file (Required) 
 - `contig`: Chromosome/contig name (e.g., "chr1") (Required) 
 - `target_position`: 0-based reference genomic position (Required)
-- `target_base`: To specify the read base matched to the reference target position (Default: None - toolkit doesn't care about the base matched to target position)
+- `matched_query_base`: To specify the read base matched to the reference target position (Default: None - toolkit doesn't care about the base matched to target position)
 - `read_ids`: Specific read IDs to include (default: None - fetched all aligned reads)
 - `max_reads`: Maximum number of reads to plot(default: None - No limitation of the fetched reads)
 - `exclude_reads_with_indels`: Skip reads with insertions/deletions (default: False)
