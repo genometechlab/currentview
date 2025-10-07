@@ -45,8 +45,6 @@ class SignalVisualizer:
             window_labels: Optional custom labels for x-axis
             plot_style: Optional PlotStyle configuration
             title: Optional custom title
-            width: Optional figure width in pixels
-            height: Optional figure height in pixels
             logger: Optional logger instance
         """
         self.logger = logger or logging.getLogger(__name__)
@@ -54,6 +52,9 @@ class SignalVisualizer:
 
         self.K = K
         self.window_labels = window_labels
+        if self.window_labels and len(self.window_labels) != self.K:
+            raise ValueError("window_labels must have length K")
+
 
         # Setup style
         self.style = plot_style or PlotStyle()
@@ -62,7 +63,10 @@ class SignalVisualizer:
             self._plot_func = go.Scatter
         elif self.style.renderer == "WebGL":
             self._plot_func = go.Scattergl
-
+        else:
+            self.logger.warning(f"Invalid renderer selected. Available options: 'SVG' and 'WebGL'")
+            self._plot_func = go.Scattergl
+            
         # Store initial title
         self.title = title or "Nanopore Signal Visualization"
 
@@ -78,9 +82,9 @@ class SignalVisualizer:
         self._plot_count = 0
         self._plotted_conditions_map: Dict[str, PlottedCondition] = OrderedDict()
 
-        # Store additional plot elements
-        self._highlight_shapes = []
-        self._annotation_indices = []
+        # store indices for shapes/annotations
+        self._highlight_shapes: List[int] = []
+        self._annotation_indices: List[int] = []
 
         # Track global y-axis limits
         self._global_y_min = float("inf")
@@ -237,54 +241,51 @@ class SignalVisualizer:
         self._plot_count += 1
 
     def _plot_signals(self, condition: Condition) -> Tuple[List[int], float, float]:
-        """Plot signals and return trace indices and y-axis bounds."""
-        trace_indices = []
+        trace_indices: List[int] = []
+        seg_x: List[np.ndarray] = []
+        seg_y: List[np.ndarray] = []
 
-        # Combine all signals for this condition
-        all_x = []
-        all_y = []
+        y_mins: List[float] = []
+        y_maxs: List[float] = []
 
-        # Track min/max for this condition
-        condition_y_min = float("inf")
-        condition_y_max = float("-inf")
+        pad = self.style.padding
 
-        # Plot each read
-        for read_idx, read_alignment in enumerate(condition.reads):
+        # Collect segments
+        for read_alignment in condition.reads:
             bases_dict = read_alignment.bases_by_ref_pos
-
-            # Plot signal for each position
             for pos_idx, genomic_pos in enumerate(condition.positions):
-                if genomic_pos in bases_dict and bases_dict[genomic_pos].has_signal:
-                    base = bases_dict[genomic_pos]
-                    signal = base.signal
+                base = bases_dict.get(genomic_pos)
+                if base is None or not base.has_signal:
+                    continue
 
-                    if read_alignment.is_reversed:
-                        signal = signal[::-1]
+                sig = base.signal
+                if read_alignment.is_reversed:
+                    sig = sig[::-1]  # still O(n) but necessary
 
-                    # Update condition's y-axis bounds
-                    if len(signal) > 0:
-                        condition_y_min = min(condition_y_min, np.min(signal))
-                        condition_y_max = max(condition_y_max, np.max(signal))
+                if len(sig) == 0:
+                    continue
 
-                    # Calculate x-coordinates
-                    signal_length = len(signal)
-                    x_start = pos_idx
-                    x_end = pos_idx + 1 - self.style.padding
-                    x_coords = np.linspace(x_start, x_end, signal_length)
+                sig_arr = np.asarray(sig, dtype=float)
+                y_mins.append(sig_arr.min())
+                y_maxs.append(sig_arr.max())
 
-                    # Add to combined data
-                    all_x.extend(x_coords)
-                    all_y.extend(signal)
+                # x coords for this segment (vectorized)
+                x0 = pos_idx
+                x1 = pos_idx + 1 - pad
+                x_arr = np.linspace(x0, x1, sig_arr.shape[0], dtype=float)
 
-                    # Add None to create line breaks between segments
-                    all_x.append(None)
-                    all_y.append(None)
+                seg_x.append(x_arr)
+                seg_y.append(sig_arr)
 
-        # Add single trace for all signals of this condition
-        if all_x:
-            show_legend = self.style.show_legend
+                # add a single NaN separator (Plotly breaks lines at NaN)
+                seg_x.append(np.array([np.nan]))
+                seg_y.append(np.array([np.nan]))
 
-            # Create the main trace with the actual opacity
+        if seg_x:
+            # Single concatenation rather than many list extends
+            all_x = np.concatenate(seg_x)
+            all_y = np.concatenate(seg_y)
+
             self.fig.add_trace(
                 self._plot_func(
                     x=all_x,
@@ -293,46 +294,46 @@ class SignalVisualizer:
                     name=condition.label,
                     line=dict(
                         color=condition.color,
-                        width=condition.line_width,
-                        dash=condition.line_style,
+                        width=condition.line_width or self.style.line_width,
+                        dash=condition.line_style or self.style.line_style,
                     ),
                     opacity=condition.alpha,
-                    showlegend=False,  # Hide this trace from legend
+                    showlegend=False,
                     legendgroup=condition.label,
                     hovertemplate="Position: %{x:.2f}<br>Signal: %{y:.1f} pA<extra></extra>",
                 )
             )
-
             trace_indices.append(len(self.fig.data) - 1)
 
-            # Add a dummy trace just for the legend with full opacity
-            if show_legend:
+            if self.style.show_legend:
                 self.fig.add_trace(
                     self._plot_func(
-                        x=[None],  # No actual data points
-                        y=[None],
+                        x=[np.nan],
+                        y=[np.nan],
                         mode="lines",
                         name=condition.label,
                         line=dict(
                             color=condition.color,
-                            width=condition.line_width,
-                            dash=condition.line_style,
+                            width=condition.line_width or self.style.line_width,
+                            dash=condition.line_style or self.style.line_style,
                         ),
-                        opacity=1.0,  # Full opacity in legend
+                        opacity=1.0,
                         showlegend=True,
                         legendgroup=condition.label,
-                        hoverinfo="skip",  # No hover for dummy trace
+                        hoverinfo="skip",
                     )
                 )
-
                 trace_indices.append(len(self.fig.data) - 1)
 
-        # Handle case where no valid signals were found
-        if condition_y_min == float("inf"):
-            condition_y_min = 0
-            condition_y_max = 100
+        # y-range logic
+        if y_mins:
+            condition_y_min = float(np.min(y_mins))
+            condition_y_max = float(np.max(y_maxs))
+        else:
+            condition_y_min, condition_y_max = 0.0, 100.0
 
         return trace_indices, condition_y_min, condition_y_max
+
 
     def _update_global_ylim(self):
         """Update global y-axis limits based on all plotted conditions."""
@@ -453,25 +454,21 @@ class SignalVisualizer:
             opacity=alpha,
             line=dict(width=0),
             layer="below",
-            name=f"user_highlight_{len(self._highlight_shapes)}",  # Custom identifier
         )
 
+        idx = len(self.fig.layout.shapes)
         self.fig.add_shape(**shape)
 
         # Store the index of the shape
-        self._highlight_shapes.append(shape["name"])
+        self._highlight_shapes.append(idx)
 
         return self
 
     def clear_highlights(self):
         """Remove all position highlights."""
         # Filter out our annotations
-        new_shapes = [
-            ann
-            for ann in self.fig.layout.shapes
-            if not (hasattr(ann, "name") and ann.name in self._highlight_shapes)
-        ]
-        self.fig.layout.shapes = new_shapes
+        keep = [i for i in range(len(self.fig.layout.shapes)) if i not in set(self._highlight_shapes)]
+        self.fig.layout.shapes = tuple(self.fig.layout.shapes[i] for i in keep)
         self._highlight_shapes.clear()
 
     def add_annotation(
@@ -511,26 +508,24 @@ class SignalVisualizer:
             ),
             bgcolor=color,
             borderpad=4,
-            name=f"user_annotation_{len(self._annotation_indices)}",  # Custom identifier
             **kwargs,
         )
 
+        idx = len(self.fig.layout.annotations)
         self.fig.add_annotation(**annotation)
-        self._annotation_indices.append(annotation["name"])
+        
+        # Store the index of the annotation
+        self._annotation_indices.append(idx)
 
         return self
 
     def clear_annotations(self) -> "SignalVisualizer":
         """Remove all annotations."""
         # Filter out our annotations
-        new_annotations = [
-            ann
-            for ann in self.fig.layout.annotations
-            if not (hasattr(ann, "name") and ann.name in self._annotation_indices)
-        ]
-        self.fig.layout.annotations = new_annotations
+        # Filter out our annotations
+        keep = [i for i in range(len(self.fig.layout.annotations)) if i not in set(self._annotation_indices)]
+        self.fig.layout.annotations = tuple(self.fig.layout.annotations[i] for i in keep)
         self._annotation_indices.clear()
-        return self
 
     def set_title(self, title: str) -> "SignalVisualizer":
         """Set or update the plot title."""
@@ -552,7 +547,10 @@ class SignalVisualizer:
         """Set y-axis limits manually (disables auto ylim)."""
         self.logger.debug(f"Setting y-axis limits: bottom={bottom}, top={top}")
         self._auto_ylim = False  # Disable auto adjustment when manually setting limits
-        self.fig.update_yaxes(range=[bottom, top])
+        rng = list(self.fig.layout.yaxis.range or [None, None])
+        if bottom is not None: rng[0] = bottom
+        if top is not None:    rng[1] = top
+        self.fig.update_yaxes(range=rng)
         return self
 
     def reset_view(self) -> "SignalVisualizer":
