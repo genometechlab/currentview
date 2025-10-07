@@ -14,7 +14,7 @@ class PlotStyle:
     height: int = 800  # pixels
 
     # Backend
-    renderer: Literal["SVG", "WebGL"] = "WebGL"
+    renderer: Literal["SVG", "WebGL"] = "SVG"
 
     # Trace styling
     line_width: float = 2.0
@@ -189,8 +189,8 @@ class PlotStyle:
             # Journal single column width at 300 DPI
             width=1050,  # 3.5 inches * 300 DPI
             height=700,  # 2.33 inches * 300 DPI (3:2 ratio)
-            # WebGL for performance
-            renderer="WebGL",
+            # SVG for performance
+            renderer="SVG",
             # Professional appearance
             template="plotly_white",
             # Crisp lines for print
@@ -239,8 +239,8 @@ class PlotStyle:
             # Journal two-column width at 300 DPI
             width=2100,  # 7.0 inches * 300 DPI
             height=1050,  # 3.5 inches * 300 DPI (2:1 ratio)
-            # WebGL for performance with larger plots
-            renderer="WebGL",
+            # SVG for performance with larger plots
+            renderer="SVG",
             # Professional appearance
             template="plotly_white",
             # Crisp lines for print
@@ -290,7 +290,7 @@ class PlotStyle:
             width=2400,  # 8 inches at 300 DPI
             height=1800,  # 6 inches at 300 DPI
             # Fast rendering for large plots
-            renderer="WebGL",
+            renderer="SVG",
             # Bold appearance
             template="plotly_white",
             # Thick lines for visibility
@@ -339,8 +339,8 @@ class PlotStyle:
             # 16:9 aspect ratio for slides
             width=1920,
             height=1080,
-            # WebGL for smooth transitions
-            renderer="WebGL",
+            # SVG for smooth transitions
+            renderer="SVG",
             # High contrast
             template="plotly_white",
             # Visible lines
@@ -391,8 +391,8 @@ class PlotStyle:
             # Standard screen size
             width=1200,
             height=800,
-            # WebGL for performance
-            renderer="WebGL",
+            # SVG for performance
+            renderer="SVG",
             # Modern appearance
             template="plotly_white",
             # Standard lines

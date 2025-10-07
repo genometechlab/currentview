@@ -241,91 +241,84 @@ class SignalVisualizer:
         self._plot_count += 1
 
     def _plot_signals(self, condition: Condition) -> Tuple[List[int], float, float]:
+        """Plot each read as its own trace (condition alpha applied per-read)."""
         trace_indices: List[int] = []
-        seg_x: List[np.ndarray] = []
-        seg_y: List[np.ndarray] = []
-
         y_mins: List[float] = []
         y_maxs: List[float] = []
 
         pad = self.style.padding
+        lw  = condition.line_width or self.style.line_width
+        ls  = condition.line_style or self.style.line_style
+        col = condition.color
+        alp = condition.alpha
 
-        # Collect segments
         for read_alignment in condition.reads:
             bases_dict = read_alignment.bases_by_ref_pos
+            seg_x: List[np.ndarray] = []
+            seg_y: List[np.ndarray] = []
+
             for pos_idx, genomic_pos in enumerate(condition.positions):
                 base = bases_dict.get(genomic_pos)
                 if base is None or not base.has_signal:
                     continue
 
                 sig = base.signal
-                if read_alignment.is_reversed:
-                    sig = sig[::-1]  # still O(n) but necessary
-
-                if len(sig) == 0:
+                if sig is None:
                     continue
+                sig_arr = np.asarray(sig, dtype=float).ravel()   # <- robust to list/np/scalar
+                if sig_arr.size == 0:
+                    continue
+                if read_alignment.is_reversed:
+                    sig_arr = sig_arr[::-1]
 
-                sig_arr = np.asarray(sig, dtype=float)
-                y_mins.append(sig_arr.min())
-                y_maxs.append(sig_arr.max())
+                y_mins.append(float(sig_arr.min()))
+                y_maxs.append(float(sig_arr.max()))
 
-                # x coords for this segment (vectorized)
                 x0 = pos_idx
                 x1 = pos_idx + 1 - pad
                 x_arr = np.linspace(x0, x1, sig_arr.shape[0], dtype=float)
 
                 seg_x.append(x_arr)
                 seg_y.append(sig_arr)
+                # break between positions
+                seg_x.append(np.array([np.nan], dtype=float))
+                seg_y.append(np.array([np.nan], dtype=float))
 
-                # add a single NaN separator (Plotly breaks lines at NaN)
-                seg_x.append(np.array([np.nan]))
-                seg_y.append(np.array([np.nan]))
+            if seg_x:
+                all_x = np.concatenate(seg_x)
+                all_y = np.concatenate(seg_y)
 
-        if seg_x:
-            # Single concatenation rather than many list extends
-            all_x = np.concatenate(seg_x)
-            all_y = np.concatenate(seg_y)
-
-            self.fig.add_trace(
-                self._plot_func(
-                    x=all_x,
-                    y=all_y,
-                    mode="lines",
-                    name=condition.label,
-                    line=dict(
-                        color=condition.color,
-                        width=condition.line_width or self.style.line_width,
-                        dash=condition.line_style or self.style.line_style,
-                    ),
-                    opacity=condition.alpha,
-                    showlegend=False,
-                    legendgroup=condition.label,
-                    hovertemplate="Position: %{x:.2f}<br>Signal: %{y:.1f} pA<extra></extra>",
-                )
-            )
-            trace_indices.append(len(self.fig.data) - 1)
-
-            if self.style.show_legend:
                 self.fig.add_trace(
                     self._plot_func(
-                        x=[np.nan],
-                        y=[np.nan],
+                        x=all_x,
+                        y=all_y,
                         mode="lines",
                         name=condition.label,
-                        line=dict(
-                            color=condition.color,
-                            width=condition.line_width or self.style.line_width,
-                            dash=condition.line_style or self.style.line_style,
-                        ),
-                        opacity=1.0,
-                        showlegend=True,
                         legendgroup=condition.label,
-                        hoverinfo="skip",
+                        showlegend=False,  # keep legend clean
+                        line=dict(color=col, width=lw, dash=ls),
+                        opacity=alp,
+                        hovertemplate="Position: %{x:.2f}<br>Signal: %{y:.1f} pA<extra></extra>",
                     )
                 )
                 trace_indices.append(len(self.fig.data) - 1)
 
-        # y-range logic
+        # one legend entry per condition
+        if self.style.show_legend:
+            self.fig.add_trace(
+                self._plot_func(
+                    x=[np.nan], y=[np.nan],
+                    mode="lines",
+                    name=condition.label,
+                    legendgroup=condition.label,
+                    showlegend=True,
+                    line=dict(color=col, width=lw, dash=ls),
+                    opacity=1.0,
+                    hoverinfo="skip",
+                )
+            )
+            trace_indices.append(len(self.fig.data) - 1)
+
         if y_mins:
             condition_y_min = float(np.min(y_mins))
             condition_y_max = float(np.max(y_maxs))
@@ -333,6 +326,7 @@ class SignalVisualizer:
             condition_y_min, condition_y_max = 0.0, 100.0
 
         return trace_indices, condition_y_min, condition_y_max
+
 
 
     def _update_global_ylim(self):
