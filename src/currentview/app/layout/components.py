@@ -447,7 +447,7 @@ def create_add_condition_card() -> html.Div:
                         [
                             dbc.Button(
                                 html.I(
-                                    className="bi bi-chevron-down",
+                                    className="bi bi-chevron-up",
                                     id="add-condition-chevron",
                                 ),
                                 id="toggle-add-condition",
