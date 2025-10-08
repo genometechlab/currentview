@@ -15,16 +15,6 @@ from .utils.plotly_utils import PlotStyle
 from .utils.color_utils import to_rgba_str, get_contrasting_color
 
 
-@dataclass
-class PlottedCondition:
-    """Track information about each plotted group."""
-
-    condition: Condition
-    position_labels: List[str]
-    y_min: float = field(default=float("inf"))
-    y_max: float = field(default=float("-inf"))
-
-
 class SignalVisualizer:
     """Handles all plotting, visualization, and figure management using Plotly."""
 
@@ -79,15 +69,14 @@ class SignalVisualizer:
         self._add_position_barriers()
 
         # Track plotting state
-        self._plotted_conditions_map: Dict[str, PlottedCondition] = OrderedDict()
+        self._conditions: "OrderedDict[str, Condition]" = OrderedDict()
+        self._position_labels_cache: Dict[str, List[str]] = {}
 
         # store indices for shapes/annotations
         self._highlight_shapes: List[str] = []
         self._annotation_indices: List[str] = []
 
         # Track global y-axis limits
-        self._global_y_min = float("inf")
-        self._global_y_max = float("-inf")
         self._auto_ylim = True  # Flag to enable/disable auto y-axis adjustment
 
         self.logger.info(f"Initialized SignalVisualizer with K={K}")
@@ -200,7 +189,7 @@ class SignalVisualizer:
         )
 
         # Check if condition already plotted
-        if label in self._plotted_conditions_map:
+        if label in self._conditions:
             self.logger.warning(f"Condition '{label}' already plotted. Updating it.")
             self.remove_condition(label)
 
@@ -208,6 +197,7 @@ class SignalVisualizer:
         self.logger.debug("Extracting reference bases")
         kmer_dict = self._extract_reference_bases(positions, reads)
         position_labels = [f"{pos} - {kmer_dict[pos]}" for pos in positions]
+        self._position_labels_cache[label] = position_labels
 
         line_style = line_style or self.style.line_style
         condition.line_style = line_style
@@ -218,29 +208,18 @@ class SignalVisualizer:
 
         # Plot the signals and get y-axis bounds
         self.logger.info(f"Plotting {len(reads)} reads for condition '{label}'")
-        y_min, y_max = self._plot_signals(condition)
+        self._plot_signals(condition)
 
-        # Store plotted condition with y-axis bounds
-        plotted_condition = PlottedCondition(
-            condition=condition,
-            position_labels=position_labels,
-            y_min=y_min,
-            y_max=y_max,
-        )
-        self._plotted_conditions_map[label] = plotted_condition
-
-        # Update global y-axis limits
-        self._update_global_ylim()
+        # Store plotted condition
+        self._conditions[condition.label] = condition
 
         # Update position labels
+        self._update_global_ylim()
         if not self.window_labels:
             self._update_position_labels()
 
-    def _plot_signals(self, condition: Condition) -> Tuple[List[int], float, float]:
+    def _plot_signals(self, condition: Condition):
         """Plot each read as its own trace (condition alpha applied per-read)."""
-        y_mins: List[float] = []
-        y_maxs: List[float] = []
-
         pad = self.style.padding
         lw = condition.line_width or self.style.line_width
         ls = condition.line_style or self.style.line_style
@@ -267,9 +246,6 @@ class SignalVisualizer:
                     continue
                 if read_alignment.is_reversed:
                     sig_arr = sig_arr[::-1]
-
-                y_mins.append(float(sig_arr.min()))
-                y_maxs.append(float(sig_arr.max()))
 
                 x0 = pos_idx
                 x1 = pos_idx + 1 - pad
@@ -317,58 +293,43 @@ class SignalVisualizer:
                 )
             )
 
-        if y_mins:
-            condition_y_min = float(np.min(y_mins))
-            condition_y_max = float(np.max(y_maxs))
-        else:
-            condition_y_min, condition_y_max = 0.0, 100.0
-
-        return condition_y_min, condition_y_max
-
     def _update_global_ylim(self):
         """Update global y-axis limits based on all plotted conditions."""
         if not self._auto_ylim:
             return
 
-        # Reset global limits
-        self._global_y_min = float("inf")
-        self._global_y_max = float("-inf")
-
-        # Find min/max across all conditions
-        for plotted_condition in self._plotted_conditions_map.values():
-            self._global_y_min = min(self._global_y_min, plotted_condition.y_min)
-            self._global_y_max = max(self._global_y_max, plotted_condition.y_max)
-
-        # Add some padding (5% on each side)
-        if self._global_y_min != float("inf") and self._global_y_max != float("-inf"):
-            y_range = self._global_y_max - self._global_y_min
-            padding = max(1e-6, y_range * 0.05)
-
-            self.logger.debug(
-                f"Updating y-axis limits: [{self._global_y_min - padding:.1f}, {self._global_y_max + padding:.1f}]"
-            )
-
-            self.fig.update_yaxes(
-                range=[self._global_y_min - padding, self._global_y_max + padding]
-            )
+        ys = []
+        for tr in self.fig.data:
+            arr = np.asarray(getattr(tr, "y", []), dtype=float)
+            if arr.size:
+                arr = arr[np.isfinite(arr)]
+                if arr.size:
+                    ys.extend(arr)
+        if not ys:
+            return
+        ymin, ymax = float(np.min(ys)), float(np.max(ys))
+        pad = max(1e-6, (ymax - ymin) * 0.05)
+        self.logger.debug(f"Updating y-axis limits to [{ymin - pad}, {ymax + pad}]")
+        self.fig.update_yaxes(range=[ymin - pad, ymax + pad])
 
     def remove_condition(self, label: str) -> bool:
         """Remove a specific condition from the plot."""
-        if label not in self._plotted_conditions_map:
+        if label not in self._conditions:
             self.logger.warning(f"Condition '{label}' not found in plot")
             return False
 
         self.logger.info(f"Removing condition '{label}' from plot")
 
         # Remove traces
-        new_data = []
-        for trace in self.fig.data:
-            if getattr(trace, "meta", {}).get("cond") != label:
-                new_data.append(trace)
-        self.fig.data = tuple(new_data)
+        kept = []
+        for tr in self.fig.data:
+            if getattr(tr, "meta", {}).get("cond") != label:
+                kept.append(tr)
+        self.fig.data = tuple(kept)
 
         # Remove from plotted conditions
-        self._plotted_conditions_map.pop(label, None)
+        self._conditions.pop(label, None)
+        self._position_labels_cache.pop(label, None)
 
         # Update y-axis limits
         self._update_global_ylim()
@@ -384,14 +345,11 @@ class SignalVisualizer:
         self.logger.info("Clearing all conditions from plot")
 
         # Clear all traces
-        self.fig.data = []
+        self.fig.data = tuple()
 
         # Clear the map
-        self._plotted_conditions_map.clear()
-
-        # Reset y-axis limits
-        self._global_y_min = float("inf")
-        self._global_y_max = float("-inf")
+        self._conditions.clear()
+        self._position_labels_cache.clear()
 
         # Update position labels
         if not self.window_labels:
@@ -618,11 +576,11 @@ class SignalVisualizer:
 
     def get_plotted_labels(self) -> List[str]:
         """Get list of currently plotted condition labels."""
-        return list(self._plotted_conditions_map.keys())
+        return list(self._conditions.keys())
 
     def has_condition(self, label: str) -> bool:
         """Check if a condition is currently plotted."""
-        return label in self._plotted_conditions_map
+        return label in self._conditions
 
     def _extract_reference_bases(
         self, positions: List[int], reads: List[ReadAlignment]
@@ -651,27 +609,33 @@ class SignalVisualizer:
         """Update x-axis labels based on plotted conditions."""
         self.logger.debug("Updating position labels")
 
-        plotted_conditions = list(self._plotted_conditions_map.values())
-        n_conditions = len(plotted_conditions)
-
         tick_positions = np.arange(self.K) + 0.5 - self.style.padding / 2
 
-        if n_conditions == 0:
+        if not self._conditions:
             # Default labels
-            tick_text = [str(i) for i in range(self.K)]
-        elif n_conditions == 1:
+            tick_text = (
+                [str(i) for i in range(self.K)]
+                if not self.window_labels
+                else [str(l) for l in self.window_labels]
+            )
+        elif len(self._conditions) == 1:
             # Single condition labels
-            tick_text = plotted_conditions[0].position_labels
+            label = next(iter(self._conditions))
+            tick_text = self._position_labels_cache.get(
+                label, [str(i) for i in range(self.K)]
+            )
         else:
             # Multiple conditions - create multi-line labels
             tick_text = []
             for i in range(self.K):
-                labels = []
-                for cond in plotted_conditions:
-                    color = cond.condition.color
-                    label = cond.position_labels[i]
-                    labels.append(f"<span style='color:{color}'>{label}</span>")
-                tick_text.append("<br>".join(labels))
+                lines = []
+                for label, cond in self._conditions.items():
+                    color = cond.color or self.style.default_color
+                    pos_labels = self._position_labels_cache.get(label)
+                    # if cache missing, fallback gracefully
+                    text = pos_labels[i] if pos_labels else str(i)
+                    lines.append(f"<span style='color:{color}'>{text}</span>")
+                tick_text.append("<br>".join(lines))
 
         self.fig.update_xaxes(
             tickmode="array", tickvals=tick_positions, ticktext=tick_text
