@@ -53,9 +53,9 @@ class SignalVisualizer:
             self._plot_func = go.Scattergl
         else:
             self.logger.warning(
-                f"Invalid renderer selected. Available options: 'SVG' and 'WebGL'"
+                f"Invalid renderer selected. Available options: 'SVG' and 'WebGL'. Defaulting to 'SVG'."
             )
-            self._plot_func = go.Scattergl
+            self._plot_func = go.Scatter
 
         # Store initial title
         self.title = title or "Nanopore Signal Visualization"
@@ -198,13 +198,6 @@ class SignalVisualizer:
         kmer_dict = self._extract_reference_bases(positions, reads)
         position_labels = [f"{pos} - {kmer_dict[pos]}" for pos in positions]
         self._position_labels_cache[label] = position_labels
-
-        line_style = line_style or self.style.line_style
-        condition.line_style = line_style
-
-        # Use style defaults
-        line_width = line_width or self.style.line_width
-        condition.line_width = line_width
 
         # Plot the signals and get y-axis bounds
         self.logger.info(f"Plotting {len(reads)} reads for condition '{label}'")
