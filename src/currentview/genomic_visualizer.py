@@ -219,6 +219,10 @@ class GenomicPositionVisualizer:
             self._label_to_color_idx[label] = color_idx
             color = self.color_palette.colors[color_idx]
 
+        # Use style defaults
+        line_style = line_style or self.signals_plot_style.line_style
+        line_width = line_width or self.signals_plot_style.line_width
+
         # Process the data
         processed_data = self._process_condition_data(
             bam_path=bam_path,
