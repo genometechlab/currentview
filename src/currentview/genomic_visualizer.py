@@ -118,6 +118,10 @@ class GenomicPositionVisualizer:
             self.color_palette = color_palette
         else:
             self.color_palette = ColorPalette.default_palette()
+        self._label_to_color_idx: Dict[str, int] = {}
+        self._free_color_idxs: List[int] = list(range(len(self.color_palette.colors)))
+
+        # Set title
         self.title = title
 
         # Lazy-initialized visualizers
@@ -156,7 +160,6 @@ class GenomicPositionVisualizer:
         alpha: Optional[float] = None,
         line_width: Optional[float] = None,
         line_style: Optional[str] = None,
-        overwrite: Optional[bool] = False,
     ) -> "GenomicPositionVisualizer":
         """
         Add and process a new condition.
@@ -178,7 +181,6 @@ class GenomicPositionVisualizer:
             alpha: Transparency (0-1, auto-calculated based on read count if None)
             line_width: Line width for signal plots
             line_style: Line style ('-', '--', ':', '-.')
-            overwrite: Whether to overwrite existing condition with same label
 
         Returns:
             self for method chaining
@@ -194,18 +196,28 @@ class GenomicPositionVisualizer:
 
         # Check for duplicates
         if label in self._conditions:
-            if overwrite is False:
-                raise KeyError(
-                    f"Condition '{label}' already exists. "
-                    f"Please use a unique label or remove the existing condition first."
-                )
-            else:
-                self.logger.info(f"Overwriting the previous label: {label}")
+            raise KeyError(
+                f"Condition '{label}' already exists. "
+                f"Please use a unique label or remove the existing condition first."
+            )
 
         # Assign color if not specified
         if color is None:
-            color_index = len(self._conditions) % len(self.color_palette.colors)
-            color = self.color_palette.colors[color_index]
+            if label in self._label_to_color_idx:
+                color_idx = self._label_to_color_idx[label]
+                return self.color_palette.colors[color_idx]
+
+            if not self._free_color_idxs:
+                self.logger.warning(
+                    "All colors in the palette are used. Reusing colors."
+                )
+                color_idx = len(self._label_to_color_idx) % len(
+                    self.color_palette.colors
+                )
+            else:
+                color_idx = self._free_color_idxs.pop(0)
+            self._label_to_color_idx[label] = color_idx
+            color = self.color_palette.colors[color_idx]
 
         # Process the data
         processed_data = self._process_condition_data(
@@ -711,6 +723,12 @@ class GenomicPositionVisualizer:
         else:
             # Mark as dirty to update on next display
             self._update_signal_viz = True
+
+        # reclaim color index
+        color_idx = self._label_to_color_idx.pop(label, None)
+        if color_idx is not None and color_idx not in self._free_color_idxs:
+            self._free_color_idxs.append(color_idx)
+            self._free_color_idxs.sort()
 
         # Mark stats as dirty
         self._update_stats_viz = True
