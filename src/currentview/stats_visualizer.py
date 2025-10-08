@@ -82,7 +82,7 @@ class StatsVisualizer:
         self.logger.debug("Creating Plotly figure with subplots")
 
         # Set subplot titles for first row only
-        column_titles = self.window_labels or [f"Position {i}" for i in range(self.K)]
+        column_titles = self.window_labels or [f"Pos {i+1}" for i in range(self.K)]
         column_titles = [str(title) for title in column_titles[: self.K]]
 
         # Calculate spacing
