@@ -17,15 +17,6 @@ from .utils.plotly_utils import PlotStyle
 from .utils.color_utils import to_rgba_str
 
 
-@dataclass
-class PlottedCondition:
-    """Track information about each plotted group."""
-
-    condition: Condition
-    position_labels: List[str]
-    trace_indices: List[int] = field(default_factory=list)  # Trace indices in fig.data
-
-
 class StatsVisualizer:
     """Handles all plotting, visualization, and figure management using Plotly."""
 
@@ -68,6 +59,11 @@ class StatsVisualizer:
             self._plot_func = go.Scatter
         elif self.style.renderer == "WebGL":
             self._plot_func = go.Scattergl
+        else:
+            self.logger.warning(
+                f"Invalid renderer selected. Available options: 'SVG' and 'WebGL'. Defaulting to 'SVG'."
+            )
+            self._plot_func = go.Scatter
 
         # Store initial title
         self.title = title or "Nanopore Signal Statistics"
@@ -77,8 +73,7 @@ class StatsVisualizer:
         self._create_figure()
 
         # Track plotting state
-        self._plot_count = 0
-        self._plotted_conditions_map: Dict[str, PlottedCondition] = OrderedDict()
+        self._conditions: Dict[str, Condition] = OrderedDict()
 
         self.logger.info(f"Initialized StatsVisualizer with K={K}, n_stats={n_stats}")
 
@@ -88,6 +83,7 @@ class StatsVisualizer:
 
         # Set subplot titles for first row only
         column_titles = self.window_labels or [f"Position {i}" for i in range(self.K)]
+        column_titles = [str(title) for title in column_titles[: self.K]]
 
         # Calculate spacing
         v_spacing = self.style.subplot_vertical_spacing or (
@@ -103,7 +99,7 @@ class StatsVisualizer:
             cols=self.K,
             subplot_titles=None,
             row_titles=self.stats_names,  # Keep stats names on the right
-            column_titles=None,
+            column_titles=column_titles,
             vertical_spacing=v_spacing,
             horizontal_spacing=h_spacing,
             specs=[
@@ -115,8 +111,8 @@ class StatsVisualizer:
         layout_dict = self.style.get_layout_dict()
 
         # Remove axis defaults that only apply to main axes
-        xaxis_layout = layout_dict.pop("xaxis", None)
-        yaxis_layout = layout_dict.pop("yaxis", None)
+        xaxis_layout = layout_dict.pop("xaxis", {}) or {}
+        yaxis_layout = layout_dict.pop("yaxis", {}) or {}
 
         if "title" not in layout_dict:
             layout_dict["title"] = {}
@@ -128,13 +124,7 @@ class StatsVisualizer:
                 "xanchor": "center",
             }
         )
-        yaxis_layout.update(
-            {
-                "showticklabels": False,  # Hide tick labels
-                "ticks": "",  # Hide tick marks (empty string)
-                "showgrid": False,
-            }
-        )
+        yaxis_layout.update({"showticklabels": False, "ticks": "", "showgrid": False})
 
         self.fig.update_layout(**layout_dict)
 
@@ -157,120 +147,65 @@ class StatsVisualizer:
                     col=col,
                 )
 
-        if not self.window_labels:
-            self._create_position_annotations()
-
-    def _create_position_annotations(self):
-        """Tag annotations with metadata for column titles, keeping order."""
-        new_annotations = []
-
-        for ann in self.fig.layout.annotations:
-            ann_dict = ann.to_plotly_json()  # Convert to plain dict
-
-            if "text" in ann_dict and "Position" in ann_dict["text"]:
-                ann_dict["name"] = "ColumnTitle_" + ann_dict["text"]  # Add your marker
-            new_annotations.append(ann_dict)
-
-        # Replace layout.annotations with new dict-based ones
-        self.fig.layout.annotations = new_annotations
-
     def plot_condition(self, condition: Condition):
         """Plot a processed group of reads."""
         reads = condition.reads
         positions = condition.positions
         label = condition.label
         color = condition.color
-        opacity = condition.alpha
-        line_width = condition.line_width
-        line_style = condition.line_style
 
         self.logger.debug(
             f"plot_condition called: label='{label}', n_reads={len(reads)}, positions={positions[0]}-{positions[-1]}"
         )
 
         # Check if condition already plotted
-        if label in self._plotted_conditions_map:
+        if label in self._conditions:
             self.logger.warning(f"Condition '{label}' already plotted. Updating it.")
             self.remove_condition(label)
 
-        # Extract reference bases
-        self.logger.debug("Extracting reference bases for k-mer labels")
-        kmer_dict = self._extract_reference_bases(positions, reads)
-        position_labels = [f"{pos} - {kmer_dict[pos]}" for pos in positions]
-
-        line_style = line_style or self.style.line_style
-        condition.line_style = line_style
-
-        # Use style defaults
-        line_width = line_width or self.style.line_width
-        condition.line_width = line_width
-
         # Plot the stats and collect trace indices
         self.logger.info(f"Plotting stats for condition '{label}'")
-        trace_indices = self._plot_stats(condition)
+        self._plot_stats(condition)
 
         # Store plotted condition
-        self._plotted_conditions_map[label] = PlottedCondition(
-            condition=condition,
-            position_labels=position_labels,
-            trace_indices=trace_indices,
-        )
+        self._conditions[condition.label] = condition
 
-        # Update position labels
-        if not self.window_labels:
-            self._update_position_labels()
-
-        self._plot_count += 1
-        self.logger.debug(f"Plot count incremented to {self._plot_count}")
-
-    def _plot_stats(self, condition: Condition) -> List[int]:
-        """Plot statistics and return trace indices."""
-        trace_indices = []
-
-        stats_data = condition.stats
+    def _plot_stats(self, condition: Condition):
+        """Plot statistics for a condition."""
+        stats_data = condition.stats or {}
         positions = condition.positions
-
-        # Show legend for all conditions
         show_legend = self.style.show_legend
 
-        # Plot each statistic
         for stat_idx, stat_name in enumerate(self.stats_names):
             row = stat_idx + 1
-
-            # Plot KDE for each position
             for pos_idx, position in enumerate(positions):
                 col = pos_idx + 1
+                if position not in stats_data or stat_name not in stats_data[position]:
+                    continue
 
-                if position in stats_data and stat_name in stats_data[position]:
-                    values = stats_data[position][stat_name]
+                values = np.asarray(stats_data[position][stat_name], dtype=float)
+                values = values[np.isfinite(values)]
+                if values.size == 0:
+                    continue
 
-                    if values is not None and len(values) > 0:
-                        # Only show legend for first subplot
-                        show_legend_here = (
-                            show_legend and stat_idx == 0 and pos_idx == 0
-                        )
+                show_legend_here = show_legend and stat_idx == 0 and pos_idx == 0
 
-                        trace_idx = self._plot_single_kde(
-                            values=values,
-                            label=condition.label,
-                            color=condition.color,
-                            opacity=condition.alpha,
-                            line_width=condition.line_width,
-                            line_style=condition.line_style,
-                            row=row,
-                            col=col,
-                            showlegend=show_legend_here,
-                            legendgroup=condition.label,
-                        )
-
-                        if trace_idx is not None:
-                            trace_indices.append(trace_idx)
-
-        return trace_indices
+                self._plot_single_kde(
+                    values=values,
+                    label=condition.label,
+                    color=condition.color,
+                    opacity=condition.alpha,
+                    line_width=condition.line_width,
+                    line_style=condition.line_style,
+                    row=row,
+                    col=col,
+                    showlegend=show_legend_here,
+                    legendgroup=condition.label,
+                )
 
     def _plot_single_kde(
         self,
-        values: List[float],
+        values: np.ndarray,
         label: str,
         color: str,
         opacity: float,
@@ -280,20 +215,20 @@ class StatsVisualizer:
         col: int,
         showlegend: bool,
         legendgroup: str,
-    ) -> Optional[int]:
-        """Plot KDE on a single subplot and return trace index."""
-        values = np.array(values)
+    ):
+        values = np.asarray(values, dtype=float)
 
-        if len(values) > 2:  # Need at least 3 values for KDE
+        if values.size > 2:
             try:
+                vmin, vmax = float(values.min()), float(values.max())
+                if vmin == vmax:
+                    pad = max(1e-6, abs(vmin) * 1e-3 or 1e-3)
+                    vmin, vmax = vmin - pad, vmax + pad
+                x_range = np.linspace(vmin, vmax, 200)
                 kde = gaussian_kde(values)
-                x_range = np.linspace(values.min(), values.max(), 200)
                 density = kde(x_range)
 
-                # Convert color to RGBA for fill
                 fill_color = to_rgba_str(color, 0.2)
-
-                # Single trace with both line and fill
                 self.fig.add_trace(
                     self._plot_func(
                         x=x_range,
@@ -305,151 +240,76 @@ class StatsVisualizer:
                         fillcolor=fill_color,
                         showlegend=showlegend,
                         legendgroup=legendgroup,
+                        meta={"cond": label, "kind": "kde"},
                         hovertemplate="%{x:.2f}<br>Density: %{y:.3f}<extra></extra>",
                     ),
                     row=row,
                     col=col,
                 )
-
-                return len(self.fig.data) - 1
-
+                return
             except Exception as e:
-                self.logger.warning(f"KDE failed: {e}")
-                return None
+                self.logger.warning(
+                    f"KDE failed for {label} (row={row}, col={col}): {e}"
+                )
 
-        else:
-            # For few values, plot as scatter with jitter
-            y_jitter = np.random.normal(0, 0.02, len(values))
-
-            self.fig.add_trace(
-                self._plot_func(
-                    x=values,
-                    y=y_jitter,
-                    mode="markers",
-                    name=label,
-                    marker=dict(color=color, size=8, opacity=opacity * 0.6),
-                    showlegend=showlegend,
-                    legendgroup=legendgroup,
-                    hovertemplate="Value: %{x:.2f}<extra></extra>",
-                ),
-                row=row,
-                col=col,
-            )
-
-            return len(self.fig.data) - 1
+        # Fallback: jitter points (values.size <= 2 or KDE failed)
+        y_jitter = np.random.normal(0, 0.02, values.size)
+        self.fig.add_trace(
+            self._plot_func(
+                x=values,
+                y=y_jitter,
+                mode="markers",
+                name=label,
+                marker=dict(color=color, size=8, opacity=opacity * 0.6),
+                showlegend=showlegend,
+                legendgroup=legendgroup,
+                meta={"cond": label, "kind": "kde"},
+                hovertemplate="Value: %{x:.2f}<extra></extra>",
+            ),
+            row=row,
+            col=col,
+        )
 
     def remove_condition(self, label: str) -> bool:
         """Remove a specific condition from the plot."""
-        if label not in self._plotted_conditions_map:
+        if label not in self._conditions:
             self.logger.warning(f"Condition '{label}' not found in plot")
             return False
 
         self.logger.info(f"Removing condition '{label}' from plot")
 
-        # Get the condition
-        condition = self._plotted_conditions_map[label]
-
         # Remove traces (in reverse order to maintain indices)
-        for idx in sorted(condition.trace_indices, reverse=True):
-            if idx < len(self.fig.data):
-                self.fig.data = self.fig.data[:idx] + self.fig.data[idx + 1 :]
+        kept = []
+        for tr in self.fig.data:
+            if getattr(tr, "meta", {}).get("cond") != label:
+                kept.append(tr)
+        self.fig.data = tuple(kept)
 
         # Remove from plotted conditions
-        del self._plotted_conditions_map[label]
-
-        # Update trace indices for remaining conditions
-        self._update_trace_indices()
-
-        # Update position labels
-        if not self.window_labels:
-            self._update_position_labels()
+        self._conditions.pop(label, None)
 
         self.logger.debug(f"Successfully removed condition '{label}'")
         return True
-
-    def _update_trace_indices(self):
-        """Update trace indices after removal."""
-        # This is needed because removing traces changes indices
-        current_idx = 0
-        for condition in self._plotted_conditions_map.values():
-            new_indices = []
-            for _ in condition.trace_indices:
-                new_indices.append(current_idx)
-                current_idx += 1
-            condition.trace_indices = new_indices
 
     def clear_conditions(self):
         """Remove all plotted conditions."""
         self.logger.info("Clearing all conditions from plot")
 
         # Clear all traces
-        self.fig.data = []
+        self.fig.data = tuple()
 
         # Clear the map
-        self._plotted_conditions_map.clear()
-
-        # Reset plot count
-        self._plot_count = 0
-
-        # Update position labels
-        if not self.window_labels:
-            self._update_position_labels()
+        self._conditions.clear()
 
         self.logger.debug("All conditions cleared")
 
-    def _update_position_labels(self):
-        """Update x-axis labels based on plotted conditions."""
-        if True:
-            return
-        self.logger.debug("Updating position labels")
-
-        plotted_conditions = list(self._plotted_conditions_map.values())
-        n_conditions = len(plotted_conditions)
-
-        if n_conditions == 0:
-            # Default labels
-            titles_text = [str(i) for i in range(self.K)]
-        elif n_conditions == 1:
-            # Single condition labels
-            titles_text = plotted_conditions[0].position_labels
-        else:
-            # Multiple conditions - create multi-line labels
-            titles_text = []
-            for i in range(self.K):
-                labels = []
-                for cond in plotted_conditions:
-                    color = cond.condition.color
-                    label = cond.position_labels[i]
-                    labels.append(f"<span style='color:{color}'>{label}</span>")
-                titles_text.append("<br>".join(labels * 3))
-
-        # Update the first K subplot titles (one per column in row=1)
-        for ann in self.fig.layout.annotations:
-            ann_dict = ann.to_plotly_json()
-
-            # Check if this is a positional column title
-            name = ann_dict.get("name")
-            if not (isinstance(name, str) and "ColumnTitle_Position" in name):
-                continue
-
-            # Extract index from text like "Position 3"
-            curr_txt = ann_dict.get("text", "")
-            print(f"Original text: {curr_txt}")
-
-            try:
-                idx = int(name.split(" ")[-1])
-                ann["text"] = titles_text[idx]  # use the real index from the label
-            except (IndexError, ValueError) as e:
-                print(f"Skipping annotation with invalid text: {curr_txt}")
-                continue
-
     def get_plotted_labels(self) -> List[str]:
         """Get list of currently plotted condition labels."""
-        return list(self._plotted_conditions_map.keys())
+        return list(self._conditions.keys())
 
     def has_condition(self, label: str) -> bool:
         """Check if a condition is currently plotted."""
-        return label in self._plotted_conditions_map
+        return label in self._conditions
 
     def set_title(self, title: str) -> "StatsVisualizer":
         """Set or update the plot title."""
@@ -516,13 +376,6 @@ class StatsVisualizer:
         except Exception as e:
             self.logger.error(f"Failed to save figure: {type(e).__name__}: {str(e)}")
             raise
-
-    def _get_next_color(self) -> str:
-        """Get the next color from the palette."""
-        color_index = len(self._color_assignments) % len(self.color_sequence)
-        color = self.color_sequence[color_index]
-        self.logger.debug(f"Getting color {color_index} from palette: {color}")
-        return color
 
     def _extract_reference_bases(
         self, positions: List[int], reads: List[ReadAlignment]
