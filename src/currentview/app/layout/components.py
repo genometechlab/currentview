@@ -391,7 +391,7 @@ def create_advanced_options() -> html.Div:
                             dbc.Checklist(
                                 id="style-options",
                                 options=STYLE_OPTIONS,
-                                value=["webgl"],
+                                value=[],
                                 inline=True,
                                 className="modern-checklist",
                             ),
