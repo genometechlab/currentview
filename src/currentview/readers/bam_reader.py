@@ -126,7 +126,7 @@ class AlignmentExtractor:
                 self.logger.info(
                     f"Oversampling to {oversample} reads to account for later filters"
                 )
-                candidate_ids = self._sample_candidate_ids_fast(
+                candidate_ids = self._sample_candidate_ids(
                     bam=bam,
                     contig=contig,
                     start_pos=start_pos,
@@ -134,6 +134,9 @@ class AlignmentExtractor:
                     matched_query_base=matched_query_base,
                     max_reads=oversample,
                     target_position=target_position,  # focus on the exact site
+                )
+                self.logger.info(
+                    f"A total of {len(candidate_ids)} candidate reads sampled"
                 )
                 if not candidate_ids:
                     self.logger.warning(
@@ -396,7 +399,7 @@ class AlignmentExtractor:
 
     def _extract_ts_tag(self, read: pysam.AlignedSegment) -> int:
         """Extract the TS from read tags."""
-        # Try direct tag access
+        # Try direct tag access_
         for tag, val, dtype in read.get_tags(with_value_type=True):
             if tag == "ts" and dtype == "i":
                 return val
@@ -436,7 +439,7 @@ class AlignmentExtractor:
                 base_to_range[i] = SignalRange(start_idx, end_idx)
         return base_to_range
 
-    def _sample_candidate_ids_fast(
+    def _sample_candidate_ids(
         self,
         *,
         bam: pysam.AlignmentFile,
