@@ -260,7 +260,7 @@ class AlignmentExtractor:
                 aligned_bases=aligned_bases,
                 target_position=target_position,
                 window_size=window_size,
-                is_reversed=read.is_reverse,  # use real orientation
+                is_reversed=True,
             )
 
             if matched_query_base is not None:
