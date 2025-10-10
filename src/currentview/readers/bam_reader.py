@@ -15,7 +15,10 @@ class AlignmentExtractor:
     """API for extracting nanopore signal data aligned to genomic positions."""
 
     def __init__(
-        self, bam_path: Union[str, Path], logger: Optional[logging.Logger] = None
+        self,
+        bam_path: Union[str, Path],
+        logger: Optional[logging.Logger] = None,
+        random_state: int = 42,
     ):
         """
         Initialize the alignment extractor with BAM file path.
@@ -27,6 +30,8 @@ class AlignmentExtractor:
 
         self.logger = logger or logging.getLogger(__name__)
         self.logger.debug(f"Initializing AlignmentExtractor on {self.bam_path.name}")
+
+        self.random_state = random_state
 
     def extract_alignments(
         self,
@@ -50,6 +55,14 @@ class AlignmentExtractor:
         Returns:
             List of ReadAlignment objects
         """
+        # if both read_ids and max_reads are set, ignore max_reads and use read_ids
+        if read_ids is not None and max_reads is not None:
+            self.logger.info(
+                f"Both read_ids and max_reads are set. Ignoring max_reads and using read_ids."
+            )
+            max_reads = None
+
+        # Convert read_ids to set for faster lookup
         if read_ids is not None and isinstance(read_ids, list):
             read_ids = set(read_ids)
 
@@ -57,6 +70,7 @@ class AlignmentExtractor:
         if window_size % 2 == 0:
             window_size += 1
 
+        # Normalize matched_query_base to uppercase list
         if not matched_query_base:
             matched_query_base = None
         elif isinstance(matched_query_base, str):
@@ -84,88 +98,189 @@ class AlignmentExtractor:
         self,
         contig: str,
         target_position: int,
-        matched_query_base: List[str],
+        matched_query_base: Optional[List[str]],
         window_size: int,
         exclude_reads_with_indels: bool,
         read_ids: Optional[Set[str]],
         max_reads: Optional[int],
     ) -> List[ReadAlignment]:
         """Collect alignment information for reads covering the target region."""
-
-        # Increasing window size for search to cinsider early insertions
-        search_window = window_size * 3
-
+        # Search window (small bump to catch early indels)
+        search_window = window_size + 4
         half_window = (search_window - 1) // 2
         start_pos = max(target_position - half_window, 0)
         end_pos = target_position + half_window
 
-        read_alignments = []
-        read_count = 0
-
         with pysam.AlignmentFile(self.bam_path, mode="rb", threads=16) as bam:
-
             if contig not in bam.references:
-                raise KeyError(f"Contig not found in the bam file")
+                raise KeyError(f"Contig {contig!r} not found in BAM references")
 
-            region = {
-                "contig": contig,
-                "start": start_pos,
-                "stop": end_pos + 1,
-            }
+            if max_reads is not None and read_ids is None:
+                # --- Branch A: fast candidate sampling via pileup, then heavy only for sampled IDs ---
+                self.logger.info(
+                    f"Sampling up to {max_reads} candidate reads covering {contig}:{target_position}"
+                )
 
-            # Fetching reads
-            for read in bam.fetch(**region):
-
-                # Skip if not in read_ids (when specified)
-                if read_ids is not None and read.query_name not in read_ids:
-                    continue
-
-                try:
-                    # Extract aligned bases with signal mapping
-                    aligned_bases = self._extract_aligned_bases(
-                        read, start_pos, end_pos
+                # oversample to account for later rejections (indels etc.)
+                oversample = int(np.ceil(max_reads * 1.5))
+                candidate_ids = self._sample_candidate_ids_fast(
+                    bam=bam,
+                    contig=contig,
+                    start_pos=start_pos,
+                    end_pos=end_pos,
+                    matched_query_base=matched_query_base,
+                    max_reads=oversample,
+                    target_position=target_position,  # focus on the exact site
+                )
+                if not candidate_ids:
+                    self.logger.warning(
+                        f"No candidate reads in {contig}:{start_pos}-{end_pos}"
                     )
+                    return []
 
-                    # ignorereads that don't have any coverage of the region
-                    if not aligned_bases:
-                        continue
+                results = self._collect_alignments_for_ids(
+                    bam=bam,
+                    contig=contig,
+                    start_pos=start_pos,
+                    end_pos=end_pos,
+                    target_position=target_position,
+                    matched_query_base=matched_query_base,
+                    window_size=window_size,
+                    exclude_reads_with_indels=exclude_reads_with_indels,
+                    candidate_ids=set(candidate_ids),
+                )
 
-                    read_alignment = ReadAlignment(
-                        read_id=read.query_name,
-                        aligned_bases=aligned_bases,
-                        target_position=target_position,
-                        window_size=window_size,
-                        is_reversed=True,
-                    )
+                # Trim to exactly max_reads if we oversampled
+                if len(results) > max_reads:
+                    rng = np.random.default_rng(self.random_state)
+                    keep = set(rng.choice(len(results), size=max_reads, replace=False))
+                    results = [r for i, r in enumerate(results) if i in keep]
 
-                    # Only fetch reads with the specified query base base if matched_query_base is provided
-                    if matched_query_base is not None:
-                        aligned_base = read_alignment.get_base_at_ref_pos(
-                            target_position
-                        )
-                        if (
-                            aligned_base is None
-                            or aligned_base.query_base is None
-                            or aligned_base.query_base.upper() not in matched_query_base
-                        ):
-                            continue
+            # --- Branch B: full scan (either unlimited, or restricted by explicit read_ids) ---
+            else:
+                results = self._collect_alignments_streaming(
+                    bam=bam,
+                    contig=contig,
+                    start_pos=start_pos,
+                    end_pos=end_pos,
+                    target_position=target_position,
+                    matched_query_base=matched_query_base,
+                    window_size=window_size,
+                    exclude_reads_with_indels=exclude_reads_with_indels,
+                    read_ids=read_ids,
+                )
 
-                    if exclude_reads_with_indels:
-                        if read_alignment.has_no_indels(window_size=window_size):
-                            read_alignments.append(read_alignment)
-                            read_count += 1
-                    else:
-                        read_alignments.append(read_alignment)
-                        read_count += 1
+        return results
 
-                    if max_reads is not None and read_count >= max_reads:
-                        break
+    def _collect_alignments_for_ids(
+        self,
+        *,
+        bam: pysam.AlignmentFile,
+        contig: str,
+        start_pos: int,
+        end_pos: int,
+        target_position: int,
+        matched_query_base: Optional[List[str]],
+        window_size: int,
+        exclude_reads_with_indels: bool,
+        candidate_ids: Set[str],
+    ) -> List[ReadAlignment]:
+        """Heavy extraction but only for the provided candidate IDs."""
+        region = dict(contig=contig, start=start_pos, stop=end_pos + 1)
+        out: List[ReadAlignment] = []
 
-                except Exception as e:
-                    print(f"Skipping read {read.query_name}: {e}")
-                    continue
+        for read in bam.fetch(**region):
+            if read.query_name not in candidate_ids:
+                continue
+            ra = self._build_read_alignment(
+                read=read,
+                start_pos=start_pos,
+                end_pos=end_pos,
+                target_position=target_position,
+                window_size=window_size,
+                matched_query_base=matched_query_base,
+                exclude_reads_with_indels=exclude_reads_with_indels,
+            )
+            if ra is not None:
+                out.append(ra)
+        return out
 
-        return read_alignments
+    def _collect_alignments_streaming(
+        self,
+        *,
+        bam: pysam.AlignmentFile,
+        contig: str,
+        start_pos: int,
+        end_pos: int,
+        target_position: int,
+        matched_query_base: Optional[List[str]],
+        window_size: int,
+        exclude_reads_with_indels: bool,
+        read_ids: Optional[Set[str]],
+    ) -> List[ReadAlignment]:
+        """Heavy extraction over all reads in region (or subset if read_ids provided)."""
+        region = dict(contig=contig, start=start_pos, stop=end_pos + 1)
+        out: List[ReadAlignment] = []
+
+        for read in bam.fetch(**region):
+            if read_ids is not None and read.query_name not in read_ids:
+                continue
+            ra = self._build_read_alignment(
+                read=read,
+                start_pos=start_pos,
+                end_pos=end_pos,
+                target_position=target_position,
+                window_size=window_size,
+                matched_query_base=matched_query_base,
+                exclude_reads_with_indels=exclude_reads_with_indels,
+            )
+            if ra is not None:
+                out.append(ra)
+        return out
+
+    def _build_read_alignment(
+        self,
+        *,
+        read: pysam.AlignedSegment,
+        start_pos: int,
+        end_pos: int,
+        target_position: int,
+        window_size: int,
+        matched_query_base: Optional[List[str]],
+        exclude_reads_with_indels: bool,
+    ) -> Optional[ReadAlignment]:
+        """Build ReadAlignment for a single read; return None if it fails filters."""
+        try:
+            aligned_bases = self._extract_aligned_bases(read, start_pos, end_pos)
+            if not aligned_bases:
+                return None
+
+            ra = ReadAlignment(
+                read_id=read.query_name,
+                aligned_bases=aligned_bases,
+                target_position=target_position,
+                window_size=window_size,
+                is_reversed=read.is_reverse,  # use real orientation
+            )
+
+            if matched_query_base is not None:
+                base = ra.get_base_at_ref_pos(target_position)
+                if (
+                    base is None
+                    or base.query_base is None
+                    or base.query_base.upper() not in matched_query_base
+                ):
+                    return None
+
+            if exclude_reads_with_indels and not ra.has_no_indels(
+                window_size=window_size
+            ):
+                return None
+
+            return ra
+        except Exception as e:
+            self.logger.debug(f"Skipping read {read.query_name}: {e}")
+            return None
 
     def _extract_aligned_bases(
         self, read: pysam.AlignedSegment, start_pos: int, end_pos: int
@@ -300,7 +415,7 @@ class AlignmentExtractor:
 
     def _base_indices_to_signal_ranges(
         self, base_indices: np.ndarray, sequence_length: int, is_reversed: bool
-    ) -> Dict[int, Tuple[int, int]]:
+    ) -> Dict[int, SignalRange]:
         """Convert base indices to signal start/end ranges."""
         base_to_range = {}
         for i in range(sequence_length):
@@ -313,3 +428,56 @@ class AlignmentExtractor:
                 end_idx = base_indices[i + 1].item()
                 base_to_range[i] = SignalRange(start_idx, end_idx)
         return base_to_range
+
+    def _sample_candidate_ids_fast(
+        self,
+        *,
+        bam: pysam.AlignmentFile,
+        contig: str,
+        start_pos: int,
+        end_pos: int,
+        matched_query_base: Optional[List[str]],
+        max_reads: int,
+        target_position: Optional[int] = None,
+    ) -> List[str]:
+        rng = np.random.default_rng(self.random_state)
+        reservoir: List[str] = []
+        seen = 0
+        seen_ids: Set[str] = set()
+
+        for col in bam.pileup(
+            contig,
+            start_pos,
+            end_pos,
+            truncate=True,
+            stepper="samtools",
+            max_depth=1_000_000,
+        ):
+            if target_position is not None and col.reference_pos != target_position:
+                continue
+            if col.reference_pos is None:
+                continue
+
+            for pil in col.pileups:
+                read = pil.alignment
+                rid = read.query_name
+                if rid in seen_ids:
+                    continue
+                qpos = pil.query_position
+                if qpos is None:
+                    continue
+
+                if matched_query_base:
+                    qb = read.query_sequence[qpos].upper()
+                    if qb not in matched_query_base:
+                        continue
+
+                seen_ids.add(rid)
+                seen += 1
+                if len(reservoir) < max_reads:
+                    reservoir.append(rid)
+                else:
+                    j = rng.integers(0, seen)
+                    if j < max_reads:
+                        reservoir[j] = rid
+        return reservoir
