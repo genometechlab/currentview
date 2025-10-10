@@ -123,6 +123,9 @@ class AlignmentExtractor:
 
                 # oversample to account for later rejections (indels etc.)
                 oversample = int(np.ceil(max_reads * 1.5))
+                self.logger.info(
+                    f"Oversampling to {oversample} reads to account for later filters"
+                )
                 candidate_ids = self._sample_candidate_ids_fast(
                     bam=bam,
                     contig=contig,
@@ -150,8 +153,12 @@ class AlignmentExtractor:
                     candidate_ids=set(candidate_ids),
                 )
 
-                # Trim to exactly max_reads if we oversampled
+                # Trim to exactly max_reads if we
+                self.logger.info(
+                    f"Collected {len(results)} reads after full extraction and filtering"
+                )
                 if len(results) > max_reads:
+                    self.logger.info(f"Randomly sub-sampling down to {max_reads} reads")
                     rng = np.random.default_rng(self.random_state)
                     keep = set(rng.choice(len(results), size=max_reads, replace=False))
                     results = [r for i, r in enumerate(results) if i in keep]
