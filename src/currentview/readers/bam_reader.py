@@ -118,7 +118,7 @@ class AlignmentExtractor:
             if max_reads is not None and read_ids is None:
                 # --- Branch A: fast candidate sampling via pileup, then heavy only for sampled IDs ---
                 self.logger.info(
-                    f"Sampling up to {max_reads} candidate reads covering {contig}:{target_position}"
+                    f"Searching up to {max_reads} candidate reads covering {contig}:{target_position}"
                 )
 
                 # oversample to account for later rejections (indels etc.)
