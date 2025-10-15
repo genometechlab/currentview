@@ -8,6 +8,7 @@ from .components import (
     create_add_condition_card,
     create_visualization_card,
     create_add_condition_alert_box,
+    create_conditions_list_card,
 )
 from .plot_style_settings import create_plot_style_settings
 from .modals import create_input_modal, create_export_modal
@@ -105,36 +106,11 @@ def create_layout() -> html.Div:
                     html.Div(
                         [
                             # Add Condition Card
-                            dcc.Loading(
-                                [create_add_condition_card()],
-                                type="circle",
-                                overlay_style={
-                                    "visibility": "visible",
-                                    "opacity": 0.25,
-                                },
-                                delay_show=100,
-                                custom_spinner=html.H2(
-                                    ["Adding Condition ", dbc.Spinner(color="primary")],
-                                ),
-                            ),
+                            create_add_condition_card(),
                             # Add condition alert box
                             create_add_condition_alert_box(),
                             # Conditions List
-                            create_card(
-                                [
-                                    html.H4(
-                                        [
-                                            html.I(className="bi bi-list-check me-2"),
-                                            "Conditions",
-                                        ],
-                                        className="mb-3 card-title",
-                                        style={"fontWeight": "600", "color": "#2d3748"},
-                                    ),
-                                    html.Hr(style={"opacity": "0.1"}),
-                                    html.Div(id="conditions"),
-                                ],
-                                className="mb-4",
-                            ),
+                            create_conditions_list_card(),
                             # Visualization
                             create_visualization_card(),
                         ],

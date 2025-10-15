@@ -426,7 +426,7 @@ def create_advanced_options() -> html.Div:
 
 def create_add_condition_card() -> html.Div:
     """Create the add condition card component with modern design."""
-    return create_card(
+    card = create_card(
         [
             dbc.Row(
                 [
@@ -500,6 +500,18 @@ def create_add_condition_card() -> html.Div:
         ],
         className="mb-4",
     )
+    return dcc.Loading(
+            [card],
+            type="circle",
+            overlay_style={
+                "visibility": "visible",
+                "opacity": 0.25,
+            },
+            delay_show=100,
+            custom_spinner=html.H2(
+                ["Adding Condition ", dbc.Spinner(color="primary")],
+            ),
+        )
 
 
 def create_add_condition_alert_box() -> dbc.Alert:
@@ -726,6 +738,37 @@ def create_visualization_style_inputs() -> dbc.Row:
             ),
         ]
     )
+    
+
+def create_conditions_list_card():
+    card = create_card(
+        [
+            html.H4(
+                [
+                    html.I(className="bi bi-list-check me-2"),
+                    "Conditions",
+                ],
+                className="mb-3 card-title",
+                style={"fontWeight": "600", "color": "#2d3748"},
+            ),
+            html.Hr(style={"opacity": "0.1"}),
+            html.Div(id="conditions"),
+        ],
+        className="mb-4",
+    )
+    return dcc.Loading(
+            [card],
+            type="circle",
+            overlay_style={
+                "visibility": "visible",
+                "opacity": 0.25,
+            },
+            target_components={"conditions": "children", "plot-trigger": "data"},
+            delay_show=100,
+            custom_spinner=html.H2(
+                ["Updating Conditions ", dbc.Spinner(color="primary")],
+            ),
+        )
 
 
 def create_condition_card(

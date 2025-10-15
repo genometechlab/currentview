@@ -237,6 +237,7 @@ def register_condition_callbacks():
 
     @callback(
         [
+            Output("conditions", "children", allow_duplicate=True),
             Output("alert", "children", allow_duplicate=True),
             Output("alert", "is_open", allow_duplicate=True),
             Output("conditions-metadata", "data", allow_duplicate=True),
@@ -338,6 +339,6 @@ def register_condition_callbacks():
                     if hasattr(condition, "alpha"):
                         condition.alpha = opacities[correct_idx] / 100
 
-            return f"Updated style for: {clicked_label}", True, metadata, trigger + 1
+            return no_update, f"Updated style for: {clicked_label}", True, metadata, trigger + 1
         except Exception as e:
-            return f"Error updating style: {str(e)}", True, metadata, trigger
+            return no_update, f"Error updating style: {str(e)}", True, metadata, trigger
