@@ -5,6 +5,25 @@ from ..layout.components import create_condition_card
 from .initialization import get_visualizer
 
 
+def _validate_inputs(files, contig, pos):
+    """Validate required inputs for adding a condition."""
+    error_messages = []
+
+    if not files.get("bam"):
+        error_messages.append("Please select a BAM file")
+    if not files.get("pod5"):
+        error_messages.append("Please select a POD5 directory")
+    if not contig:
+        error_messages.append("Please select a valid contig")
+
+    if not pos:
+        error_messages.append("Please select a target position")
+    elif not str(pos).isdigit() or int(pos) <= 0:
+        error_messages.append("Position must be a positive integer")
+
+    return error_messages
+
+
 def register_condition_callbacks():
     """Register all condition management callbacks."""
 
@@ -58,17 +77,7 @@ def register_condition_callbacks():
     ):
         """Add a new condition."""
 
-        error_messages = []
-
-        # Validate inputs
-        if not files.get("bam"):
-            error_messages.append("Please select a BAM file")
-        if not files.get("pod5"):
-            error_messages.append("Please select a POD5 directory")
-        if not contig:
-            error_messages.append("Please select a valid contig")
-        if not pos:
-            error_messages.append("Please select a target position")
+        error_messages = _validate_inputs(files, contig, pos)
 
         if error_messages:
             # Create alert content with line breaks
@@ -339,6 +348,12 @@ def register_condition_callbacks():
                     if hasattr(condition, "alpha"):
                         condition.alpha = opacities[correct_idx] / 100
 
-            return no_update, f"Updated style for: {clicked_label}", True, metadata, trigger + 1
+            return (
+                no_update,
+                f"Updated style for: {clicked_label}",
+                True,
+                metadata,
+                trigger + 1,
+            )
         except Exception as e:
             return no_update, f"Error updating style: {str(e)}", True, metadata, trigger
