@@ -127,7 +127,6 @@ def register_condition_callbacks():
         except Exception as e:
             # Create alert content with line breaks
             alert_content = str(e)
-            raise e
 
             return (
                 current_conditions,

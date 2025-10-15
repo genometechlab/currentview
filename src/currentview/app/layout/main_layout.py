@@ -105,7 +105,17 @@ def create_layout() -> html.Div:
                     html.Div(
                         [
                             # Add Condition Card
-                            create_add_condition_card(),
+                            dcc.Loading(
+                                [create_add_condition_card()],
+                                type="circle",
+                                overlay_style={
+                                    "visibility": "visible",
+                                    "opacity": 0.25,
+                                },
+                                custom_spinner=html.H2(
+                                    ["Adding Condition", dbc.Spinner(color="primary")],
+                                ),
+                            ),
                             # Add condition alert box
                             create_add_condition_alert_box(),
                             # Conditions List

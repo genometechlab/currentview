@@ -165,6 +165,11 @@ class AlignmentExtractor:
                     rng = np.random.default_rng(self.random_state)
                     keep = set(rng.choice(len(results), size=max_reads, replace=False))
                     results = [r for i, r in enumerate(results) if i in keep]
+                elif len(results) < max_reads:
+                    self.logger.info(
+                        f"Only {len(results)} reads available after filtering (less than max_reads={max_reads}),"
+                        f"Consider increasing max_reads or changing the random_state for different sampling."
+                    )
 
             # --- Branch B: full scan (either unlimited, or restricted by explicit read_ids) ---
             else:
