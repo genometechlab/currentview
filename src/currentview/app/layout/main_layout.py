@@ -112,8 +112,9 @@ def create_layout() -> html.Div:
                                     "visibility": "visible",
                                     "opacity": 0.25,
                                 },
+                                delay_show=100,
                                 custom_spinner=html.H2(
-                                    ["Adding Condition", dbc.Spinner(color="primary")],
+                                    ["Adding Condition ", dbc.Spinner(color="primary")],
                                 ),
                             ),
                             # Add condition alert box
