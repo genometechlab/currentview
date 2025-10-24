@@ -588,9 +588,12 @@ class SignalVisualizer:
             for aligned_base in read_alignment.aligned_bases:
                 if aligned_base.reference_pos in positions:
                     if kmer_dict[aligned_base.reference_pos] == "_":
-                        kmer_dict[aligned_base.reference_pos] = (
-                            aligned_base.reference_base.upper()
-                        )
+                        if aligned_base.reference_base is not None:
+                            kmer_dict[aligned_base.reference_pos] = (
+                                aligned_base.reference_base.upper()
+                            )
+                        else:
+                            kmer_dict[aligned_base.reference_pos] = '*'
                         rem -= 1
 
             if rem == 0:
