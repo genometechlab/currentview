@@ -4,7 +4,7 @@ from enum import Enum
 from typing import List, Dict
 
 
-def calculate_opacity(self, n_reads: int) -> float:
+def calculate_opacity(n_reads: int) -> float:
     """Calculate appropriate opacity value."""
     if n_reads <= 1:
         opacity = 1.0
