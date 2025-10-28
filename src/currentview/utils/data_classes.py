@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from uuid import UUID
 from pathlib import Path
+from collections import defaultdict
 
 
 class BaseType(Enum):
@@ -86,6 +87,22 @@ class ReadAlignment:
                 if base.reference_pos is not None
             }
         return self._bases_by_ref_pos
+    
+    @property
+    def insertions_by_ref_pos(self) -> Dict[int, AlignedBase]:
+        """Return a dictionary mapping of each refrecne position to the inserted bases after it"""
+        if not hasattr(self, "_insertions_by_ref_pos"):
+            prev_ref_pos = None
+            self._insertions_by_ref_pos = defaultdict(list)
+            for base in self.aligned_bases:
+                if base.reference_pos is not None:
+                    prev_ref_pos = base.reference_pos
+                else:
+                    if prev_ref_pos is not None:
+                        self._insertions_by_ref_pos[prev_ref_pos].append(base)
+            self._insertions_by_ref_pos = dict(self._insertions_by_ref_pos)  
+        return self._insertions_by_ref_pos
+        
 
     def get_base_at_ref_pos(self, ref_pos: int) -> Optional[AlignedBase]:
         """Convenience method to get base at specific reference position."""

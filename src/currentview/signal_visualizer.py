@@ -210,6 +210,31 @@ class SignalVisualizer:
         self._update_global_ylim()
         if not self.window_labels:
             self._update_position_labels()
+            
+    def _get_base_signal(self, read_alignment: ReadAlignment, genomic_pos: int) -> np.ndarray:
+        base = read_alignment.get_base_at_ref_pos(genomic_pos)
+        if base is None or not base.has_signal:
+            return None
+        base_sig = base.signal
+        if base_sig is None:
+            return None
+        base_sig = np.asarray(
+            base_sig, dtype=float
+        ).ravel()  # <- robust to list/np/scalar
+        if base_sig.size == 0:
+            return None
+        if read_alignment.is_reversed:
+            base_sig = base_sig[::-1]
+        return base_sig
+    
+    def _get_insertions_signal(self, read_alignment: ReadAlignment, genomic_pos: int) -> np.ndarray:
+        insertions = read_alignment.insertions_by_ref_pos.get(genomic_pos, None)
+        if insertions is None:
+            insertions_sig = np.empty((0,))
+        else:
+            insertions_sig = [insertion.signal[::-1] for insertion in insertions if insertion.has_signal]
+            insertions_sig = np.concatenate(insertions_sig)
+        return insertions_sig
 
     def _plot_signals(self, condition: Condition):
         """Plot each read as its own trace (condition alpha applied per-read)."""
@@ -220,39 +245,42 @@ class SignalVisualizer:
         alp = condition.alpha
 
         for read_alignment in condition.reads:
-            bases_dict = read_alignment.bases_by_ref_pos
-            seg_x: List[np.ndarray] = []
-            seg_y: List[np.ndarray] = []
+            matched_x: List[np.ndarray] = []
+            matched_y: List[np.ndarray] = []
+            
+            insertions_x: List[np.ndarray] = []
+            insertions_y: List[np.ndarray] = []
 
             for pos_idx, genomic_pos in enumerate(condition.positions):
-                base = bases_dict.get(genomic_pos)
-                if base is None or not base.has_signal:
-                    continue
-
-                sig = base.signal
-                if sig is None:
-                    continue
-                sig_arr = np.asarray(
-                    sig, dtype=float
-                ).ravel()  # <- robust to list/np/scalar
-                if sig_arr.size == 0:
-                    continue
-                if read_alignment.is_reversed:
-                    sig_arr = sig_arr[::-1]
+                base_sig = self._get_base_signal(read_alignment, genomic_pos)
+                insertions_sig = self._get_insertions_signal(read_alignment, genomic_pos)
+                if base_sig is None: continue
 
                 x0 = pos_idx
                 x1 = pos_idx + 1 - pad
-                x_arr = np.linspace(x0, x1, sig_arr.shape[0], dtype=float)
-
-                seg_x.append(x_arr)
-                seg_y.append(sig_arr)
+                x_arr = np.linspace(x0, x1, base_sig.shape[0]+insertions_sig.shape[0], dtype=float)
+                
+                x_arr_base = x_arr[:base_sig.shape[0]]
+                matched_x.append(x_arr_base)
+                matched_y.append(base_sig)
                 # break between positions
-                seg_x.append(np.array([np.nan], dtype=float))
-                seg_y.append(np.array([np.nan], dtype=float))
+                matched_x.append(np.array([np.nan], dtype=float))
+                matched_y.append(np.array([np.nan], dtype=float))
+                
+                if insertions_sig.shape[0]!=0:
+                    x_arr_insertions = x_arr[-insertions_sig.shape[0]:]
+                    insertions_x.append(x_arr_base[-1:])
+                    insertions_y.append(base_sig[-1:])
+                    
+                    insertions_x.append(x_arr_insertions)
+                    insertions_y.append(insertions_sig)
+                    # break between positions
+                    insertions_x.append(np.array([np.nan], dtype=float))
+                    insertions_y.append(np.array([np.nan], dtype=float))
 
-            if seg_x:
-                all_x = np.concatenate(seg_x)
-                all_y = np.concatenate(seg_y)
+            if matched_x:
+                all_x = np.concatenate(matched_x)
+                all_y = np.concatenate(matched_y)
 
                 self.fig.add_trace(
                     self._plot_func(
@@ -264,6 +292,25 @@ class SignalVisualizer:
                         meta={"cond": condition.label, "kind": "read"},
                         showlegend=False,  # keep legend clean
                         line=dict(color=col, width=lw, dash=ls),
+                        opacity=alp,
+                        hovertemplate="Position: %{x:.2f}<br>Signal: %{y:.1f} pA<extra></extra>",
+                    )
+                )
+                
+            if insertions_x:
+                all_x = np.concatenate(insertions_x)
+                all_y = np.concatenate(insertions_y)
+
+                self.fig.add_trace(
+                    self._plot_func(
+                        x=all_x,
+                        y=all_y,
+                        mode="lines",
+                        name=condition.label,
+                        legendgroup=condition.label,
+                        meta={"cond": condition.label, "kind": "read"},
+                        showlegend=False,  # keep legend clean
+                        line=dict(color=col, width=lw, dash='dot'),
                         opacity=alp,
                         hovertemplate="Position: %{x:.2f}<br>Signal: %{y:.1f} pA<extra></extra>",
                     )
