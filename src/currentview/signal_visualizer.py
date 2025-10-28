@@ -267,16 +267,15 @@ class SignalVisualizer:
                 matched_x.append(np.array([np.nan], dtype=float))
                 matched_y.append(np.array([np.nan], dtype=float))
                 
-                if insertions_sig.shape[0]!=0:
-                    x_arr_insertions = x_arr[-insertions_sig.shape[0]:]
-                    insertions_x.append(x_arr_base[-1:])
-                    insertions_y.append(base_sig[-1:])
-                    
-                    insertions_x.append(x_arr_insertions)
-                    insertions_y.append(insertions_sig)
-                    # break between positions
-                    insertions_x.append(np.array([np.nan], dtype=float))
-                    insertions_y.append(np.array([np.nan], dtype=float))
+                x_arr_insertions = x_arr[base_sig.shape[0]:]
+                insertions_x.append(x_arr_base[-1:])
+                insertions_y.append(base_sig[-1:])
+                
+                insertions_x.append(x_arr_insertions)
+                insertions_y.append(insertions_sig)
+                # break between positions
+                insertions_x.append(np.array([np.nan], dtype=float))
+                insertions_y.append(np.array([np.nan], dtype=float))
 
             if matched_x:
                 all_x = np.concatenate(matched_x)
