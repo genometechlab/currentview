@@ -32,8 +32,20 @@ class AlignmentExtractor:
         self.logger.debug(f"Initializing AlignmentExtractor on {self.bam_path.name}")
 
         self.random_state = random_state
+        
+    def extract_read(
+        self,
+        read_id: str,
+    ) -> Optional[AlignedBase]:
+        with pysam.AlignmentFile(self.bam_path, mode="rb", threads=16) as bam:
+            for read in bam.fetch(until_eof=True):
+                if read.query_name==read_id:
+                    aligned_bases = self._extract_aligned_bases(read, 0, 1e7)
+                    return aligned_bases
+        return None
+        
 
-    def extract_alignments(
+    def extract_position_alignments(
         self,
         contig: str,
         target_position: int,
@@ -144,7 +156,7 @@ class AlignmentExtractor:
                     )
                     return []
 
-                results = self._collect_alignments_for_ids(
+                results = self._collect_alignments(
                     bam=bam,
                     contig=contig,
                     start_pos=start_pos,
@@ -153,7 +165,7 @@ class AlignmentExtractor:
                     matched_query_base=matched_query_base,
                     window_size=window_size,
                     exclude_reads_with_indels=exclude_reads_with_indels,
-                    candidate_ids=set(candidate_ids),
+                    read_ids=set(candidate_ids),
                 )
 
                 # Trim to exactly max_reads if we
@@ -173,7 +185,7 @@ class AlignmentExtractor:
 
             # --- Branch B: full scan (either unlimited, or restricted by explicit read_ids) ---
             else:
-                results = self._collect_alignments_streaming(
+                results = self._collect_alignments(
                     bam=bam,
                     contig=contig,
                     start_pos=start_pos,
@@ -187,40 +199,7 @@ class AlignmentExtractor:
 
         return results
 
-    def _collect_alignments_for_ids(
-        self,
-        *,
-        bam: pysam.AlignmentFile,
-        contig: str,
-        start_pos: int,
-        end_pos: int,
-        target_position: int,
-        matched_query_base: Optional[List[str]],
-        window_size: int,
-        exclude_reads_with_indels: bool,
-        candidate_ids: Set[str],
-    ) -> List[ReadAlignment]:
-        """Heavy extraction but only for the provided candidate IDs."""
-        region = dict(contig=contig, start=start_pos, stop=end_pos + 1)
-        out: List[ReadAlignment] = []
-
-        for read in bam.fetch(**region):
-            if read.query_name not in candidate_ids:
-                continue
-            ra = self._build_read_alignment(
-                read=read,
-                start_pos=start_pos,
-                end_pos=end_pos,
-                target_position=target_position,
-                window_size=window_size,
-                matched_query_base=matched_query_base,
-                exclude_reads_with_indels=exclude_reads_with_indels,
-            )
-            if ra is not None:
-                out.append(ra)
-        return out
-
-    def _collect_alignments_streaming(
+    def _collect_alignments(
         self,
         *,
         bam: pysam.AlignmentFile,
