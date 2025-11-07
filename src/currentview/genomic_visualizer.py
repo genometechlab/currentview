@@ -151,6 +151,7 @@ class GenomicPositionVisualizer:
         contig: str,
         target_position: int,
         *,  # Force keyword-only arguments after this
+        molecule_type: str = "RNA",
         matched_query_base: Optional[str] = None,
         read_ids: Optional[Union[Set[str], List[str]]] = None,
         max_reads: Optional[int] = None,
@@ -223,18 +224,25 @@ class GenomicPositionVisualizer:
         line_style = line_style or self.signals_plot_style.line_style
         line_width = line_width or self.signals_plot_style.line_width
 
+        # Determining the direction
+        is_reversed = molecule_type=="RNA"
+
         # Process the data
         processed_data = self._process_condition_data(
             bam_path=bam_path,
             pod5_path=pod5_path,
             contig=contig,
             target_position=target_position,
+            is_reversed=is_reversed,
             matched_query_base=matched_query_base,
             read_ids=read_ids,
             max_reads=max_reads,
             exclude_reads_with_indels=exclude_reads_with_indels,
             label=label,
         )
+
+        if processed_data is None:
+            return self
 
         # Calculate opacity if not specified
         if alpha is None:
@@ -767,6 +775,7 @@ class GenomicPositionVisualizer:
         pod5_path: Union[str, Path],
         contig: str,
         target_position: int,
+        is_reversed: bool,
         matched_query_base: Optional[str],
         read_ids: Optional[Union[Set[str], List[str]]],
         max_reads: Optional[int],
@@ -787,6 +796,7 @@ class GenomicPositionVisualizer:
             label,
             contig,
             target_position,
+            is_reversed,
             matched_query_base,
             read_ids,
             max_reads,

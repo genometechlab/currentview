@@ -45,10 +45,11 @@ class AlignmentExtractor:
         return None
         
 
-    def extract_position_alignments(
+    def extract_aligned_reads_at_position(
         self,
         contig: str,
         target_position: int,
+        is_reversed: bool,
         matched_query_base: List[str] = None,
         window_size: int = 9,
         exclude_reads_with_indels: bool = True,
@@ -94,9 +95,10 @@ class AlignmentExtractor:
         self.logger.info(f"Looking in region {contig}:{target_position}")
 
         # Collect alignment data
-        read_alignments = self._collect_read_alignments(
+        read_alignments = self._gather_aligned_reads_from_bam(
             contig,
             target_position,
+            is_reversed,
             matched_query_base,
             window_size,
             exclude_reads_with_indels,
@@ -106,10 +108,11 @@ class AlignmentExtractor:
 
         return read_alignments
 
-    def _collect_read_alignments(
+    def _gather_aligned_reads_from_bam(
         self,
         contig: str,
         target_position: int,
+        is_reversed: bool,
         matched_query_base: Optional[List[str]],
         window_size: int,
         exclude_reads_with_indels: bool,
@@ -156,12 +159,13 @@ class AlignmentExtractor:
                     )
                     return []
 
-                results = self._collect_alignments(
+                results = self._build_read_alignments_from_region(
                     bam=bam,
                     contig=contig,
                     start_pos=start_pos,
                     end_pos=end_pos,
                     target_position=target_position,
+                    is_reversed=is_reversed,
                     matched_query_base=matched_query_base,
                     window_size=window_size,
                     exclude_reads_with_indels=exclude_reads_with_indels,
@@ -185,12 +189,13 @@ class AlignmentExtractor:
 
             # --- Branch B: full scan (either unlimited, or restricted by explicit read_ids) ---
             else:
-                results = self._collect_alignments(
+                results = self._build_read_alignments_from_region(
                     bam=bam,
                     contig=contig,
                     start_pos=start_pos,
                     end_pos=end_pos,
                     target_position=target_position,
+                    is_reversed=is_reversed,
                     matched_query_base=matched_query_base,
                     window_size=window_size,
                     exclude_reads_with_indels=exclude_reads_with_indels,
@@ -199,7 +204,7 @@ class AlignmentExtractor:
 
         return results
 
-    def _collect_alignments(
+    def _build_read_alignments_from_region(
         self,
         *,
         bam: pysam.AlignmentFile,
@@ -207,6 +212,7 @@ class AlignmentExtractor:
         start_pos: int,
         end_pos: int,
         target_position: int,
+        is_reversed: bool,
         matched_query_base: Optional[List[str]],
         window_size: int,
         exclude_reads_with_indels: bool,
@@ -224,6 +230,7 @@ class AlignmentExtractor:
                 start_pos=start_pos,
                 end_pos=end_pos,
                 target_position=target_position,
+                is_reversed=is_reversed,
                 window_size=window_size,
                 matched_query_base=matched_query_base,
                 exclude_reads_with_indels=exclude_reads_with_indels,
@@ -239,13 +246,14 @@ class AlignmentExtractor:
         start_pos: int,
         end_pos: int,
         target_position: int,
+        is_reversed: bool,
         window_size: int,
         matched_query_base: Optional[List[str]],
         exclude_reads_with_indels: bool,
     ) -> Optional[ReadAlignment]:
         """Build ReadAlignment for a single read; return None if it fails filters."""
         try:
-            aligned_bases = self._extract_aligned_bases(read, start_pos, end_pos)
+            aligned_bases = self._extract_aligned_bases(read, start_pos, end_pos, is_reversed)
             if not aligned_bases:
                 return None
 
@@ -254,7 +262,7 @@ class AlignmentExtractor:
                 aligned_bases=aligned_bases,
                 target_position=target_position,
                 window_size=window_size,
-                is_reversed=True,
+                is_reversed=is_reversed,
             )
 
             if matched_query_base is not None:
@@ -277,7 +285,7 @@ class AlignmentExtractor:
             return None
 
     def _extract_aligned_bases(
-        self, read: pysam.AlignedSegment, start_pos: int, end_pos: int
+        self, read: pysam.AlignedSegment, start_pos: int, end_pos: int, is_reversed: bool,
     ) -> List[AlignedBase]:
         """Extract aligned bases including insertions and deletions."""
         # Extract nanopore-specific tags
@@ -288,9 +296,6 @@ class AlignmentExtractor:
 
         # Convert moves to base indices
         base_indices = self._moves_to_base_indices(moves, stride, ts, ns)
-
-        # Determining the direction of alignment
-        is_reversed = True  # read.is_reverse
 
         # Map base positions to signal ranges
         base_to_signal_range = self._base_indices_to_signal_ranges(

@@ -53,6 +53,7 @@ class DataProcessor:
         label: str,
         contig: str,
         target_position: int,
+        is_reversed: bool,
         matched_query_base: List[str] = None,
         read_ids: Optional[Union[Set[str], List[str]]] = None,
         max_reads: Optional[int] = None,
@@ -92,10 +93,11 @@ class DataProcessor:
         )
 
         # Extract alignments
-        alignments = self._extract_alignments(
+        alignments = self._extract_aligned_reads(
             bam_path,
             contig,
             target_position,
+            is_reversed,
             matched_query_base,
             require_perfect_match,
             read_ids,
@@ -147,11 +149,12 @@ class DataProcessor:
 
         return alignments
 
-    def _extract_alignments(
+    def _extract_aligned_reads(
         self,
         bam_path: Path,
         contig: str,
         target_position: int,
+        is_reversed: bool,
         matched_query_base: Optional[List[str]],
         exclude_reads_with_indels: bool,
         read_ids: Optional[Union[Set[str], List[str]]],
@@ -175,9 +178,10 @@ class DataProcessor:
         self.logger.debug(f"Calling extract_alignments with window_size={self.K}")
 
         try:
-            alignments = self._alignment_cache[bam_path].extract_position_alignments(
+            alignments = self._alignment_cache[bam_path].extract_aligned_reads_at_position(
                 contig=contig,
                 target_position=target_position,
+                is_reversed=is_reversed,
                 matched_query_base=matched_query_base,
                 window_size=self.K,
                 exclude_reads_with_indels=exclude_reads_with_indels,
