@@ -124,6 +124,7 @@ class StatsVisualizer:
                 "xanchor": "center",
             }
         )
+        xaxis_layout.update({"tickangle": 90})
         yaxis_layout.update({"showticklabels": False, "ticks": "", "showgrid": False})
 
         self.fig.update_layout(**layout_dict)
