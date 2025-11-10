@@ -225,7 +225,7 @@ class GenomicPositionVisualizer:
         line_width = line_width or self.signals_plot_style.line_width
 
         # Determining the direction
-        is_reversed = molecule_type.lower()=="rna"
+        is_reversed = molecule_type.lower() == "rna"
 
         # Process the data
         processed_data = self._process_condition_data(

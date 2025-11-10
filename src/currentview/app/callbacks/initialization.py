@@ -94,7 +94,7 @@ def register_initialization_callbacks():
             Output("alert", "is_open"),
             Output("stats-tab", "disabled"),
             Output("settings-btn", "style"),
-            Output("molecule-type-store", "data")
+            Output("molecule-type-store", "data"),
         ],
         Input("init-btn", "n_clicks"),
         [
@@ -229,7 +229,7 @@ def register_initialization_callbacks():
                 "marginLeft": "20px",
                 "fontSize": "1.2rem",
             },  # Show settings button
-            molecule_type
+            molecule_type,
         )
 
 

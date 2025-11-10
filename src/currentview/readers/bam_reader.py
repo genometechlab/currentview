@@ -32,18 +32,17 @@ class AlignmentExtractor:
         self.logger.debug(f"Initializing AlignmentExtractor on {self.bam_path.name}")
 
         self.random_state = random_state
-        
+
     def extract_read(
         self,
         read_id: str,
     ) -> Optional[AlignedBase]:
         with pysam.AlignmentFile(self.bam_path, mode="rb", threads=16) as bam:
             for read in bam.fetch(until_eof=True):
-                if read.query_name==read_id:
+                if read.query_name == read_id:
                     aligned_bases = self._extract_aligned_bases(read, 0, 1e7)
                     return aligned_bases
         return None
-        
 
     def extract_aligned_reads_at_position(
         self,
@@ -253,7 +252,9 @@ class AlignmentExtractor:
     ) -> Optional[ReadAlignment]:
         """Build ReadAlignment for a single read; return None if it fails filters."""
         try:
-            aligned_bases = self._extract_aligned_bases(read, start_pos, end_pos, is_reversed)
+            aligned_bases = self._extract_aligned_bases(
+                read, start_pos, end_pos, is_reversed
+            )
             if not aligned_bases:
                 return None
 
@@ -285,7 +286,11 @@ class AlignmentExtractor:
             return None
 
     def _extract_aligned_bases(
-        self, read: pysam.AlignedSegment, start_pos: int, end_pos: int, is_reversed: bool,
+        self,
+        read: pysam.AlignedSegment,
+        start_pos: int,
+        end_pos: int,
+        is_reversed: bool,
     ) -> List[AlignedBase]:
         """Extract aligned bases including insertions and deletions."""
         # Extract nanopore-specific tags

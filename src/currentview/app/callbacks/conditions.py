@@ -78,7 +78,7 @@ def register_condition_callbacks():
         trigger,
     ):
         """Add a new condition."""
-        
+
         error_messages = _validate_inputs(files, contig, pos)
 
         if error_messages:
