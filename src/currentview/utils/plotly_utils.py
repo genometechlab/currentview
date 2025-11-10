@@ -32,7 +32,7 @@ class PlotStyle:
     show_grid: bool = False
     grid_color: str = "rgba(128, 128, 128, 0.2)"
     zeroline: bool = False
-    padding: float = 0.025
+    positions_padding: float = 0.025
     barrier_style: str = "solid"
     barrier_opacity: str = 0.25
     barrier_color: str = "grey"

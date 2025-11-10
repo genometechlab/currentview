@@ -113,7 +113,7 @@ class SignalVisualizer:
                 "ticktext": [],
                 "range": [
                     -0.1,
-                    self.K - self.style.padding + 0.1,
+                    self.K - self.style.positions_padding + 0.1,
                 ],  # Using 0.025 as default padding
             }
         )
@@ -144,7 +144,7 @@ class SignalVisualizer:
 
         # Add vertical lines as shapes
         for i in range(self.K + 1):
-            x_pos = i - self.style.padding / 2  # Using 0.025 as default padding
+            x_pos = i - self.style.positions_padding / 2  # Using 0.025 as default padding
 
             self.fig.add_shape(
                 type="line",
@@ -166,7 +166,7 @@ class SignalVisualizer:
         """Apply custom window labels."""
         self.logger.debug(f"Applying {len(self.window_labels)} custom labels")
 
-        tick_positions = np.arange(self.K) + 0.5 - self.style.padding / 2
+        tick_positions = np.arange(self.K) + 0.5 - self.style.positions_padding / 2
 
         self.fig.update_xaxes(
             tickmode="array",
@@ -238,7 +238,7 @@ class SignalVisualizer:
 
     def _plot_signals(self, condition: Condition):
         """Plot each read as its own trace (condition alpha applied per-read)."""
-        pad = self.style.padding
+        pad = self.style.positions_padding
         lw = condition.line_width or self.style.line_width
         ls = condition.line_style or self.style.line_style
         col = condition.color
@@ -418,8 +418,8 @@ class SignalVisualizer:
         # Add highlight as a shape
         shape = dict(
             type="rect",
-            x0=window_idx - self.style.padding / 2,  # Using 0.025 as default padding
-            x1=window_idx + 1 - self.style.padding / 2,
+            x0=window_idx - self.style.positions_padding / 2,  # Using 0.025 as default padding
+            x1=window_idx + 1 - self.style.positions_padding / 2,
             y0=0,
             y1=1,
             yref="paper",
@@ -462,7 +462,7 @@ class SignalVisualizer:
         if window_idx is None:
             window_idx = self.K // 2
 
-        x_pos = window_idx + 0.5 - self.style.padding / 2
+        x_pos = window_idx + 0.5 - self.style.positions_padding / 2
         fontcolor = fontcolor or get_contrasting_color(color)
         if y_position is None:
             # Get current y range
@@ -569,7 +569,7 @@ class SignalVisualizer:
         self._update_global_ylim()
 
         # Reset x-axis
-        self.fig.update_xaxes(range=[-0.1, self.K - self.style.padding + 0.1])
+        self.fig.update_xaxes(range=[-0.1, self.K - self.style.positions_padding + 0.1])
 
         return self
 
@@ -653,7 +653,7 @@ class SignalVisualizer:
         """Update x-axis labels based on plotted conditions."""
         self.logger.debug("Updating position labels")
 
-        tick_positions = np.arange(self.K) + 0.5 - self.style.padding / 2
+        tick_positions = np.arange(self.K) + 0.5 - self.style.positions_padding / 2
 
         if not self._conditions:
             # Default labels
