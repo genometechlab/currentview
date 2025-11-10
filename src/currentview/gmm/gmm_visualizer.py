@@ -243,6 +243,8 @@ class GMMVisualizer:
                 write_kwargs = {
                     "format": format,
                     "scale": scale or self.style.toImageButtonOptions.get("scale", 2),
+                    "width": self.style.width,
+                    "height": self.style.height
                 }
                 write_kwargs.update(kwargs)
                 self.fig.write_image(str(path), **write_kwargs)
