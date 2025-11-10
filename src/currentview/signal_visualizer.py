@@ -210,8 +210,10 @@ class SignalVisualizer:
         self._update_global_ylim()
         if not self.window_labels:
             self._update_position_labels()
-            
-    def _get_base_signal(self, read_alignment: ReadAlignment, genomic_pos: int) -> np.ndarray:
+
+    def _get_base_signal(
+        self, read_alignment: ReadAlignment, genomic_pos: int
+    ) -> np.ndarray:
         base = read_alignment.get_base_at_ref_pos(genomic_pos)
         if base is None or not base.has_signal:
             return None
@@ -226,13 +228,19 @@ class SignalVisualizer:
         if read_alignment.is_reversed:
             base_sig = base_sig[::-1]
         return base_sig
-    
-    def _get_insertions_signal(self, read_alignment: ReadAlignment, genomic_pos: int) -> np.ndarray:
+
+    def _get_insertions_signal(
+        self, read_alignment: ReadAlignment, genomic_pos: int
+    ) -> np.ndarray:
         insertions = read_alignment.insertions_by_ref_pos.get(genomic_pos, None)
         if insertions is None:
             insertions_sig = np.empty((0,))
         else:
-            insertions_sig = [insertion.signal[::-1] for insertion in insertions if insertion.has_signal]
+            insertions_sig = [
+                insertion.signal[::-1]
+                for insertion in insertions
+                if insertion.has_signal
+            ]
             insertions_sig = np.concatenate(insertions_sig)
         return insertions_sig
 
@@ -247,30 +255,35 @@ class SignalVisualizer:
         for read_alignment in condition.reads:
             matched_x: List[np.ndarray] = []
             matched_y: List[np.ndarray] = []
-            
+
             insertions_x: List[np.ndarray] = []
             insertions_y: List[np.ndarray] = []
 
             for pos_idx, genomic_pos in enumerate(condition.positions):
                 base_sig = self._get_base_signal(read_alignment, genomic_pos)
-                insertions_sig = self._get_insertions_signal(read_alignment, genomic_pos)
-                if base_sig is None: continue
+                insertions_sig = self._get_insertions_signal(
+                    read_alignment, genomic_pos
+                )
+                if base_sig is None:
+                    continue
 
                 x0 = pos_idx
                 x1 = pos_idx + 1 - pad
-                x_arr = np.linspace(x0, x1, base_sig.shape[0]+insertions_sig.shape[0], dtype=float)
-                
-                x_arr_base = x_arr[:base_sig.shape[0]]
+                x_arr = np.linspace(
+                    x0, x1, base_sig.shape[0] + insertions_sig.shape[0], dtype=float
+                )
+
+                x_arr_base = x_arr[: base_sig.shape[0]]
                 matched_x.append(x_arr_base)
                 matched_y.append(base_sig)
                 # break between positions
                 matched_x.append(np.array([np.nan], dtype=float))
                 matched_y.append(np.array([np.nan], dtype=float))
-                
-                x_arr_insertions = x_arr[base_sig.shape[0]:]
+
+                x_arr_insertions = x_arr[base_sig.shape[0] :]
                 insertions_x.append(x_arr_base[-1:])
                 insertions_y.append(base_sig[-1:])
-                
+
                 insertions_x.append(x_arr_insertions)
                 insertions_y.append(insertions_sig)
                 # break between positions
@@ -295,7 +308,7 @@ class SignalVisualizer:
                         hovertemplate="Position: %{x:.2f}<br>Signal: %{y:.1f} pA<extra></extra>",
                     )
                 )
-                
+
             if insertions_x:
                 all_x = np.concatenate(insertions_x)
                 all_y = np.concatenate(insertions_y)
@@ -309,7 +322,7 @@ class SignalVisualizer:
                         legendgroup=condition.label,
                         meta={"cond": condition.label, "kind": "read"},
                         showlegend=False,  # keep legend clean
-                        line=dict(color=col, width=lw, dash='dot'),
+                        line=dict(color=col, width=lw, dash="dot"),
                         opacity=alp,
                         hovertemplate="Position: %{x:.2f}<br>Signal: %{y:.1f} pA<extra></extra>",
                     )
@@ -605,7 +618,7 @@ class SignalVisualizer:
                     "format": format,
                     "scale": scale or self.style.toImageButtonOptions.get("scale", 2),
                     "width": self.style.width,
-                    "height": self.style.height
+                    "height": self.style.height,
                 }
                 write_kwargs.update(kwargs)
                 self.fig.write_image(str(path), **write_kwargs)
@@ -641,7 +654,7 @@ class SignalVisualizer:
                                 aligned_base.reference_base.upper()
                             )
                         else:
-                            kmer_dict[aligned_base.reference_pos] = '*'
+                            kmer_dict[aligned_base.reference_pos] = "*"
                         rem -= 1
 
             if rem == 0:

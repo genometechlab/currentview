@@ -178,7 +178,9 @@ class DataProcessor:
         self.logger.debug(f"Calling extract_alignments with window_size={self.K}")
 
         try:
-            alignments = self._alignment_cache[bam_path].extract_aligned_reads_at_position(
+            alignments = self._alignment_cache[
+                bam_path
+            ].extract_aligned_reads_at_position(
                 contig=contig,
                 target_position=target_position,
                 is_reversed=is_reversed,
