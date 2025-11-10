@@ -44,6 +44,7 @@ def register_condition_callbacks():
             State("files-store", "data"),
             State("contig", "value"),
             State("position", "value"),
+            State("molecule-type-store", "data"),
             State("matched-query-base", "value"),
             State("max-reads", "value"),
             State("condition-label", "value"),
@@ -63,6 +64,7 @@ def register_condition_callbacks():
         files,
         contig,
         pos,
+        molecule_type,
         matched_query_base,
         max_reads,
         label,
@@ -76,7 +78,7 @@ def register_condition_callbacks():
         trigger,
     ):
         """Add a new condition."""
-
+        
         error_messages = _validate_inputs(files, contig, pos)
 
         if error_messages:
@@ -125,6 +127,7 @@ def register_condition_callbacks():
                 pod5_path=str(files["pod5"]),
                 contig=contig,
                 target_position=int(pos),
+                molecule_type=molecule_type,
                 matched_query_base=matched_query_base,
                 max_reads=max_reads,
                 label=label,

@@ -94,12 +94,14 @@ def register_initialization_callbacks():
             Output("alert", "is_open"),
             Output("stats-tab", "disabled"),
             Output("settings-btn", "style"),
+            Output("molecule-type-store", "data")
         ],
         Input("init-btn", "n_clicks"),
         [
             State("window-size", "value"),
             State("kmer-labels", "value"),
             State("stats-store", "data"),
+            State("molecule-type-options", "value"),
             State("custom-title", "value"),
             State("verbosity", "value"),
             State("style-options", "value"),
@@ -118,6 +120,7 @@ def register_initialization_callbacks():
         k,
         kmer_text,
         stats,
+        molecule_type,
         title,
         verbosity,
         style_opts,
@@ -226,6 +229,7 @@ def register_initialization_callbacks():
                 "marginLeft": "20px",
                 "fontSize": "1.2rem",
             },  # Show settings button
+            molecule_type
         )
 
 

@@ -208,6 +208,20 @@ def create_initialization_card() -> html.Div:
                                             dbc.FormText(
                                                 "Select statistics to calculate for each position"
                                             ),
+                                            html.Br(),
+                                            html.Label(
+                                                "Molecule Type",
+                                                className="modern-label"
+                                            ),
+                                            dbc.RadioItems(
+                                                options=[
+                                                    {"label": "DNA", "value": 'dna'},
+                                                    {"label": "RNA", "value": 'rna'},
+                                                ],
+                                                value='rna',
+                                                id="molecule-type-options",
+                                                className="modern-checklist"
+                                            ),
                                         ]
                                     ),
                                 ]

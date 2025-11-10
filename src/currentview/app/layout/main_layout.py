@@ -76,6 +76,7 @@ def create_layout() -> html.Div:
                     dcc.Store(id="conditions-metadata", data={}),
                     dcc.Store(id="plot-trigger", data=0),
                     dcc.Store(id="theme-store", data="light"),
+                    dcc.Store(id="molecule-type-store", data="rna"),
                     # Custom CSS for dark mode
                     html.Div(id="theme-styles", style={"display": "none"}),
                     # File browser modals
