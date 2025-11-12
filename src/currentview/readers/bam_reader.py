@@ -326,29 +326,6 @@ class AlignmentExtractor:
                 query_pos, ref_pos = pair_data
                 ref_base = None
 
-            # Check if we're in or near the target region
-            if ref_pos is not None:
-                if ref_pos < start_pos:
-                    # Not yet in the target region, continue with the next pair
-                    continue
-                if start_pos <= ref_pos <= end_pos:
-                    # Now we are inside the region of interest
-                    # A flag will be enabled to capture insertions
-                    in_target_region = True
-                    pass  # Just for consistency with continue and break
-                elif ref_pos > end_pos:
-                    in_target_region = (
-                        False  # Not required due to break. Included for consistency
-                    )
-                    # Breaking out of pairs loop
-                    break
-            else:
-                if in_target_region:
-                    # Will fall into insertion logic below
-                    pass  # Just for consistency with continue and break
-                else:
-                    continue
-
             if query_pos is None and ref_pos is not None:
                 # Deletion
                 base_type = BaseType.DELETION
