@@ -261,8 +261,6 @@ class AlignmentExtractor:
             ra = ReadAlignment(
                 read_id=read.query_name,
                 aligned_bases=aligned_bases,
-                target_position=target_position,
-                window_size=window_size,
                 is_reversed=is_reversed,
             )
 
@@ -276,7 +274,8 @@ class AlignmentExtractor:
                     return None
 
             if exclude_reads_with_indels and not ra.has_no_indels(
-                window_size=window_size
+                position=target_position,
+                window_size=window_size,
             ):
                 return None
 

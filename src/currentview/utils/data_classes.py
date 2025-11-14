@@ -6,6 +6,7 @@ from enum import Enum
 from uuid import UUID
 from pathlib import Path
 from collections import defaultdict
+from functools import cached_property
 
 
 class BaseType(Enum):
@@ -19,9 +20,22 @@ class SignalRange:
     start: int
     end: int
 
+    def __post_init__(self):
+        if self.start < 0 or self.end < 0:
+            raise ValueError(f"Signal positions must be non-negative: {self.start}, {self.end}")
+        if self.start >= self.end:
+            raise ValueError(f"Signal start must be before end: {self.start} >= {self.end}")
+
     @property
     def range(self):
         return (self.start, self.end)
+        
+    @property
+    def length(self) -> int:
+        return self.end - self.start
+    
+    def __len__(self) -> int:
+        return self.length
 
 
 @dataclass
@@ -32,118 +46,89 @@ class AlignedBase:
     signal_range: Optional[SignalRange]
     reference_base: Optional[str] = None
     query_base: Optional[str] = None
-    _signal: Optional[np.ndarray] = field(default=None, repr=False, compare=False)
-
-    @property
-    def signal(self) -> np.ndarray:
-        """Get signal data. Raises error if not yet extracted."""
-        if self._signal is None:
-            if self.signal_range is None:
-                raise ValueError(
-                    f"No signal for {self.base_type.value} at ref:{self.reference_pos}"
-                )
-            raise ValueError(
-                "Signal not extracted. Run SignalExtractor.extract_signals() first"
-            )
-        return self._signal
-
-    @signal.setter
-    def signal(self, value: np.ndarray):
-        """Set signal data."""
-        if self.signal_range is None:
-            raise ValueError(f"Cannot set signal for base without signal_range")
-        expected_length = self.signal_range.end - self.signal_range.start
-        if len(value) != expected_length:
-            raise ValueError(
-                f"Signal length {len(value)} doesn't match range {expected_length}"
-            )
-        self._signal = value
 
     @property
     def has_signal(self) -> bool:
-        """Check if signal has been extracted."""
-        return self._signal is not None
+        return self.base_type != BaseType.DELETION
+
+    def get_signal(self, read: "ReadAlignment") -> np.ndarray:
+        if self.has_signal:
+            sig_start, sig_end = self.signal_range.range
+            base_sig = read.signal[sig_start:sig_end]
+            return base_sig[::-1] if read.is_reversed else base_sig
+        return None
 
     @property
     def is_exact_match(self) -> bool:
         return self.base_type == BaseType.MATCH
 
-
 @dataclass
 class ReadAlignment:
     read_id: str
     aligned_bases: List[AlignedBase]
-    target_position: int
-    window_size: int
     is_reversed: bool
+    _signal: Optional[np.ndarray] = field(default=None, repr=False, compare=False)
 
-    @property
+    @cached_property
     def bases_by_ref_pos(self) -> Dict[int, AlignedBase]:
         """Get dictionary mapping reference positions to aligned bases."""
-        if not hasattr(self, "_bases_by_ref_pos"):
-            self._bases_by_ref_pos = {
-                base.reference_pos: base
-                for base in self.aligned_bases
-                if base.reference_pos is not None
-            }
-        return self._bases_by_ref_pos
+        return {
+            base.reference_pos: base
+            for base in self.aligned_bases
+            if base.reference_pos is not None
+        }
     
-    @property
-    def insertions_by_ref_pos(self) -> Dict[int, AlignedBase]:
-        """Return a dictionary mapping of each refrecne position to the inserted bases after it"""
-        if not hasattr(self, "_insertions_by_ref_pos"):
-            prev_ref_pos = None
-            self._insertions_by_ref_pos = defaultdict(list)
-            for base in self.aligned_bases:
-                if base.reference_pos is not None:
-                    prev_ref_pos = base.reference_pos
-                else:
-                    if prev_ref_pos is not None:
-                        self._insertions_by_ref_pos[prev_ref_pos].append(base)
-            self._insertions_by_ref_pos = dict(self._insertions_by_ref_pos)  
-        return self._insertions_by_ref_pos
+    @cached_property
+    def insertions_by_ref_pos(self) -> Dict[Optional[int], List[AlignedBase]]:
+        """Return a dictionary mapping each reference position to inserted bases after it.
         
+        Key is None for insertions at the beginning of the read.
+        """
+        prev_ref_pos = None
+        insertions = defaultdict(list)
+        
+        for base in self.aligned_bases:
+            if base.reference_pos is not None:
+                prev_ref_pos = base.reference_pos
+            elif base.base_type == BaseType.INSERTION:  # ← Be explicit
+                insertions[prev_ref_pos].append(base)
+        
+        return dict(insertions)
 
     def get_base_at_ref_pos(self, ref_pos: int) -> Optional[AlignedBase]:
         """Convenience method to get base at specific reference position."""
         return self.bases_by_ref_pos.get(ref_pos)
 
-    def get_signal(self, K: Optional[int] = None) -> np.ndarray:
-        """Get the raw signal segment for the read from start to end."""
-        window_size = K // 2 if K is not None else self.window_size
-        start = self.target_position - window_size // 2
-        end = self.target_position + window_size // 2 + 1
-        bases_in_range = [self.get_base_at_ref_pos(pos) for pos in range(start, end)]
-        signal_segments = [
-            base.signal for base in bases_in_range if base and base.has_signal
-        ]
-        if not signal_segments:
-            return np.array([])
-        if self.is_reversed:
-            signal_segments = [seg[::-1] for seg in signal_segments]
-        return np.concatenate(signal_segments)
+    @property
+    def signal(self) -> np.ndarray:
+        return self._signal
 
-    def has_no_indels(self, window_size: int = 3) -> bool:
+    def has_no_indels(self, position: int, window_size: int) -> bool:
         """Check if there's a contiguous window of matches (no indels) around the target position."""
         if window_size % 2 == 0:
             raise ValueError(f"window_size must be odd, got {window_size}")
-
-        matched_base = self.get_base_at_ref_pos(self.target_position)
+        
+        matched_base = self.get_base_at_ref_pos(position)
         if matched_base is None or matched_base.query_pos is None:
             return False
-
+        
         matched_query_pos_to_target = matched_base.query_pos
         half_window = window_size // 2
-
+        
         # Check all positions in the window
         for idx in range(-half_window, half_window + 1):
-            ref_pos = self.target_position + idx
+            ref_pos = position + idx
             expected_query_pos = matched_query_pos_to_target + idx
-
+            
+            # Check for match at this position
             base = self.get_base_at_ref_pos(ref_pos)
             if base is None or base.query_pos != expected_query_pos:
                 return False
-
+            
+            # Check for insertions after this position
+            if ref_pos in self.insertions_by_ref_pos:
+                return False
+        
         return True
 
 

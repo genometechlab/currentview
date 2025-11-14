@@ -276,7 +276,7 @@ class DataProcessor:
         for alignment in alignments:
             for base in alignment.aligned_bases:
                 if base.has_signal:
-                    signal_lengths.append(len(base.signal))
+                    signal_lengths.append(base.signal_range.length)
 
         self.logger.debug("Alignment Statistics:")
         self.logger.debug(f"  - Total reads: {len(alignments)}")

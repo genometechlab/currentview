@@ -39,15 +39,10 @@ class SignalExtractor:
             for read_record in dataset.reads(selection=read_ids):
                 fetched_read_id = str(read_record.read_id)
                 read_alignment = alignment_dict[fetched_read_id]
-                for aligned_base in read_alignment.aligned_bases:
-                    # Ignore deletions, since they don't have a range
-                    if aligned_base.query_base is None:
-                        continue
-                    signal = read_record.signal_pa
-                    signal = self.signal_processing_fn(signal)
-                    start, end = aligned_base.signal_range.range
-                    base_signal = signal[start:end]
-                    aligned_base.signal = base_signal
-                out.append(read_alignment)
+                read_alignment._signal = read_record.signal_pa
 
+                signal = read_record.signal_pa
+                signal = self.signal_processing_fn(signal)
+                read_alignment._signal = signal
+                out.append(read_alignment)
         return out

@@ -73,7 +73,7 @@ class StatsVisualizer:
         self._create_figure()
 
         # Track plotting state
-        self._conditions: Dict[str, Condition] = OrderedDict()
+        self._conditions_info: Dict[str, Dict] = OrderedDict()
 
         self.logger.info(f"Initialized StatsVisualizer with K={K}, n_stats={n_stats}")
 
@@ -160,7 +160,7 @@ class StatsVisualizer:
         )
 
         # Check if condition already plotted
-        if label in self._conditions:
+        if label in self._conditions_info:
             self.logger.warning(f"Condition '{label}' already plotted. Updating it.")
             self.remove_condition(label)
 
@@ -169,7 +169,7 @@ class StatsVisualizer:
         self._plot_stats(condition)
 
         # Store plotted condition
-        self._conditions[condition.label] = condition
+        self._conditions_info[condition.label] = condition
 
     def _plot_stats(self, condition: Condition):
         """Plot statistics for a condition."""
@@ -273,7 +273,7 @@ class StatsVisualizer:
 
     def remove_condition(self, label: str) -> bool:
         """Remove a specific condition from the plot."""
-        if label not in self._conditions:
+        if label not in self._conditions_info:
             self.logger.warning(f"Condition '{label}' not found in plot")
             return False
 
@@ -287,7 +287,7 @@ class StatsVisualizer:
         self.fig.data = tuple(kept)
 
         # Remove from plotted conditions
-        self._conditions.pop(label, None)
+        self._conditions_info.pop(label, None)
 
         self.logger.debug(f"Successfully removed condition '{label}'")
         return True
@@ -300,17 +300,17 @@ class StatsVisualizer:
         self.fig.data = tuple()
 
         # Clear the map
-        self._conditions.clear()
+        self._conditions_info.clear()
 
         self.logger.debug("All conditions cleared")
 
     def get_plotted_labels(self) -> List[str]:
         """Get list of currently plotted condition labels."""
-        return list(self._conditions.keys())
+        return list(self._conditions_info.keys())
 
     def has_condition(self, label: str) -> bool:
         """Check if a condition is currently plotted."""
-        return label in self._conditions
+        return label in self._conditions_info
 
     def set_title(self, title: str) -> "StatsVisualizer":
         """Set or update the plot title."""

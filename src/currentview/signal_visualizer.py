@@ -69,8 +69,7 @@ class SignalVisualizer:
         self._add_position_barriers()
 
         # Track plotting state
-        self._conditions: "OrderedDict[str, Condition]" = OrderedDict()
-        self._position_labels_cache: Dict[str, List[str]] = {}
+        self._conditions_info: "OrderedDict[str, Dict]" = OrderedDict()
 
         # store indices for shapes/annotations
         self._highlight_shapes: List[str] = []
@@ -189,7 +188,7 @@ class SignalVisualizer:
         )
 
         # Check if condition already plotted
-        if label in self._conditions:
+        if label in self._conditions_info:
             self.logger.warning(f"Condition '{label}' already plotted. Updating it.")
             self.remove_condition(label)
 
@@ -197,14 +196,14 @@ class SignalVisualizer:
         self.logger.debug("Extracting reference bases")
         kmer_dict = self._extract_reference_bases(positions, reads)
         position_labels = [f"{pos} - {kmer_dict[pos]}" for pos in positions]
-        self._position_labels_cache[label] = position_labels
+        condition_info = {"color": color, "pos_labels": position_labels}
 
         # Plot the signals and get y-axis bounds
         self.logger.info(f"Plotting {len(reads)} reads for condition '{label}'")
         self._plot_signals(condition)
 
         # Store plotted condition
-        self._conditions[condition.label] = condition
+        self._conditions_info[condition.label] = condition_info
 
         # Update position labels
         self._update_global_ylim()
@@ -217,7 +216,7 @@ class SignalVisualizer:
         base = read_alignment.get_base_at_ref_pos(genomic_pos)
         if base is None or not base.has_signal:
             return None
-        base_sig = base.signal
+        base_sig = base.get_signal(read=read_alignment)
         if base_sig is None:
             return None
         base_sig = np.asarray(
@@ -225,8 +224,6 @@ class SignalVisualizer:
         ).ravel()  # <- robust to list/np/scalar
         if base_sig.size == 0:
             return None
-        if read_alignment.is_reversed:
-            base_sig = base_sig[::-1]
         return base_sig
 
     def _get_insertions_signal(
@@ -237,7 +234,7 @@ class SignalVisualizer:
             insertions_sig = np.empty((0,))
         else:
             insertions_sig = [
-                insertion.signal[::-1]
+                insertion.get_signal(read=read_alignment)
                 for insertion in insertions
                 if insertion.has_signal
             ]
@@ -366,7 +363,7 @@ class SignalVisualizer:
 
     def remove_condition(self, label: str) -> bool:
         """Remove a specific condition from the plot."""
-        if label not in self._conditions:
+        if label not in self._conditions_info:
             self.logger.warning(f"Condition '{label}' not found in plot")
             return False
 
@@ -380,8 +377,7 @@ class SignalVisualizer:
         self.fig.data = tuple(kept)
 
         # Remove from plotted conditions
-        self._conditions.pop(label, None)
-        self._position_labels_cache.pop(label, None)
+        self._conditions_info.pop(label, None)
 
         # Update y-axis limits
         self._update_global_ylim()
@@ -400,8 +396,7 @@ class SignalVisualizer:
         self.fig.data = tuple()
 
         # Clear the map
-        self._conditions.clear()
-        self._position_labels_cache.clear()
+        self._conditions_info.clear()
 
         # Update position labels
         if not self.window_labels:
@@ -630,11 +625,11 @@ class SignalVisualizer:
 
     def get_plotted_labels(self) -> List[str]:
         """Get list of currently plotted condition labels."""
-        return list(self._conditions.keys())
+        return list(self._conditions_info.keys())
 
     def has_condition(self, label: str) -> bool:
         """Check if a condition is currently plotted."""
-        return label in self._conditions
+        return label in self._conditions_info
 
     def _extract_reference_bases(
         self, positions: List[int], reads: List[ReadAlignment]
@@ -668,27 +663,28 @@ class SignalVisualizer:
 
         tick_positions = np.arange(self.K) + 0.5 - self.style.positions_padding / 2
 
-        if not self._conditions:
+        if not self._conditions_info:
             # Default labels
             tick_text = (
                 [str(i) for i in range(self.K)]
                 if not self.window_labels
                 else [str(l) for l in self.window_labels]
             )
-        elif len(self._conditions) == 1:
+        elif len(self._conditions_info) == 1:
             # Single condition labels
-            label = next(iter(self._conditions))
-            tick_text = self._position_labels_cache.get(
-                label, [str(i) for i in range(self.K)]
+            label = next(iter(self._conditions_info))
+            tick_text = (
+                self._conditions_info.get(label, {}).get("pos_labels")
+                or [str(i) for i in range(self.K)]
             )
         else:
             # Multiple conditions - create multi-line labels
             tick_text = []
             for i in range(self.K):
                 lines = []
-                for label, cond in self._conditions.items():
-                    color = cond.color or self.style.default_color
-                    pos_labels = self._position_labels_cache.get(label)
+                for label, cond_info_dict in self._conditions_info.items():
+                    color = cond_info_dict["color"]
+                    pos_labels = cond_info_dict["pos_labels"]
                     # if cache missing, fallback gracefully
                     text = pos_labels[i] if pos_labels else str(i)
                     lines.append(f"<span style='color:{color}'>{text}</span>")
