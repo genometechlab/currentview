@@ -43,7 +43,7 @@ class AlignmentExtractor:
                     aligned_bases = self._extract_aligned_bases(read, 0, 1e7)
                     return aligned_bases
         return None
-
+    
     def extract_aligned_reads_at_position(
         self,
         contig: str,
@@ -67,15 +67,31 @@ class AlignmentExtractor:
         Returns:
             List of ReadAlignment objects
         """
-        # if both read_ids and max_reads are set, ignore max_reads and use read_ids
+        # Handle case when both read_ids and max_reads are set
         if read_ids is not None and max_reads is not None:
-            self.logger.info(
-                f"Both read_ids and max_reads are set. Ignoring max_reads and using read_ids."
-            )
-            max_reads = None
-
-        # Convert read_ids to set for faster lookup
-        if read_ids is not None and isinstance(read_ids, list):
+            # Convert to list for sampling if needed
+            read_ids_list = list(read_ids) if isinstance(read_ids, set) else read_ids
+            
+            if max_reads < len(read_ids_list):
+                # Sample max_reads from read_ids
+                self.logger.info(
+                    f"Both read_ids ({len(read_ids_list)} reads) and max_reads ({max_reads}) are set. "
+                    f"Randomly sampling {max_reads} reads from provided read_ids."
+                )
+                rng = np.random.default_rng(self.random_state)
+                sampled_ids = rng.choice(read_ids_list, size=max_reads, replace=False)
+                read_ids = set(sampled_ids)
+                max_reads = None  # Don't use max_reads in downstream logic
+            else:
+                # max_reads >= len(read_ids), so just use all read_ids
+                self.logger.warning(
+                    f"Both read_ids ({len(read_ids_list)} reads) and max_reads ({max_reads}) are set. "
+                    f"Since max_reads >= number of read_ids, ignoring max_reads and using all provided read_ids."
+                )
+                read_ids = set(read_ids_list) if isinstance(read_ids, list) else read_ids
+                max_reads = None  # Don't use max_reads in downstream logic
+        # Convert read_ids to set for faster lookup (if not already handled above)
+        elif read_ids is not None and isinstance(read_ids, list):
             read_ids = set(read_ids)
 
         # Ensure window size is odd
