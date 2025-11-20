@@ -238,6 +238,8 @@ class AlignmentExtractor:
         out: List[ReadAlignment] = []
 
         for read in bam.fetch(**region):
+            if read.is_secondary: continue
+            
             if read_ids is not None and read.query_name not in read_ids:
                 continue
             ra = self._build_read_alignment(
