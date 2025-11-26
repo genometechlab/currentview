@@ -7,7 +7,7 @@ import warnings
 import logging
 
 from .stats_funcs import StatisticsFuncs
-from ..utils.data_classes import ReadAlignment
+from ..utils.data_classes import Condition, ReadAlignment
 
 
 class StatsCalculator:
@@ -53,17 +53,19 @@ class StatsCalculator:
         )
         
     def calculate_multi_position_stats(
-        self, aligned_reads: List[ReadAlignment], K: Optional[int] = None
+        self, condition: Condition, K: Optional[int] = None
     ):
         stats_dict = {self._get_stat_name(stat): [] for stat in self.statistics}
 
-        for read in aligned_reads:
+        target_position = condition.target_position
+        for read in condition.reads:
             read_signal = read.signal
-            bases_signal = []
-            for base in read.aligned_bases:
-                base_signal = base.get_signal
-                bases_signal.append(base_signal)
-            bases_signal = np.concatenate(bases_signal)
+            first_base = read.get_base_at_ref_pos(target_position-K//2)
+            last_base = read.get_base_at_ref_pos(target_position-K//2)
+            start, _ = first_base.signal_range.range
+            _, end = last_base.signal_range.range
+            
+            bases_signal = read_signal[start:end]
             for stat, compiled_func in zip(self.statistics, self._compiled_stats):
                 stat_name = self._get_stat_name(stat)
                 try:

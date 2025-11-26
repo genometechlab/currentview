@@ -180,7 +180,7 @@ class GMMHandler:
     def _fetch_condition_data(self, condition: Condition) -> np.ndarray:
         """Compute per-read stats for a condition and return Nx2 array: [stat1, stat2]."""
         stats = self.stats_calculator.calculate_multi_position_stats(
-            condition.reads, K=self.K
+            condition, K=self.K
         )
         s1 = np.asarray(stats[self.stat1_name], dtype=float)
         s2 = np.asarray(stats[self.stat2_name], dtype=float)
