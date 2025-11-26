@@ -1,4 +1,4 @@
-# Current View
+# CurrentView
 
 A Python package for visualizing nanopore sequencing signals at specific genomic positions. This tool enables researchers to plot and compare signal patterns from POD5 files aligned to reference genomes via BAM files.
 
@@ -15,7 +15,7 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
 !['KDE sample'](images/sample_kde.png)
 
 ## Table of Contents
-- [Current View](#current-view)
+- [CurrentView](#current-view)
   - [Features](#features)
   - [Output sample](#output-sample)
   - [Table of Contents](#table-of-contents)
@@ -84,6 +84,8 @@ viz.show_stats()
 # Or display both
 viz.show()
 ```
+
+**Implementation examples are provided under example folder**
 
 ## Core API
 
@@ -308,6 +310,8 @@ A complete guide to PlotStyle can be found in [plotstyle_guide.md](plotstyle_gui
 
 #### Examples
 
+Implementation examples are provided under example folder
+
 **Example 1: Basic Single Condition**
 
 ```python
@@ -481,5 +485,5 @@ MIT License - see LICENSE file for details.
 
 If you use this tool in your research, please cite:
 ```
-# TODO
+# Will be updated once published.
 ```
