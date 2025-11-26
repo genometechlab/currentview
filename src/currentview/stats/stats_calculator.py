@@ -53,12 +53,12 @@ class StatsCalculator:
         )
         
     def calculate_multi_position_stats(
-        self, aligned_reads: List[ReadAlignment], K: Optional[int] = None
+        self, aligned_reads: List[ReadAlignment]
     ):
         stats_dict = {self._get_stat_name(stat): [] for stat in self.statistics}
 
         for read in aligned_reads:
-            signal = read.get_signal(K=K)
+            signal = read.signal
             for stat, compiled_func in zip(self.statistics, self._compiled_stats):
                 stat_name = self._get_stat_name(stat)
                 try:
