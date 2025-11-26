@@ -53,16 +53,21 @@ class StatsCalculator:
         )
         
     def calculate_multi_position_stats(
-        self, aligned_reads: List[ReadAlignment]
+        self, aligned_reads: List[ReadAlignment], K: Optional[int] = None
     ):
         stats_dict = {self._get_stat_name(stat): [] for stat in self.statistics}
 
         for read in aligned_reads:
-            signal = read.signal
+            read_signal = read.signal
+            bases_signal = []
+            for base in read.aligned_bases:
+                base_signal = base.get_signal
+                bases_signal.append(base_signal)
+            bases_signal = np.concatenate(bases_signal)
             for stat, compiled_func in zip(self.statistics, self._compiled_stats):
                 stat_name = self._get_stat_name(stat)
                 try:
-                    value = compiled_func(signal)
+                    value = compiled_func(bases_signal)
                     # Ensure scalar
                     if isinstance(value, np.ndarray):
                         value = float(value)
