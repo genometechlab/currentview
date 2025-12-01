@@ -234,6 +234,7 @@ class StatsVisualizer:
                     self._plot_func(
                         x=x_range,
                         y=density,
+                        cliponaxis=False,
                         mode="lines",
                         name=label,
                         line=dict(color=color, width=line_width, dash=line_style),
@@ -259,6 +260,7 @@ class StatsVisualizer:
             self._plot_func(
                 x=values,
                 y=y_jitter,
+                cliponaxis=False,
                 mode="markers",
                 name=label,
                 marker=dict(color=color, size=8, opacity=opacity * 0.6),

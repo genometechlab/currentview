@@ -295,6 +295,7 @@ class SignalVisualizer:
                     self._plot_func(
                         x=all_x,
                         y=all_y,
+                        cliponaxis=False,
                         mode="lines",
                         name=condition.label,
                         legendgroup=condition.label,
@@ -314,6 +315,7 @@ class SignalVisualizer:
                     self._plot_func(
                         x=all_x,
                         y=all_y,
+                        cliponaxis=False,
                         mode="lines",
                         name=condition.label,
                         legendgroup=condition.label,
@@ -331,6 +333,7 @@ class SignalVisualizer:
                 self._plot_func(
                     x=[np.nan],
                     y=[np.nan],
+                    cliponaxis=False,
                     mode="lines",
                     name=condition.label,
                     legendgroup=condition.label,
