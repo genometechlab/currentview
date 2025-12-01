@@ -216,7 +216,7 @@ class SignalVisualizer:
         base = read_alignment.get_base_at_ref_pos(genomic_pos)
         if base is None or not base.has_signal:
             return None
-        base_sig = base.get_signal(read=read_alignment)
+        base_sig = read_alignment.get_base_signal(base=base)
         if base_sig is None:
             return None
         base_sig = np.asarray(
@@ -234,7 +234,7 @@ class SignalVisualizer:
             insertions_sig = np.empty((0,))
         else:
             insertions_sig = [
-                insertion.get_signal(read=read_alignment)
+                read_alignment.get_base_signal(base=insertion)
                 for insertion in insertions
                 if insertion.has_signal
             ]

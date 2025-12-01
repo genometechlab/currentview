@@ -176,7 +176,7 @@ class StatsCalculator:
             pos_base = read.get_base_at_ref_pos(pos)
 
             if pos_base is not None and pos_base.has_signal:
-                signal = pos_base.get_signal(read=read)
+                signal = read.get_base_signal(base=pos_base)
 
                 # Handle reversed reads
                 if read.is_reversed:

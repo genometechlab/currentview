@@ -15,8 +15,9 @@ class BaseType(Enum):
     DELETION = "deletion"
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SignalRange:
+    """Half-open signal interval [start, end) in sample indices."""
     start: int
     end: int
 
@@ -46,17 +47,16 @@ class AlignedBase:
     signal_range: Optional[SignalRange]
     reference_base: Optional[str] = None
     query_base: Optional[str] = None
+    
+    def __post_init__(self):
+        if self.base_type != BaseType.DELETION and self.signal_range is None:
+            raise ValueError("Non-deletion bases must have a signal_range.")
+        if self.base_type == BaseType.DELETION and self.signal_range is not None:
+            raise ValueError("Deletion bases must not have a signal_range.")
 
     @property
     def has_signal(self) -> bool:
         return self.base_type != BaseType.DELETION
-
-    def get_signal(self, read: "ReadAlignment") -> np.ndarray:
-        if self.has_signal:
-            sig_start, sig_end = self.signal_range.range
-            base_sig = read.signal[sig_start:sig_end]
-            return base_sig[::-1] if read.is_reversed else base_sig
-        return None
 
     @property
     def is_exact_match(self) -> bool:
@@ -67,7 +67,21 @@ class ReadAlignment:
     read_id: str
     aligned_bases: List[AlignedBase]
     is_reversed: bool
-    _signal: Optional[np.ndarray] = field(default=None, repr=False, compare=False)
+    _signal: Optional[np.ndarray] = field(repr=False, compare=False, default=None)
+    
+    @property
+    def signal(self) -> np.ndarray:
+        if self._signal is None:
+            raise RuntimeError("Signal not loaded")
+        return self._signal
+    
+    def get_base_signal(self, base: AlignedBase) -> Optional[np.ndarray]:
+        if not base.has_signal or base.signal_range is None:
+            return None
+
+        start, end = base.signal_range.range
+        seg = self.signal[start:end]
+        return seg[::-1] if self.is_reversed else seg
 
     @cached_property
     def bases_by_ref_pos(self) -> Dict[int, AlignedBase]:
@@ -77,6 +91,10 @@ class ReadAlignment:
             for base in self.aligned_bases
             if base.reference_pos is not None
         }
+        
+    def get_base_at_ref_pos(self, ref_pos: int) -> Optional[AlignedBase]:
+        """Convenience method to get base at specific reference position."""
+        return self.bases_by_ref_pos.get(ref_pos)
     
     @cached_property
     def insertions_by_ref_pos(self) -> Dict[Optional[int], List[AlignedBase]]:
@@ -94,14 +112,6 @@ class ReadAlignment:
                 insertions[prev_ref_pos].append(base)
         
         return dict(insertions)
-
-    def get_base_at_ref_pos(self, ref_pos: int) -> Optional[AlignedBase]:
-        """Convenience method to get base at specific reference position."""
-        return self.bases_by_ref_pos.get(ref_pos)
-
-    @property
-    def signal(self) -> np.ndarray:
-        return self._signal
 
     def has_no_indels(self, position: int, window_size: int) -> bool:
         """Check if there's a contiguous window of matches (no indels) around the target position."""
