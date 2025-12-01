@@ -1133,6 +1133,7 @@ class GenomicPositionVisualizer:
         stat2: str,
         K: Optional[int] = None,
         *,
+        gmm_style: Optional["PlotStyle"] = None,
         gmm_config: Optional["GMMConfig | dict"] = None,
         preprocess_config: Optional["PreprocessConfig | dict"] = None,
         **gmm_kwargs,  # mixed bag accepted (we'll split it)
@@ -1149,6 +1150,6 @@ class GenomicPositionVisualizer:
 
         from .gmm import GMMVisualizer
 
-        gmm_viz = GMMVisualizer.from_handler(handler)
+        gmm_viz = GMMVisualizer.from_handler(handler, style=gmm_style)
         gmm_viz.show()
         return gmm_viz
