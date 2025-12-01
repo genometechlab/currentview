@@ -83,6 +83,37 @@ class ReadAlignment:
         seg = self.signal[start:end]
         return seg[::-1] if self.is_reversed else seg
 
+    def get_span_signal(self, ref_start: int, ref_end: int) -> Optional[np.ndarray]:
+        if ref_start > ref_end:
+            raise ValueError(f"ref_start must be <= ref_end, got {ref_start} > {ref_end}")
+
+        span_bases = [
+            b for b in self.aligned_bases
+            if b.reference_pos is not None
+            and ref_start <= b.reference_pos <= ref_end
+            and b.has_signal
+            and b.signal_range is not None
+        ]
+
+        if not span_bases:
+            return None
+
+        span_bases.sort(key=lambda b: b.reference_pos)
+
+        if self.is_reversed:
+            span_start = span_bases[-1].signal_range.start
+            span_end = span_bases[0].signal_range.end
+        else:
+            span_start = span_bases[0].signal_range.start
+            span_end = span_bases[-1].signal_range.end
+
+        if span_start > span_end:
+            raise ValueError(f"start index > end index, got {span_start} > {span_end}")
+
+        seg = self.signal[span_start:span_end]
+        return seg[::-1] if self.is_reversed else seg
+
+
     @cached_property
     def bases_by_ref_pos(self) -> Dict[int, AlignedBase]:
         """Get dictionary mapping reference positions to aligned bases."""

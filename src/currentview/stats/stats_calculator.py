@@ -59,13 +59,7 @@ class StatsCalculator:
 
         target_position = condition.target_position
         for read in condition.reads:
-            read_signal = read.signal
-            first_base = read.get_base_at_ref_pos(target_position-K//2)
-            last_base = read.get_base_at_ref_pos(target_position-K//2)
-            start, _ = first_base.signal_range.range
-            _, end = last_base.signal_range.range
-            
-            bases_signal = read_signal[start:end]
+            bases_signal = read.get_span_signal(target_position-K//2,target_position+K//2)
             for stat, compiled_func in zip(self.statistics, self._compiled_stats):
                 stat_name = self._get_stat_name(stat)
                 try:
