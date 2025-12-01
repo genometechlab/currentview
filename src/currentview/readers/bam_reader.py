@@ -50,6 +50,7 @@ class AlignmentExtractor:
         target_position: int,
         is_reversed: bool,
         matched_query_base: List[str] = None,
+        ignore_non_primaries: bool = True,
         window_size: int = 9,
         exclude_reads_with_indels: bool = True,
         read_ids: Optional[Union[Set[str], List[str]]] = None,
@@ -115,6 +116,7 @@ class AlignmentExtractor:
             target_position,
             is_reversed,
             matched_query_base,
+            ignore_non_primaries,
             window_size,
             exclude_reads_with_indels,
             read_ids,
@@ -129,6 +131,7 @@ class AlignmentExtractor:
         target_position: int,
         is_reversed: bool,
         matched_query_base: Optional[List[str]],
+        ignore_non_primaries: bool,
         window_size: int,
         exclude_reads_with_indels: bool,
         read_ids: Optional[Set[str]],
@@ -162,6 +165,7 @@ class AlignmentExtractor:
                     start_pos=start_pos,
                     end_pos=end_pos,
                     matched_query_base=matched_query_base,
+                    ignore_non_primaries=ignore_non_primaries,
                     max_reads=oversample,
                     target_position=target_position,  # focus on the exact site
                 )
@@ -182,6 +186,7 @@ class AlignmentExtractor:
                     target_position=target_position,
                     is_reversed=is_reversed,
                     matched_query_base=matched_query_base,
+                    ignore_non_primaries=ignore_non_primaries,
                     window_size=window_size,
                     exclude_reads_with_indels=exclude_reads_with_indels,
                     read_ids=set(candidate_ids),
@@ -212,6 +217,7 @@ class AlignmentExtractor:
                     target_position=target_position,
                     is_reversed=is_reversed,
                     matched_query_base=matched_query_base,
+                    ignore_non_primaries=ignore_non_primaries,
                     window_size=window_size,
                     exclude_reads_with_indels=exclude_reads_with_indels,
                     read_ids=read_ids,
@@ -229,6 +235,7 @@ class AlignmentExtractor:
         target_position: int,
         is_reversed: bool,
         matched_query_base: Optional[List[str]],
+        ignore_non_primaries: bool,
         window_size: int,
         exclude_reads_with_indels: bool,
         read_ids: Optional[Set[str]],
@@ -238,7 +245,9 @@ class AlignmentExtractor:
         out: List[ReadAlignment] = []
 
         for read in bam.fetch(**region):
-            if read.is_secondary: continue
+            if ignore_non_primaries:
+                if read.is_secondary or read.is_supplementary: 
+                    continue
             
             if read_ids is not None and read.query_name not in read_ids:
                 continue
@@ -435,6 +444,7 @@ class AlignmentExtractor:
         start_pos: int,
         end_pos: int,
         matched_query_base: Optional[List[str]],
+        ignore_non_primaries: bool,
         max_reads: int,
         target_position: Optional[int] = None,
     ) -> List[str]:
@@ -458,6 +468,9 @@ class AlignmentExtractor:
 
             for pil in col.pileups:
                 read = pil.alignment
+                if ignore_non_primaries:
+                    if read.is_secondary or read.is_supplementary:
+                        continue
                 rid = read.query_name
                 if rid in seen_ids:
                     continue
