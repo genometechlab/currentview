@@ -139,7 +139,7 @@ class ReadAlignment:
         for base in self.aligned_bases:
             if base.reference_pos is not None:
                 prev_ref_pos = base.reference_pos
-            elif base.base_type == BaseType.INSERTION:  # ← Be explicit
+            elif base.base_type == BaseType.INSERTION:
                 insertions[prev_ref_pos].append(base)
         
         return dict(insertions)

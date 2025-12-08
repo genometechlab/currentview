@@ -40,7 +40,7 @@ class AlignmentExtractor:
         with pysam.AlignmentFile(self.bam_path, mode="rb", threads=16) as bam:
             for read in bam.fetch(until_eof=True):
                 if read.query_name == read_id:
-                    aligned_bases = self._extract_aligned_bases(read, 0, 1e7)
+                    aligned_bases = self._extract_aligned_bases(read)
                     return aligned_bases
         return None
     
@@ -280,7 +280,7 @@ class AlignmentExtractor:
         """Build ReadAlignment for a single read; return None if it fails filters."""
         try:
             aligned_bases = self._extract_aligned_bases(
-                read, start_pos, end_pos, is_reversed
+                read, is_reversed
             )
             if not aligned_bases:
                 return None
@@ -314,8 +314,6 @@ class AlignmentExtractor:
     def _extract_aligned_bases(
         self,
         read: pysam.AlignedSegment,
-        start_pos: int,
-        end_pos: int,
         is_reversed: bool,
     ) -> List[AlignedBase]:
         """Extract aligned bases including insertions and deletions."""
@@ -342,7 +340,6 @@ class AlignmentExtractor:
             has_ref_seq = False
 
         aligned_bases = []
-        in_target_region = False
 
         # Process all aligned pairs
         for pair_data in pairs:
