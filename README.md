@@ -15,7 +15,7 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
 !['KDE sample'](images/sample_kde.png)
 
 ## Table of Contents
-- [CurrentView](#current-view)
+- [CurrentView](#currentview)
   - [Features](#features)
   - [Output sample](#output-sample)
   - [Table of Contents](#table-of-contents)
@@ -25,18 +25,26 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
   - [Core API](#core-api)
     - [GenomicPositionVisualizer](#genomicpositionvisualizer)
       - [Main Methods](#main-methods)
+        - [add\_condition()](#add_condition)
+        - [update\_condition()](#update_condition)
+        - [show(), show\_signals(), and show\_stats()](#show-show_signals-and-show_stats)
+        - [save(), save\_signals(), and save\_stats()](#save-save_signals-and-save_stats)
       - [Other Methods](#other-methods)
+        - [GMM Methods](#gmm-methods)
     - [Styling and Customization](#styling-and-customization)
       - [Examples](#examples)
   - [Practical Considerations](#practical-considerations)
+    - [Performance Optimization](#performance-optimization)
+    - [Visual Clarity](#visual-clarity)
+    - [Common Issues](#common-issues)
   - [License](#license)
   - [Citation](#citation)
 
 ## Installation
 
 ```bash
-git clone https://github.com/genometechlab/current-view.git
-cd current-view
+git clone https://github.com/genometechlab/currentview.git
+cd currentview
 pip install -e .
 ```
 
