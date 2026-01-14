@@ -70,7 +70,7 @@ viz.add_condition(
     pod5_path="sample1.pod5",
     contig="chr1",
     target_position=100,
-    label="Control"
+    label="IVT"
 )
 
 # Add another condition for comparison
@@ -79,7 +79,7 @@ viz.add_condition(
     pod5_path="sample2.pod5",
     contig="chr1",
     target_position=100,
-    label="Treatment",
+    label="Canonical",
     color="red"
 )
 
