@@ -26,6 +26,7 @@ dependencies = [
 dev = ["black>=23.0.0","isort>=5.12.0","flake8>=6.0.0","pytest>=7.0.0","pytest-cov>=4.0.0"]
 
 [project.scripts]
+currentview = "currentview.__main__:main"
 currentview-app = "currentview.app.run:main"
 
 [tool.setuptools]
