@@ -134,7 +134,7 @@ class StatsVisualizer:
             for col in range(1, self.K + 1):
                 # Update x-axis with all style settings
                 self.fig.update_xaxes(
-                    title_text="Value" if row == self.n_stats else "",
+                    title_text=None,
                     **xaxis_layout,
                     row=row,
                     col=col,

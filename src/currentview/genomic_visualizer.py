@@ -1090,6 +1090,7 @@ class GenomicPositionVisualizer:
             raise ValueError(
                 f"Specified K ({K}) cannot be larger than the GenomicPositionVisualizer window size ({self.K})"
             )
+        if K is None: K = self.K
 
         if len(self._conditions) == 0:
             raise SystemError(f"No conditions are added yet.")
@@ -1124,6 +1125,7 @@ class GenomicPositionVisualizer:
         preprocess_config: Optional["PreprocessConfig | dict"] = None,
         **gmm_kwargs,
     ):
+        if K is None: K = self.K
         handler = self._get_gmm_handler(
             stat1,
             stat2,

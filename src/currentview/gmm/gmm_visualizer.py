@@ -73,8 +73,8 @@ class GMMVisualizer:
         logger: Optional[logging.Logger] = None,
     ) -> "GMMVisualizer":
         # Default axis labels from handler if not passed explicitly
-        xl = x_label or getattr(handler, "stat1_name", "stat1")
-        yl = y_label or getattr(handler, "stat2_name", "stat2")
+        xl = x_label or handler.stat1.label
+        yl = y_label or handler.stat2.label
         cls_ = cls(
             style=style,
             x_label=xl,

@@ -55,7 +55,7 @@ class StatsCalculator:
     def calculate_multi_position_stats(
         self, condition: Condition, K: Optional[int] = None
     ):
-        stats_dict = {self._get_stat_name(stat): [] for stat in self.statistics}
+        stats_dict = {stat: [] for stat in self.statistics}
 
         target_position = condition.target_position
         for read in condition.reads:
@@ -71,7 +71,7 @@ class StatsCalculator:
                     if self.logger.isEnabledFor(logging.DEBUG):
                         self.logger.debug(f"Failed to calculate {stat_name}: {e}")
 
-                stats_dict[stat_name].append(value)
+                stats_dict[stat].append(value)
                 
         stats_dict = {k: np.array(v, dtype=np.float32) for k,v in stats_dict.items()}
 
@@ -244,11 +244,11 @@ class StatsCalculator:
             if isinstance(stat, str):
                 # Convert string to enum
                 try:
-                    stat_enum = StatisticsFuncs(stat.lower())
+                    stat_enum = StatisticsFuncs.coerce(stat.lower())
                     parsed.append(stat_enum)
                 except ValueError:
                     try:
-                        stat_enum = StatisticsFuncs[stat.upper()]
+                        stat_enum = StatisticsFuncs.coerce(stat.upper())
                         parsed.append(stat_enum)
                     except KeyError:
                         raise ValueError(
@@ -284,7 +284,7 @@ class StatsCalculator:
     def _get_stat_name(self, stat: Union[StatisticsFuncs, Callable]) -> str:
         """Get human-readable name for a statistic."""
         if isinstance(stat, StatisticsFuncs):
-            return stat.value
+            return stat.label
         if isinstance(stat, str):
             return stat
         return getattr(stat, "__name__", "custom_stat")

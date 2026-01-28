@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from sklearn.mixture import GaussianMixture
 
-from ..stats import StatsCalculator
+from ..stats import StatsCalculator, StatisticsFuncs
 from ..utils.data_classes import Condition, ConditionStyle
 
 
@@ -87,8 +87,8 @@ class GMMHandler:
         preprocess_config: Optional[PreprocessConfig] = None,
         logger: Optional[logging.Logger] = None,
     ):
-        self.stat1 = stat1
-        self.stat2 = stat2
+        self.stat1 = StatisticsFuncs.coerce(stat1)
+        self.stat2 = StatisticsFuncs.coerce(stat2)
         self.K = K
         self.config = gmm_config or GMMConfig()
         self.pp = preprocess_config or PreprocessConfig()
@@ -96,13 +96,11 @@ class GMMHandler:
         self.logger = logger or logging.getLogger(__name__)
 
         self.stats_calculator = StatsCalculator(statistics=[self.stat1, self.stat2])
-        self.stat1_name = self.stats_calculator._get_stat_name(self.stat1)
-        self.stat2_name = self.stats_calculator._get_stat_name(self.stat2)
 
         self.conditions_gmms_: Dict[str, ConditionGMM] = {}
 
         self.logger.debug(
-            f"Initialized GMMHandler with stats=({self.stat1_name}, {self.stat2_name}), "
+            f"Initialized GMMHandler with stats=({self.stat1.label}, {self.stat2.label}), "
             f"gmm_config={self.config}, preprocess_config={self.pp}"
         )
 
@@ -183,13 +181,13 @@ class GMMHandler:
         stats = self.stats_calculator.calculate_multi_position_stats(
             condition, K=self.K
         )
-        s1 = np.asarray(stats[self.stat1_name], dtype=float)
-        s2 = np.asarray(stats[self.stat2_name], dtype=float)
+        s1 = np.asarray(stats[self.stat1], dtype=float)
+        s2 = np.asarray(stats[self.stat2], dtype=float)
 
         if s1.shape != s2.shape:
             self.logger.error(
                 f"Stat arrays have different shapes for '{condition.label}': "
-                f"{self.stat1_name}={s1.shape}, {self.stat2_name}={s2.shape}"
+                f"{self.stat1.label}={s1.shape}, {self.stat2.label}={s2.shape}"
             )
             raise ValueError("Mismatched stat array shapes.")
         if s1.ndim != 1:
@@ -199,7 +197,7 @@ class GMMHandler:
         X = np.column_stack([s1, s2]) if s1.size > 0 else np.empty((0, 2), float)
         self.logger.debug(
             f"Fetched raw data for '{condition.label}': shape={X.shape}, "
-            f"stats=({self.stat1_name}, {self.stat2_name})"
+            f"stats=({self.stat1.label}, {self.stat2.label})"
         )
         return X
 
