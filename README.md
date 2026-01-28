@@ -274,18 +274,43 @@ Fit and visualize Gaussian Mixture Models:
 gmm_results = viz.fit_gmms(
     stat1='mean',
     stat2='std',
-    K=5,  # Optional: use smaller window
+    K=5,  # Optional: span of signal, must be equal or smaller that K value of GenomicPositionVizualizer
     gmm_config=GMMConfig(...),
     preprocess_config=PreprocessConfig(...)
 )
 
 # Fit and plot GMMs
+gmm_viz = gmm_handler.visualize()
+# or
 gmm_viz = viz.plot_gmms(
     stat1='mean',
     stat2='std',
-    K=5
+    K=5,
+    gmm_style=PlotStyle(...),
+    gmm_config=GMMConfig(...),
+    preprocess_config=PreprocessConfig(...)
 )
+
+# Kolmogorov–Smirnov test
+ks_result = gmm_handler.ks_test(
+    label_p='label_p', # Label of the first condition
+    label_p='label_q', # Label of the second condition
+    correction='bonferroni',
+    mode='auto',
+    drop_nonfinite=True,
+    verbose=True)
+
+# Jensen-shannon divergence
+js_result = gmm_handler.js_test(
+    label_p='label_p', # Label of the first condition
+    label_p='label_q', # Label of the second condition
+    n_samples=20000,
+    base=2,
+    randon_sate=None, # controls the sampling seed
+    verbose=True)
 ```
+
+or 
 
 ### Styling and Customization
 
