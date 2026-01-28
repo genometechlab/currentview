@@ -49,7 +49,7 @@ class GMMVisualizer:
         title: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
     ):
-        self.style: PlotStyle = style or PlotStyle._interactive()
+        self.style: PlotStyle = style or PlotStyle.get_style("interactive")
         self.x_label = x_label or "stat1"
         self.y_label = y_label or "stat2"
         self.title = title or "GMM scatter with iso-mass contours"
@@ -112,10 +112,16 @@ class GMMVisualizer:
         self.fig.update_layout(**layout)
         return self.fig
 
-    def plot_gmms(self, records: Optional[Iterable[ConditionGMM]] = None) -> go.Figure:
+    def plot_gmms(self, records: Iterable[ConditionGMM], *, clear: bool = True) -> go.Figure:
         """
         Populate the figure with iso-mass contours, points, and means for the given records.
         """
+        if clear:
+            self._create_figure()
+        records = list(records) if records is not None else []
+        if not records:
+            raise ValueError("No records provided to plot_gmms()")
+
         records = [r for r in records]
         self._warn_if_all_invalid(records)
 
@@ -188,7 +194,7 @@ class GMMVisualizer:
 
             # GMM means
             if hasattr(rec.model, "means_"):
-                k = getattr(rec, "selected_k", None) or len(rec.model.means_)
+                k = getattr(rec, "selected_n_components", None) or len(rec.model.means_)
                 self.fig.add_trace(
                     go.Scatter(
                         x=rec.model.means_[:, 0],
@@ -210,8 +216,8 @@ class GMMVisualizer:
 
         return self.fig
 
-    def show(self) -> go.Figure:
-        """Display the plot and return the figure."""
+    def show(self):
+        """Display the plot"""
         self.logger.info("Displaying plot")
         self.fig.show()
 
@@ -259,7 +265,7 @@ class GMMVisualizer:
     # ---------------------------------------------------------------------
     def _warn_if_all_invalid(self, recs: List[ConditionGMM]) -> None:
         invalid = [
-            getattr(getattr(r, "condition", None), "label", "unnamed")
+            getattr(r, "label", "unnamed")
             for r in recs
             if (r.model is None) or (r.X is None) or (r.X.size == 0)
         ]

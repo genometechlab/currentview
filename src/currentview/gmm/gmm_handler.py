@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Iterable, List, Optional, Union, Tuple, Literal
+from typing import Dict, Iterable, List, Optional, Union, Tuple, Literal, Sequence, TYPE_CHECKING
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -7,6 +7,11 @@ from sklearn.mixture import GaussianMixture
 
 from ..stats import StatsCalculator, StatisticsFuncs
 from ..utils.data_classes import Condition, ConditionStyle
+
+if TYPE_CHECKING:
+    from .gmm_visualizer import GMMVisualizer
+    from .gmm_tests import KSTestResult, JSTestResult
+    from ..utils.plotly_utils import PlotStyle
 
 
 # ----------------------------
@@ -158,7 +163,7 @@ class GMMHandler:
             )
         return rec.model
 
-    def get_condition_result(self, label: str) -> GaussianMixture:
+    def get_condition_result(self, label: str) -> ConditionGMM:
         rec = self.conditions_gmms_.get(label)
         if rec is None or rec.model is None:
             raise KeyError(
@@ -392,3 +397,83 @@ class GMMHandler:
         if X.shape[1] != 2:
             raise ValueError(f"Expected shape (N,2); got {X.shape}.")
         return X
+    
+    #-------- Vizualizing. --------
+
+    def visualize(
+        self,
+        *,
+        style: Optional["PlotStyle"] = None,
+        x_label: Optional[str] = None,
+        y_label: Optional[str] = None,
+        title: Optional[str] = None,
+        logger: Optional[logging.Logger] = None,
+    ) -> "GMMVisualizer":
+        # local import avoids circular deps + optional dependency pressure
+        from .gmm_visualizer import GMMVisualizer
+
+        return GMMVisualizer.from_handler(
+            self,
+            style=style,
+            x_label=x_label,
+            y_label=y_label,
+            title=title,
+            logger=logger,
+        )
+
+    def figure(self, **kwargs):
+        """Convenience: return plotly fig directly."""
+        return self.visualize(**kwargs).get_fig()
+
+
+    #-------- tests --------
+
+    def ks_test(
+        self,
+        label_p: str,
+        label_q: str,
+        feature_names: Optional[Sequence[str]] = None,
+        *,
+        alpha: float = 0.05,
+        correction: Literal["bonferroni"] = "bonferroni",
+        alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+        mode: Literal["auto", "exact", "asymp"] = "auto",
+        drop_nonfinite: bool = True,
+        verbose: bool = True,
+    ) -> "KSTestResult":
+        from .gmm_tests import ks_test
+
+        return ks_test(
+            gmm_handler=self,
+            label_p=label_p,
+            label_q=label_q,
+            feature_names=feature_names,
+            alpha=alpha,
+            correction=correction,
+            alternative=alternative,
+            mode=mode,
+            drop_nonfinite=drop_nonfinite,
+            verbose=verbose,
+        )
+    
+    def js_test(
+        self,
+        label_p: str,
+        label_q: str,
+        n_samples: int = 20000,
+        base: float = 2.0,
+        random_state: Optional[int] = None,
+        verbose: bool = True,
+    ) -> "JSTestResult":
+        from .gmm_tests import js_test
+
+        return js_test(
+            gmm_handler=self,
+            label_p=label_p,
+            label_q=label_q,
+            n_samples=n_samples,
+            base=base,
+            random_state=random_state,
+            verbose=verbose,
+        )
+        

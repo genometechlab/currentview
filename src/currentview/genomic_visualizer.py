@@ -1134,7 +1134,7 @@ class GenomicPositionVisualizer:
             preprocess_config=preprocess_config,
             **gmm_kwargs,
         )
-        return handler.conditions_gmms_
+        return handler
 
     def plot_gmms(
         self,
