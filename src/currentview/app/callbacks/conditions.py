@@ -342,14 +342,14 @@ def register_condition_callbacks():
                 if clicked_label in conditions:
                     condition = conditions[clicked_label]
                     # Update the style attributes if they exist
-                    if hasattr(condition, "color"):
-                        condition.color = colors[correct_idx]
-                    if hasattr(condition, "line_style"):
-                        condition.line_style = line_styles[correct_idx]
-                    if hasattr(condition, "line_width"):
-                        condition.line_width = line_widths[correct_idx]
-                    if hasattr(condition, "alpha"):
-                        condition.alpha = opacities[correct_idx] / 100
+                    if hasattr(condition.style, "color"):
+                        condition.style.color = colors[correct_idx]
+                    if hasattr(condition.style, "line_style"):
+                        condition.style.line_style = line_styles[correct_idx]
+                    if hasattr(condition.style, "line_width"):
+                        condition.style.line_width = line_widths[correct_idx]
+                    if hasattr(condition.style, "alpha"):
+                        condition.style.alpha = opacities[correct_idx] / 100
 
             return (
                 no_update,

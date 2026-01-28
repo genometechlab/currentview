@@ -153,7 +153,7 @@ class StatsVisualizer:
         reads = condition.reads
         positions = condition.positions
         label = condition.label
-        color = condition.color
+        color = condition.style.color
 
         self.logger.debug(
             f"plot_condition called: label='{label}', n_reads={len(reads)}, positions={positions[0]}-{positions[-1]}"
@@ -194,10 +194,10 @@ class StatsVisualizer:
                 self._plot_single_kde(
                     values=values,
                     label=condition.label,
-                    color=condition.color,
-                    opacity=condition.alpha,
-                    line_width=condition.line_width,
-                    line_style=condition.line_style,
+                    color=condition.style.color,
+                    opacity=condition.style.alpha,
+                    line_width=condition.style.line_width,
+                    line_style=condition.style.line_style,
                     row=row,
                     col=col,
                     showlegend=show_legend_here,

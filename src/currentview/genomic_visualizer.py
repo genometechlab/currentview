@@ -8,7 +8,7 @@ from collections import OrderedDict
 
 from .utils.path_utils import validate_files
 from .utils.arg_utils import _split_and_normalize_configs
-from .utils.data_classes import ReadAlignment, Condition
+from .utils.data_classes import ReadAlignment, Condition, ConditionStyle
 from .utils.color_utils import ColorPalette, calculate_opacity
 from .utils.plotly_utils import PlotStyle
 
@@ -310,27 +310,27 @@ class GenomicPositionVisualizer:
         # Update only the provided parameters
         if color is not None:
             self.logger.debug(
-                f"Updating color for '{label}': {condition.color} -> {color}"
+                f"Updating color for '{label}': {condition.style.color} -> {color}"
             )
-            condition.color = color
+            condition.style.color = color
 
         if alpha is not None:
             self.logger.debug(
-                f"Updating alpha for '{label}': {condition.alpha} -> {alpha}"
+                f"Updating alpha for '{label}': {condition.style.alpha} -> {alpha}"
             )
-            condition.alpha = alpha
+            condition.style.alpha = alpha
 
         if line_width is not None:
             self.logger.debug(
-                f"Updating line_width for '{label}': {condition.line_width} -> {line_width}"
+                f"Updating line_width for '{label}': {condition.style.line_width} -> {line_width}"
             )
-            condition.line_width = line_width
+            condition.style.line_width = line_width
 
         if line_style is not None:
             self.logger.debug(
-                f"Updating line_style for '{label}': {condition.line_style} -> {line_style}"
+                f"Updating line_style for '{label}': {condition.style.line_style} -> {line_style}"
             )
-            condition.line_style = line_style
+            condition.style.line_style = line_style
 
         # Mark visualizations as needing update
         self._mark_for_update()
@@ -847,12 +847,15 @@ class GenomicPositionVisualizer:
         line_style: Optional[str],
     ):
         """Store processed condition with visualization parameters."""
-        condition = Condition(
-            **processed_data,
+        condition_style = ConditionStyle(
             color=color,
             alpha=alpha,
             line_width=line_width,
             line_style=line_style,
+        )
+        condition = Condition(
+            **processed_data,
+            style=condition_style,
         )
 
         self._conditions[processed_data["label"]] = condition

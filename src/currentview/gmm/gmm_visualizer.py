@@ -145,8 +145,8 @@ class GMMVisualizer:
 
             thresholds = self._mass_thresholds(pdf, mass_levels)
 
-            color = getattr(rec.condition, "color", "#444")
-            label = getattr(rec.condition, "label", "Condition")
+            color = getattr(rec.style, "color", "#444")
+            label = rec.label
 
             # Contours: draw (pdf - thr) == 0 as a line per mass level
             for i, thr in enumerate(thresholds):

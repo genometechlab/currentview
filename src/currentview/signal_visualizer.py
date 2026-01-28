@@ -178,10 +178,10 @@ class SignalVisualizer:
         reads = condition.reads
         positions = condition.positions
         label = condition.label
-        color = condition.color
-        opacity = condition.alpha
-        line_width = condition.line_width
-        line_style = condition.line_style
+        color = condition.style.color
+        opacity = condition.style.alpha
+        line_width = condition.style.line_width
+        line_style = condition.style.line_style
 
         self.logger.debug(
             f"plot_condition called: label='{label}', n_reads={len(reads)}"
@@ -244,10 +244,10 @@ class SignalVisualizer:
     def _plot_signals(self, condition: Condition):
         """Plot each read as its own trace (condition alpha applied per-read)."""
         pad = self.style.positions_padding
-        lw = condition.line_width or self.style.line_width
-        ls = condition.line_style or self.style.line_style
-        col = condition.color
-        alp = condition.alpha
+        lw = condition.style.line_width or self.style.line_width
+        ls = condition.style.line_style or self.style.line_style
+        col = condition.style.color
+        alp = condition.style.alpha
 
         for read_alignment in condition.reads:
             matched_x: List[np.ndarray] = []

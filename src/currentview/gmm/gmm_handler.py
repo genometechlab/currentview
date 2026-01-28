@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.mixture import GaussianMixture
 
 from ..stats import StatsCalculator
-from ..utils.data_classes import Condition
+from ..utils.data_classes import Condition, ConditionStyle
 
 
 # ----------------------------
@@ -54,7 +54,7 @@ class PreprocessConfig:
 # ----------------------------
 @dataclass
 class ConditionGMM:
-    condition: Condition
+    label: str
     X: np.ndarray  # (N, 2) stat matrix (post-preprocess)
     model: Optional[GaussianMixture] = None  # fitted GMM (or None if skipped)
     selected_n_components: Optional[int] = None  # chosen number of components
@@ -62,6 +62,7 @@ class ConditionGMM:
     meta: Dict[str, Union[int, float, str, Dict]] = field(
         default_factory=dict
     )  # preprocessing & fit metadata
+    style: ConditionStyle = field(default_factory=ConditionStyle)
 
 
 # ----------------------------
@@ -120,7 +121,7 @@ class GMMHandler:
 
             # preprocess
             X, meta = self._preprocess(label, X_raw)
-            rec = ConditionGMM(condition=cond, X=X, meta=meta)
+            rec = ConditionGMM(label=label, X=X, meta=meta, style=cond.style)
             self.conditions_gmms_[label] = rec
 
             if X.shape[0] == 0:
