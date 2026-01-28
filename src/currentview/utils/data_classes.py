@@ -172,6 +172,12 @@ class ReadAlignment:
         
         return True
 
+@dataclass
+class ConditionStyle:
+    color: Optional[Any] = None
+    alpha: Optional[float] = None
+    line_width: Optional[float] = None
+    line_style: Optional[str] = None
 
 @dataclass
 class Condition:
@@ -187,10 +193,7 @@ class Condition:
     stats: Optional[Dict[int, Dict[str, List[float]]]] = field(
         default=None, repr=False, compare=False
     )
-    color: Optional[Any] = None
-    alpha: Optional[float] = None
-    line_width: Optional[float] = None
-    line_style: Optional[str] = None
+    style: ConditionStyle = field(default_factory=ConditionStyle)
 
     @property
     def n_reads(self) -> int:
