@@ -1,97 +1,121 @@
+from __future__ import annotations
+
 from enum import Enum
-from typing import Callable, Union, Optional
+from typing import Callable, Optional, Any
 import numpy as np
 from scipy import stats
 
 # Try to import numba for compilation
 try:
     import numba
-
     NUMBA_AVAILABLE = True
 except ImportError:
+    numba = None
     NUMBA_AVAILABLE = False
 
 
 class StatisticsFuncs(Enum):
-    """Statistical functions for signal analysis with optional compiled versions."""
+    """
+    Statistical functions for signal analysis.
 
-    MEAN = "mean"
-    MEDIAN = "median"
-    STD = "std"
-    VARIANCE = "variance"
-    MIN = "min"
-    MAX = "max"
-    DURATION = "duration"
-    SKEW = "skewness"
-    KURTOSIS = "kurtosis"
+    Each member carries:
+      - key: user/API string (e.g. "mean")
+      - unit: display unit ("pA", "pA²", "samples", or None for unitless)
+    """
+
+    MEAN     = ("mean", "pA")
+    MEDIAN   = ("median", "pA")
+    STD      = ("std", "pA")
+    VARIANCE = ("variance", "pA²")
+    MIN      = ("min", "pA")
+    MAX      = ("max", "pA")
+    DURATION = ("duration", "samples")
+    SKEW     = ("skewness", None)
+    KURTOSIS = ("kurtosis", None)
+
+    def __init__(self, key: str, unit: str | None):
+        self.key = key
+        self.unit = unit
+
+    @property
+    def label(self) -> str:
+        """Human-friendly label including units where applicable."""
+        base = self.key.capitalize()
+        return base if self.unit is None else f"{base} ({self.unit})"
+
+    def __str__(self) -> str:
+        return self.label
+
+    @classmethod
+    def coerce(cls, value: str | "StatisticsFuncs") -> "StatisticsFuncs":
+        """
+        Accept either an enum member or a user-provided string like "median"/"MEDIAN".
+        Normalizes and returns the enum member.
+        """
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, str):
+            s = value.strip().lower()
+            for m in cls:
+                if s == m.key or s == m.name.lower():
+                    return m
+        valid = ", ".join(m.key for m in cls)
+        raise ValueError(f"Unknown statistic {value!r}. Choose from: {valid}")
 
     def to_function(self) -> Callable[[np.ndarray], float]:
-        """Convert enum value to the corresponding statistical function."""
-        function_map = {
-            self.MEAN: np.mean,
-            self.MEDIAN: np.median,
-            self.STD: np.std,
-            self.VARIANCE: np.var,
-            self.MIN: np.min,
-            self.MAX: np.max,
-            self.DURATION: lambda x: np.shape(x)[0],
-            self.SKEW: lambda x: stats.skew(x) if len(x) > 1 else 0,
-            self.KURTOSIS: lambda x: (
-                stats.kurtosis(x, fisher=True) if len(x) > 1 else 0
-            ),
+        """Convert enum member to the corresponding statistical function."""
+        function_map: dict[StatisticsFuncs, Callable[[np.ndarray], float]] = {
+            StatisticsFuncs.MEAN: np.mean,
+            StatisticsFuncs.MEDIAN: np.median,
+            StatisticsFuncs.STD: np.std,
+            StatisticsFuncs.VARIANCE: np.var,
+            StatisticsFuncs.MIN: np.min,
+            StatisticsFuncs.MAX: np.max,
+            StatisticsFuncs.DURATION: lambda x: float(np.shape(x)[0]),
+            StatisticsFuncs.SKEW: lambda x: float(stats.skew(x)) if len(x) > 1 else 0.0,
+            StatisticsFuncs.KURTOSIS: lambda x: float(stats.kurtosis(x, fisher=True)) if len(x) > 1 else 0.0,
         }
         return function_map[self]
 
     def to_compiled_function(self) -> Optional[Callable[[np.ndarray], float]]:
         """
-        Get compiled version of the function if available.
-
-        Returns None if compilation is not supported for this function
-        or if numba is not available.
+        Return a compiled version if available; otherwise None.
         """
         if not NUMBA_AVAILABLE:
             return None
-
-        # Return pre-compiled functions
-        return _COMPILED_FUNCTIONS.get(self, None)
+        return _COMPILED_FUNCTIONS.get(self)
 
 
-# Create compiled versions of functions that support it
-_COMPILED_FUNCTIONS = {}
+# ----------------------------
+# Compiled function registry
+# ----------------------------
+_COMPILED_FUNCTIONS: dict[StatisticsFuncs, Callable[[np.ndarray], float]] = {}
 
 if NUMBA_AVAILABLE:
 
-    @numba.jit(nopython=True, cache=True)
+    @numba.njit(cache=True)
     def _compiled_mean(arr):
-        """Compiled mean function."""
         return np.mean(arr)
 
-    @numba.jit(nopython=True, cache=True)
+    @numba.njit(cache=True)
     def _compiled_median(arr):
-        """Compiled median function."""
         return np.median(arr)
 
-    @numba.jit(nopython=True, cache=True)
+    @numba.njit(cache=True)
     def _compiled_std(arr):
-        """Compiled standard deviation function."""
         return np.std(arr)
 
-    @numba.jit(nopython=True, cache=True)
+    @numba.njit(cache=True)
     def _compiled_var(arr):
-        """Compiled variance function."""
         return np.var(arr)
 
-    @numba.jit(nopython=True, cache=True)
+    @numba.njit(cache=True)
     def _compiled_min(arr):
-        """Compiled minimum function."""
         return np.min(arr)
 
-    @numba.jit(nopython=True, cache=True)
+    @numba.njit(cache=True)
     def _compiled_max(arr):
-        """Compiled maximum function."""
         return np.max(arr)
-
-    # Note: median, skewness, and kurtosis are more complex and not easily compiled
 
     _COMPILED_FUNCTIONS = {
         StatisticsFuncs.MEAN: _compiled_mean,
