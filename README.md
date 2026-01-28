@@ -63,10 +63,10 @@ pip install -e .
 from currentview import GenomicPositionVisualizer, PlotStyle
 
 # Create visualizer for a 9-base window with statistics
-viz = GenomicPositionVisualizer(K=9, stats=['mean', 'std', 'median'])
+gpv = GenomicPositionVisualizer(K=9, stats=['mean', 'std', 'median'])
 
 # Add signals from a genomic position
-viz.add_condition(
+gpv.add_condition(
     bam_path="sample1.bam",
     pod5_path="sample1.pod5",
     contig="chr1",
@@ -75,7 +75,7 @@ viz.add_condition(
 )
 
 # Add another condition for comparison
-viz.add_condition(
+gpv.add_condition(
     bam_path="sample2.bam",
     pod5_path="sample2.pod5",
     contig="chr1",
@@ -85,13 +85,13 @@ viz.add_condition(
 )
 
 # Display the signal plot
-viz.show_signals()
+gpv.show_signals()
 
 # Display the stats plot
-viz.show_stats()
+gpv.show_stats()
 
 # Or display both
-viz.show()
+gpv.show()
 ```
 
 **Implementation examples are provided under example folder**
@@ -141,7 +141,7 @@ GenomicPositionVisualizer(
 Add and process a new condition from BAM and POD5 files.
 
 ```python
-viz.add_condition(
+gpv.add_condition(
     bam_path: Union[str, Path],
     pod5_path: Union[str, Path],
     contig: str,
@@ -181,7 +181,7 @@ viz.add_condition(
 Update visualization parameters of an existing condition.
 
 ```python
-viz.update_condition(
+gpv.update_condition(
     label: str,
     *,
     color: Optional[str] = None,
@@ -195,74 +195,74 @@ viz.update_condition(
 
 ```python
 # Display both signals and stats plots
-viz.show()
+gpv.show()
 
 # Display only the signals plot
-viz.show_signals()
+gpv.show_signals()
 
 # Display only the stats plot
-viz.show_stats()
+gpv.show_stats()
 ```
 
 ##### save(), save_signals(), and save_stats()
 
 ```python
 # Save both plots (adds _signals and _stats suffixes)
-viz.save(path="output.png", format='png', scale=1)
+gpv.save(path="output.png", format='png', scale=1)
 
 # Save only signals plot
-viz.save_signals(path="signals.png", format='png', scale=1)
+gpv.save_signals(path="signals.png", format='png', scale=1)
 
 # Save only stats plot
-viz.save_stats(path="stats.png", format='png', scale=1)
+gpv.save_stats(path="stats.png", format='png', scale=1)
 ```
 
 #### Other Methods
 
 ```python
 # Highlight a position in the window
-viz.highlight_position(window_idx=4, color='red', alpha=0.2)
+gpv.highlight_position(window_idx=4, color='red', alpha=0.2)
 
 # Highlight the center position
-viz.highlight_center(color='red', alpha=0.2)
+gpv.highlight_center(color='red', alpha=0.2)
 
 # Remove all highlights
-viz.clear_highlights()
+gpv.clear_highlights()
 
 # Add text annotation
-viz.add_annotation(window_idx=4, text="SNP", y_position=150)
+gpv.add_annotation(window_idx=4, text="SNP", y_position=150)
 
 # Remove annotations
-viz.clear_annotations()
+gpv.clear_annotations()
 
 # Set plot title
-viz.set_title("Signal comparison at chr1:1000000")
+gpv.set_title("Signal comparison at chr1:1000000")
 
 # Set y-axis limits
-viz.set_ylim(bottom=50, top=200)
+gpv.set_ylim(bottom=50, top=200)
 
 # Get/print summary
-summary = viz.get_summary()
-viz.print_summary()
+summary = gpv.get_summary()
+gpv.print_summary()
 
 # Remove a condition
-viz.remove_condition("Control")
+gpv.remove_condition("Control")
 
 # Clear all conditions
-viz.clear()
+gpv.clear()
 
 # Get condition names
-names = viz.get_condition_names()
+names = gpv.get_condition_names()
 
 # Get specific condition
-cond = viz.get_condition("Control")
+cond = gpv.get_condition("Control")
 
 # Change verbosity
-viz.set_verbosity(3)  # Set to INFO level
+gpv.set_verbosity(3)  # Set to INFO level
 
 # Update styles
-viz.set_signals_style(new_style)
-viz.set_stats_style(new_style)
+gpv.set_signals_style(new_style)
+gpv.set_stats_style(new_style)
 ```
 
 ##### GMM Methods
@@ -271,7 +271,7 @@ Fit and visualize Gaussian Mixture Models:
 
 ```python
 # Fit GMMs and get results
-gmm_results = viz.fit_gmms(
+gmm_results = gpv.fit_gmms(
     stat1='mean',
     stat2='std',
     K=5,  # Optional: span of signal, must be equal or smaller that K value of GenomicPositionVizualizer
@@ -282,7 +282,7 @@ gmm_results = viz.fit_gmms(
 # Fit and plot GMMs
 gmm_viz = gmm_handler.visualize()
 # or
-gmm_viz = viz.plot_gmms(
+gmm_viz = gpv.plot_gmms(
     stat1='mean',
     stat2='std',
     K=5,
@@ -310,8 +310,6 @@ js_result = gmm_handler.js_test(
     verbose=True)
 ```
 
-or 
-
 ### Styling and Customization
 
 The appearance of plots can be customized using the `PlotStyle` class:
@@ -332,7 +330,7 @@ style = PlotStyle(
     # ... more options
 )
 
-viz = GenomicPositionVisualizer(
+gpv = GenomicPositionVisualizer(
     K=9,
     signals_plot_style=style,
     stats_plot_style=style,
@@ -351,17 +349,17 @@ Implementation examples are provided under example folder
 ```python
 from currentview import GenomicPositionVisualizer
 
-viz = GenomicPositionVisualizer(K=9, verbosity=3)
+gpv = GenomicPositionVisualizer(K=9, verbosity=3)
 
-viz.add_condition(
+gpv.add_condition(
     bam_path="sample.bam",
     pod5_path="sample.pod5",
     contig="chr1",
     target_position=100
 )
 
-viz.set_title("Nanopore Signals at chr1:1000000")
-viz.show_signals()
+gpv.set_title("Nanopore Signals at chr1:1000000")
+gpv.show_signals()
 ```
 
 **Example 2: Comparing Multiple Conditions**
@@ -371,7 +369,7 @@ from currentview import GenomicPositionVisualizer
 from currentview.utils.plotly_utils import PlotStyle
 
 style = PlotStyle(width=1400, height=800)
-viz = GenomicPositionVisualizer(K=9, signals_plot_style=style)
+gpv = GenomicPositionVisualizer(K=9, signals_plot_style=style)
 
 conditions = [
     ("control.bam", "control.pod5", "Control", "blue"),
@@ -380,7 +378,7 @@ conditions = [
 ]
 
 for bam, pod5, label, color in conditions:
-    viz.add_condition(
+    gpv.add_condition(
         bam_path=bam,
         pod5_path=pod5,
         contig="chr1",
@@ -390,21 +388,21 @@ for bam, pod5, label, color in conditions:
         max_reads=50
     )
 
-viz.highlight_center(color='yellow', alpha=0.3)
-viz.add_annotation(window_idx=4, text="Target")
-viz.set_title("Signal Comparison at chr1:1000000")
-viz.save("comparison.png")
+gpv.highlight_center(color='yellow', alpha=0.3)
+gpv.add_annotation(window_idx=4, text="Target")
+gpv.set_title("Signal Comparison at chr1:1000000")
+gpv.save("comparison.png")
 ```
 
 **Example 3: With Statistics**
 
 ```python
-viz = GenomicPositionVisualizer(
+gpv = GenomicPositionVisualizer(
     K=9,
     stats=['mean', 'median', 'std', 'skewness']
 )
 
-viz.add_condition(
+gpv.add_condition(
     bam_path="sample.bam",
     pod5_path="sample.pod5",
     contig="chr1",
@@ -413,13 +411,13 @@ viz.add_condition(
 )
 
 # View signals
-viz.show_signals()
+gpv.show_signals()
 
 # View statistics
-viz.show_stats()
+gpv.show_stats()
 
 # Print summary
-viz.print_summary()
+gpv.print_summary()
 ```
 
 **Example 4: Filtering Specific Reads**
@@ -427,9 +425,9 @@ viz.print_summary()
 ```python
 target_reads = ["read_001", "read_002", "read_003"]
 
-viz = GenomicPositionVisualizer(K=11)
+gpv = GenomicPositionVisualizer(K=11)
 
-viz.add_condition(
+gpv.add_condition(
     bam_path="sample.bam",
     pod5_path="sample.pod5",
     contig="chr2",
@@ -439,8 +437,8 @@ viz.add_condition(
     label="Selected Reads"
 )
 
-viz.print_summary()
-viz.show()
+gpv.print_summary()
+gpv.show()
 ```
 
 **Example 5: Method Chaining**
@@ -461,18 +459,18 @@ Processing BAM and POD5 files can be computationally expensive. For better perfo
 
 1. **Limit reads for large datasets**:
    ```python
-   viz.add_condition(..., max_reads=100)
+   gpv.add_condition(..., max_reads=100)
    ```
 
 2. **Filter out reads with indels**:
    ```python
-   viz.add_condition(..., exclude_reads_with_indels=True)
+   gpv.add_condition(..., exclude_reads_with_indels=True)
    ```
 
 3. **Use appropriate verbosity**:
    ```python
-   viz = GenomicPositionVisualizer(K=9, verbosity=0)  # Silent for production
-   viz.set_verbosity(4)  # Debug for troubleshooting
+   gpv = GenomicPositionVisualizer(K=9, verbosity=0)  # Silent for production
+   gpv.set_verbosity(4)  # Debug for troubleshooting
    ```
 
 ### Visual Clarity
@@ -480,12 +478,12 @@ Processing BAM and POD5 files can be computationally expensive. For better perfo
 1. **Adjust alpha for overlapping signals**:
    ```python
    style = PlotStyle(opacity_mode='auto')  # Auto-adjusts based on read count
-   viz.add_condition(..., alpha=0.5)       # Or set manually
+   gpv.add_condition(..., alpha=0.5)       # Or set manually
    ```
 
 2. **Use contrasting colors**:
    ```python
-   viz = GenomicPositionVisualizer(color_palette="colorblind")
+   gpv = GenomicPositionVisualizer(color_palette="colorblind")
    ```
 
 3. **Limit window size for clarity**: K=9 or K=11 work well for most cases
