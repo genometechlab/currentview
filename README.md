@@ -37,6 +37,7 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
     - [Performance Optimization](#performance-optimization)
     - [Visual Clarity](#visual-clarity)
     - [Common Issues](#common-issues)
+  - [Web-application](#web-application)
   - [License](#license)
   - [Citation](#citation)
 
@@ -484,10 +485,31 @@ Processing BAM and POD5 files can be computationally expensive. For better perfo
 4. **Label "already exists" error**:
    - Each condition needs a unique label
    - Use `remove_condition()` first, or specify a unique label
+  
+## Web-application
+
+Currentview is also available as a web application. After completing the installation, activate your environment and run:
+
+`currentview-app`
+
+Once the application has initialized, it will automatically open the Currentview web interface in your default browser.
+
+On the landing page, users can configure general visualization parameters, including the k-mer window size and the statistics to be displayed. This functionality is largely equivalent to the `GenomicPositionVisualizer` component of the Python API.
+
+!['Application landing page'](images/app_homepage.png)
+
+On the subsequent page, the interface is organized into three panels:
+
+- **Add Condition Panel**: This panel allows users to define condition-specific parameters, including the path to the BAM file, the POD5 directory, the target genomic position, and the maximum number of reads. It also provides controls for condition-level visualization settings such as color opacity, line style, and line width. This panel is equivalent to the `add_condition` method of the Python API. 
+
+- **Conditions Panel**: This panel displays all previously added conditions in the order they were added. Visualization attributes for each condition can be modified directly within this panel. This panel is equivalent to the `update_condition` method of the Python API. 
+
+- **Visualization Panel**: This panel presents the signal plots and, if requested, the associated statistical summaries.
+
+!['Application'](images/app_conditions.png)
 
 ## License
 
-MIT License - see LICENSE file for details.
 
 ## Citation
 
