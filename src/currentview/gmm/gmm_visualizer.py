@@ -73,8 +73,8 @@ class GMMVisualizer:
         logger: Optional[logging.Logger] = None,
     ) -> "GMMVisualizer":
         # Default axis labels from handler if not passed explicitly
-        xl = x_label or handler.stat1.label
-        yl = y_label or handler.stat2.label
+        xl = x_label or handler.stat1_name
+        yl = y_label or handler.stat2_name
         cls_ = cls(
             style=style,
             x_label=xl,
@@ -112,7 +112,9 @@ class GMMVisualizer:
         self.fig.update_layout(**layout)
         return self.fig
 
-    def plot_gmms(self, records: Iterable[ConditionGMM], *, clear: bool = True) -> go.Figure:
+    def plot_gmms(
+        self, records: Iterable[ConditionGMM], *, clear: bool = True
+    ) -> go.Figure:
         """
         Populate the figure with iso-mass contours, points, and means for the given records.
         """
@@ -250,7 +252,7 @@ class GMMVisualizer:
                     "format": format,
                     "scale": scale or self.style.toImageButtonOptions.get("scale", 2),
                     "width": self.style.width,
-                    "height": self.style.height
+                    "height": self.style.height,
                 }
                 write_kwargs.update(kwargs)
                 self.fig.write_image(str(path), **write_kwargs)

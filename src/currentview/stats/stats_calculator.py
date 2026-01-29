@@ -51,15 +51,17 @@ class StatsCalculator:
         self.logger.debug(
             f"Initialized StatsCalculator with {len(self.statistics)} statistics"
         )
-        
+
     def calculate_multi_position_stats(
         self, condition: Condition, K: Optional[int] = None
     ):
-        stats_dict = {stat: [] for stat in self.statistics}
+        stats_dict = {self._get_stat_name(stat): [] for stat in self.statistics}
 
         target_position = condition.target_position
         for read in condition.reads:
-            bases_signal = read.get_span_signal(target_position-K//2,target_position+K//2)
+            bases_signal = read.get_span_signal(
+                target_position - K // 2, target_position + K // 2
+            )
             for stat, compiled_func in zip(self.statistics, self._compiled_stats):
                 stat_name = self._get_stat_name(stat)
                 try:
@@ -71,9 +73,9 @@ class StatsCalculator:
                     if self.logger.isEnabledFor(logging.DEBUG):
                         self.logger.debug(f"Failed to calculate {stat_name}: {e}")
 
-                stats_dict[stat].append(value)
-                
-        stats_dict = {k: np.array(v, dtype=np.float32) for k,v in stats_dict.items()}
+                stats_dict[stat_name].append(value)
+
+        stats_dict = {k: np.array(v, dtype=np.float32) for k, v in stats_dict.items()}
 
         return stats_dict
 

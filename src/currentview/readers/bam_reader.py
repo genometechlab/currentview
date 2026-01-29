@@ -43,7 +43,7 @@ class AlignmentExtractor:
                     aligned_bases = self._extract_aligned_bases(read)
                     return aligned_bases
         return None
-    
+
     def extract_aligned_reads_at_position(
         self,
         contig: str,
@@ -72,7 +72,7 @@ class AlignmentExtractor:
         if read_ids is not None and max_reads is not None:
             # Convert to list for sampling if needed
             read_ids_list = list(read_ids) if isinstance(read_ids, set) else read_ids
-            
+
             if max_reads < len(read_ids_list):
                 # Sample max_reads from read_ids
                 self.logger.info(
@@ -89,7 +89,9 @@ class AlignmentExtractor:
                     f"Both read_ids ({len(read_ids_list)} reads) and max_reads ({max_reads}) are set. "
                     f"Since max_reads >= number of read_ids, ignoring max_reads and using all provided read_ids."
                 )
-                read_ids = set(read_ids_list) if isinstance(read_ids, list) else read_ids
+                read_ids = (
+                    set(read_ids_list) if isinstance(read_ids, list) else read_ids
+                )
                 max_reads = None  # Don't use max_reads in downstream logic
         # Convert read_ids to set for faster lookup (if not already handled above)
         elif read_ids is not None and isinstance(read_ids, list):
@@ -246,9 +248,9 @@ class AlignmentExtractor:
 
         for read in bam.fetch(**region):
             if ignore_non_primaries:
-                if read.is_secondary or read.is_supplementary: 
+                if read.is_secondary or read.is_supplementary:
                     continue
-            
+
             if read_ids is not None and read.query_name not in read_ids:
                 continue
             ra = self._build_read_alignment(
@@ -279,9 +281,7 @@ class AlignmentExtractor:
     ) -> Optional[ReadAlignment]:
         """Build ReadAlignment for a single read; return None if it fails filters."""
         try:
-            aligned_bases = self._extract_aligned_bases(
-                read, is_reversed
-            )
+            aligned_bases = self._extract_aligned_bases(read, is_reversed)
             if not aligned_bases:
                 return None
 
@@ -332,12 +332,9 @@ class AlignmentExtractor:
         )
 
         # Get aligned pairs with reference sequence if available
-        if read.has_tag("MD"):
-            pairs = read.get_aligned_pairs(with_seq=True)
-            has_ref_seq = True
-        else:
-            pairs = read.get_aligned_pairs()
-            has_ref_seq = False
+        has_ref_seq = read.has_tag("MD")
+        pairs = read.get_aligned_pairs(with_seq=has_ref_seq)
+        query_seq = read.query_sequence
 
         aligned_bases = []
 
@@ -349,26 +346,21 @@ class AlignmentExtractor:
                 query_pos, ref_pos = pair_data
                 ref_base = None
 
-            if query_pos is None and ref_pos is not None:
+            if query_pos is None:
                 # Deletion
                 base_type = BaseType.DELETION
-            elif query_pos is not None and ref_pos is None:
-                # Insertion
-                base_type = BaseType.INSERTION
-            elif query_pos is not None and ref_pos is not None:
-                # Match/mismatch
-                base_type = BaseType.MATCH
-            else:
-                continue
-
-            # Get signal range
-            if query_pos is not None:
-                signal_range = base_to_signal_range.get(query_pos)
-                query_base = read.query_sequence[query_pos]
-            else:
-                # None because of deletion
                 signal_range = None
                 query_base = None
+            elif ref_pos is None:
+                # Insertion
+                base_type = BaseType.INSERTION
+                signal_range = base_to_signal_range.get(query_pos)
+                query_base = query_seq[query_pos]
+            else:
+                # Match/mismatch
+                base_type = BaseType.MATCH
+                signal_range = base_to_signal_range.get(query_pos)
+                query_base = query_seq[query_pos]
 
             aligned_base = AlignedBase(
                 reference_pos=ref_pos,
