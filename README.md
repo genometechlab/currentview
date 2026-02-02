@@ -57,6 +57,8 @@ pip install -e .
 - plotly >= 6.2.0
 - nbformat >= 5.10.4
 
+CurrentView is implemented and tested with Python 3.12.8.
+
 ## Quick Start
 
 ```python
