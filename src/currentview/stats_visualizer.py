@@ -1,4 +1,5 @@
 import logging
+from turtle import color
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -16,6 +17,14 @@ from .utils.path_utils import validate_files
 from .utils.plotly_utils import PlotStyle
 from .utils.color_utils import to_rgba_str
 
+VALID_DISTRIBUTIONS = {"kde", "histogram", "both"}
+
+DK_ALIASES = {
+    None: "kde",
+    "density": "kde",
+    "hist": "histogram",
+}
+
 
 class StatsVisualizer:
     """Handles all plotting, visualization, and figure management using Plotly."""
@@ -26,6 +35,7 @@ class StatsVisualizer:
         n_stats: int,
         window_labels: Optional[List[Union[str, int]]] = None,
         stats_names: Optional[List[str]] = None,
+        distribution_kind: Literal["kde", "histogram", "both"] = "kde",
         plot_style: Optional[PlotStyle] = None,
         title: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
@@ -51,6 +61,18 @@ class StatsVisualizer:
         self.n_stats = n_stats
         self.window_labels = window_labels
         self.stats_names = stats_names or [f"Stat {i+1}" for i in range(n_stats)]
+
+        # Validate distribution kind
+        dk = DK_ALIASES.get(distribution_kind, distribution_kind)
+
+        if dk not in VALID_DISTRIBUTIONS:
+            self.logger.warning(
+                f"Invalid distribution_kind '{distribution_kind}'. "
+                "Valid options are: 'kde', 'histogram', 'both'. Defaulting to 'kde'."
+            )
+            dk = "kde"
+
+        self.distribution_kind = dk
 
         # Setup style
         self.style = plot_style or PlotStyle()
@@ -191,18 +213,67 @@ class StatsVisualizer:
 
                 show_legend_here = show_legend and stat_idx == 0 and pos_idx == 0
 
-                self._plot_single_kde(
-                    values=values,
-                    label=condition.label,
-                    color=condition.style.color,
-                    opacity=condition.style.alpha,
-                    line_width=condition.style.line_width,
-                    line_style=condition.style.line_style,
-                    row=row,
-                    col=col,
-                    showlegend=show_legend_here,
-                    legendgroup=condition.label,
-                )
+                if self.distribution_kind in {"histogram", "both"}:
+                    self._plot_single_histogram(
+                        values=values,
+                        label=condition.label,
+                        color=condition.style.color,
+                        opacity=condition.style.alpha,
+                        line_width=condition.style.line_width,
+                        line_style=condition.style.line_style,
+                        row=row,
+                        col=col,
+                        showlegend=show_legend_here,
+                        legendgroup=condition.label,
+                    )
+                if self.distribution_kind in {"kde", "both"}:
+                    self._plot_single_kde(
+                        values=values,
+                        label=condition.label,
+                        color=condition.style.color,
+                        opacity=condition.style.alpha,
+                        line_width=condition.style.line_width,
+                        line_style=condition.style.line_style,
+                        row=row,
+                        col=col,
+                        showlegend=show_legend_here,
+                        legendgroup=condition.label,
+                    )
+
+    def _plot_single_histogram(
+        self,
+        values: np.ndarray,
+        label: str,
+        color: str,
+        opacity: float,
+        line_width: float,
+        line_style: str,
+        row: int,
+        col: int,
+        showlegend: bool,
+        legendgroup: str,
+    ):
+        values = np.asarray(values, dtype=float)
+        fill_color = to_rgba_str(color, 0.2)
+        self.fig.add_trace(
+            go.Histogram(
+                x=values,
+                histnorm="probability density",
+                nbinsx=30,
+                name=label,
+                marker=dict(
+                    color=fill_color,
+                    line=dict(color=color, width=line_width),
+                ),
+                opacity=0.7,
+                showlegend=showlegend,
+                legendgroup=legendgroup,
+                meta={"cond": label, "kind": "hist"},
+                hovertemplate="%{x}<br>Count: %{y}<extra></extra>",
+            ),
+            row=row,
+            col=col,
+        )
 
     def _plot_single_kde(
         self,
@@ -238,8 +309,10 @@ class StatsVisualizer:
                         mode="lines",
                         name=label,
                         line=dict(color=color, width=line_width, dash=line_style),
-                        fill="tozeroy",
-                        fillcolor=fill_color,
+                        fill="tozeroy" if self.distribution_kind == "kde" else None,
+                        fillcolor=(
+                            fill_color if self.distribution_kind == "kde" else None
+                        ),
                         showlegend=showlegend,
                         legendgroup=legendgroup,
                         meta={"cond": label, "kind": "kde"},

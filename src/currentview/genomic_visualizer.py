@@ -63,6 +63,7 @@ class GenomicPositionVisualizer:
         kmer: Optional[List[Union[str, int]]] = None,
         stats: Optional[List[Union[str, Callable]]] = None,
         signal_processing_fn: Optional[callable] = None,
+        stats_distribution_kind: Literal["kde", "histogram"] = "kde",
         signals_plot_style: Optional[PlotStyle] = None,
         stats_plot_style: Optional[PlotStyle] = None,
         color_palette: Optional[Union[str, ColorPalette]] = None,
@@ -99,6 +100,7 @@ class GenomicPositionVisualizer:
 
         # Initialize statistics if requested
         self.stats_calculator = None
+        self.stats_distribution_kind = stats_distribution_kind
         self._stats_enabled = stats is not None
         self._stats_names = []
 
@@ -982,6 +984,7 @@ class GenomicPositionVisualizer:
                 n_stats=self._n_stats,
                 window_labels=self.kmer,
                 stats_names=self._stats_names,
+                distribution_kind=self.stats_distribution_kind,
                 plot_style=self.stats_plot_style,
                 title=self.title,
                 logger=self.logger,
@@ -1090,7 +1093,8 @@ class GenomicPositionVisualizer:
             raise ValueError(
                 f"Specified K ({K}) cannot be larger than the GenomicPositionVisualizer window size ({self.K})"
             )
-        if K is None: K = self.K
+        if K is None:
+            K = self.K
 
         if len(self._conditions) == 0:
             raise SystemError(f"No conditions are added yet.")
@@ -1125,7 +1129,8 @@ class GenomicPositionVisualizer:
         preprocess_config: Optional["PreprocessConfig | dict"] = None,
         **gmm_kwargs,
     ):
-        if K is None: K = self.K
+        if K is None:
+            K = self.K
         handler = self._get_gmm_handler(
             stat1,
             stat2,
