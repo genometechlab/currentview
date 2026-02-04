@@ -53,14 +53,14 @@ class StatsCalculator:
         )
 
     def calculate_multi_position_stats(
-        self, condition: Condition, K: Optional[int] = None
+        self, condition: Condition, start_offset: int, end_offset: int
     ):
         stats_dict = {self._get_stat_name(stat): [] for stat in self.statistics}
 
         target_position = condition.target_position
         for read in condition.reads:
             bases_signal = read.get_span_signal(
-                target_position - K // 2, target_position + K // 2
+                target_position + start_offset, target_position + end_offset
             )
             for stat, compiled_func in zip(self.statistics, self._compiled_stats):
                 stat_name = self._get_stat_name(stat)
