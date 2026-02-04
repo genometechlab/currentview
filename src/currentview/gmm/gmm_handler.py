@@ -96,7 +96,7 @@ class GMMHandler:
         self,
         stat1: str,
         stat2: str,
-        K: Optional[int] = None,
+        offsets_window: Tuple[int, int],
         *,
         gmm_config: Optional[GMMConfig] = None,
         preprocess_config: Optional[PreprocessConfig] = None,
@@ -104,7 +104,7 @@ class GMMHandler:
     ):
         self.stat1 = stat1
         self.stat2 = stat2
-        self.K = K
+        self.offsets_window = offsets_window
         self.config = gmm_config or GMMConfig()
         self.pp = preprocess_config or PreprocessConfig()
 
@@ -195,7 +195,9 @@ class GMMHandler:
     def _fetch_condition_data(self, condition: Condition) -> np.ndarray:
         """Compute per-read stats for a condition and return Nx2 array: [stat1, stat2]."""
         stats = self.stats_calculator.calculate_multi_position_stats(
-            condition, K=self.K
+            condition,
+            start_offset=self.offsets_window[0],
+            end_offset=self.offsets_window[1],
         )
         s1 = np.asarray(stats[self.stat1_name], dtype=float)
         s2 = np.asarray(stats[self.stat2_name], dtype=float)
