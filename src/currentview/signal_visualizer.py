@@ -143,7 +143,9 @@ class SignalVisualizer:
 
         # Add vertical lines as shapes
         for i in range(self.K + 1):
-            x_pos = i - self.style.positions_padding / 2  # Using 0.025 as default padding
+            x_pos = (
+                i - self.style.positions_padding / 2
+            )  # Using 0.025 as default padding
 
             self.fig.add_shape(
                 type="line",
@@ -178,10 +180,7 @@ class SignalVisualizer:
         reads = condition.reads
         positions = condition.positions
         label = condition.label
-        color = condition.style.color
-        opacity = condition.style.alpha
-        line_width = condition.style.line_width
-        line_style = condition.style.line_style
+        cond_style = condition.style
 
         self.logger.debug(
             f"plot_condition called: label='{label}', n_reads={len(reads)}"
@@ -196,7 +195,7 @@ class SignalVisualizer:
         self.logger.debug("Extracting reference bases")
         kmer_dict = self._extract_reference_bases(positions, reads)
         position_labels = [f"{pos} - {kmer_dict[pos]}" for pos in positions]
-        condition_info = {"color": color, "pos_labels": position_labels}
+        condition_info = {"style": cond_style, "pos_labels": position_labels}
 
         # Plot the signals and get y-axis bounds
         self.logger.info(f"Plotting {len(reads)} reads for condition '{label}'")
@@ -429,7 +428,8 @@ class SignalVisualizer:
         # Add highlight as a shape
         shape = dict(
             type="rect",
-            x0=window_idx - self.style.positions_padding / 2,  # Using 0.025 as default padding
+            x0=window_idx
+            - self.style.positions_padding / 2,  # Using 0.025 as default padding
             x1=window_idx + 1 - self.style.positions_padding / 2,
             y0=0,
             y1=1,
@@ -676,17 +676,16 @@ class SignalVisualizer:
         elif len(self._conditions_info) == 1:
             # Single condition labels
             label = next(iter(self._conditions_info))
-            tick_text = (
-                self._conditions_info.get(label, {}).get("pos_labels")
-                or [str(i) for i in range(self.K)]
-            )
+            tick_text = self._conditions_info.get(label, {}).get("pos_labels") or [
+                str(i) for i in range(self.K)
+            ]
         else:
             # Multiple conditions - create multi-line labels
             tick_text = []
             for i in range(self.K):
                 lines = []
                 for label, cond_info_dict in self._conditions_info.items():
-                    color = cond_info_dict["color"]
+                    color = cond_info_dict["style"].color
                     pos_labels = cond_info_dict["pos_labels"]
                     # if cache missing, fallback gracefully
                     text = pos_labels[i] if pos_labels else str(i)
