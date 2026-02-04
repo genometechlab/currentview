@@ -2,36 +2,36 @@ from dataclasses import fields, is_dataclass
 
 
 def _split_and_normalize_configs(
-    gmm_config, preprocess_config, gmm_kwargs, *, logger, GMMConfig, PreprocessConfig
+    model_config, preprocess_config, kwargs, *, logger, ModelConfig, PreprocessConfig
 ):
     """Return (final_gmm_cfg, final_pp_cfg) after resolving dicts/objects/**kwargs."""
     # 1) Field name sets
-    gmm_fields = {f.name for f in fields(GMMConfig)}
+    model_fields = {f.name for f in fields(ModelConfig)}
     pp_fields = {f.name for f in fields(PreprocessConfig)}
 
     # 2) Start with empty dicts
-    gmm_dict: dict = {}
+    model_dict: dict = {}
     pp_dict: dict = {}
 
     # 3) If caller passed dicts, take them
-    if isinstance(gmm_config, dict):
-        gmm_dict.update(gmm_config)
-        gmm_config = None  # canonicalize to object later
+    if isinstance(model_config, dict):
+        model_dict.update(model_config)
+        model_config = None  # canonicalize to object later
     if isinstance(preprocess_config, dict):
         pp_dict.update(preprocess_config)
         preprocess_config = None
 
     # 4) Split mixed kwargs into per-config piles
     unknown = []
-    for k, v in (gmm_kwargs or {}).items():
-        if k in gmm_fields and k in pp_fields:
+    for k, v in (kwargs or {}).items():
+        if k in model_fields and k in pp_fields:
             # Extremely unlikely; if it happens, be explicit
             logger.warning(
-                f"Ambiguous kwarg '{k}' appears in both configs; assigning to GMMConfig by default."
+                f"Ambiguous kwarg '{k}' appears in both configs; assigning to {ModelConfig.__name__} by default."
             )
-            gmm_dict.setdefault(k, v)
-        elif k in gmm_fields:
-            gmm_dict.setdefault(k, v)
+            model_dict.setdefault(k, v)
+        elif k in model_fields:
+            model_dict.setdefault(k, v)
         elif k in pp_fields:
             pp_dict.setdefault(k, v)
         else:
@@ -43,8 +43,8 @@ def _split_and_normalize_configs(
     # 5) Build objects, applying precedence
     # Precedence within each config: object > dict > kwargs (but kwargs already merged in dict)
     # If explicit object was provided, we respect its values and ignore same-named overrides.
-    if gmm_config is None:
-        gmm_config = GMMConfig(**gmm_dict)
+    if model_config is None:
+        model_config = ModelConfig(**model_dict)
     else:
         # object provided: keep it as-is; ignore any overlapping dict entries
         pass
@@ -52,6 +52,7 @@ def _split_and_normalize_configs(
     if preprocess_config is None:
         preprocess_config = PreprocessConfig(**pp_dict)
     else:
+        # object provided: keep it as-is; ignore any overlapping dict entries
         pass
 
-    return gmm_config, preprocess_config
+    return model_config, preprocess_config
