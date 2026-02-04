@@ -50,12 +50,19 @@ pip install -e .
 ```
 
 ### Dependencies
-- numpy >= 1.20.0
-- matplotlib >= 3.5.0
-- pysam >= 0.19.0 (for BAM file reading)
-- pod5 >= 0.2.0 (for POD5 file reading)
-- plotly >= 6.2.0
-- nbformat >= 5.10.4
+- `numpy>=1.20.0`
+- `matplotlib>=3.5.0`
+- `plotly>=5.14.0`
+- `kaleido>=0.2.0`
+- `nbformat>=5.10.4`
+- `pysam>=0.22.0`
+- `scikit-learn<2.0,>=1.4`
+- `umap-learn>=0.5.11`
+- `pod5>=0.3.23`
+- `dash>=2.14.0`
+- `dash-bootstrap-components>=1.5.0`
+- `scipy>=1.10.0`
+- `pandas>=1.5.0`
 
 CurrentView is implemented and tested with Python 3.12.8.
 
