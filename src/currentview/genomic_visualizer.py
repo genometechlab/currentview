@@ -34,7 +34,7 @@ class VerbosityLevel(IntEnum):
     DEBUG = 4  # Everything including debug messages
 
 
-class GenomicPositionVisualizer:
+class CurrentView:
     """
     Visualize nanopore signals at specific genomic positions using Plotly.
 
@@ -43,12 +43,12 @@ class GenomicPositionVisualizer:
 
     Examples:
         Basic usage:
-        >>> viz = GenomicPositionVisualizer(K=9)
+        >>> viz = CurrentView(K=9)
         >>> viz.add_condition("sample.bam", "sample.pod5", "chr1", 12345)
         >>> viz.show()
 
         With statistics:
-        >>> viz = GenomicPositionVisualizer(K=9, stats=['mean', 'std'])
+        >>> viz = CurrentView(K=9, stats=['mean', 'std'])
         >>> viz.add_condition("control.bam", "control.pod5", "chr1", 12345, label="Control")
         >>> viz.add_condition("treatment.bam", "treatment.pod5", "chr1", 12345, label="Treatment")
         >>> viz.show_signals()
@@ -145,7 +145,7 @@ class GenomicPositionVisualizer:
         self._pending_modifications = []
 
         self.logger.debug(
-            f"Initialized GenomicPositionVisualizer: K={self.K}, "
+            f"Initialized CurrentView: K={self.K}, "
             f"stats={self._stats_names if self._stats_enabled else 'disabled'}, "
             f"verbosity={verbosity}"
         )
@@ -168,7 +168,7 @@ class GenomicPositionVisualizer:
         alpha: Optional[float] = None,
         line_width: Optional[float] = None,
         line_style: Optional[str] = None,
-    ) -> "GenomicPositionVisualizer":
+    ) -> "CurrentView":
         """
         Add and process a new condition.
 
@@ -288,7 +288,7 @@ class GenomicPositionVisualizer:
         alpha: Optional[float] = None,
         line_width: Optional[float] = None,
         line_style: Optional[str] = None,
-    ) -> "GenomicPositionVisualizer":
+    ) -> "CurrentView":
         """
         Update visualization parameters of an existing condition.
 
@@ -345,7 +345,7 @@ class GenomicPositionVisualizer:
 
         return self
 
-    def add(self, *args, **kwargs) -> "GenomicPositionVisualizer":
+    def add(self, *args, **kwargs) -> "CurrentView":
         """Alias for add_condition() with shorter name."""
         return self.add_condition(*args, **kwargs)
 
@@ -494,7 +494,7 @@ class GenomicPositionVisualizer:
         *,
         color: str = "red",
         alpha: float = 0.2,
-    ) -> "GenomicPositionVisualizer":
+    ) -> "CurrentView":
         """
         Highlight a position in the window.
 
@@ -528,11 +528,11 @@ class GenomicPositionVisualizer:
 
         return self
 
-    def highlight_center(self, **kwargs) -> "GenomicPositionVisualizer":
+    def highlight_center(self, **kwargs) -> "CurrentView":
         """Highlight the center position (convenience method)."""
         return self.highlight_position(None, **kwargs)
 
-    def clear_highlights(self) -> "GenomicPositionVisualizer":
+    def clear_highlights(self) -> "CurrentView":
         # Apply immediately if viz exists, otherwise queue
         if self._signal_viz and not self._update_signal_viz:
             self._signal_viz.clear_highlights()
@@ -547,7 +547,7 @@ class GenomicPositionVisualizer:
         *,
         y_position: Optional[float] = None,
         **kwargs,
-    ) -> "GenomicPositionVisualizer":
+    ) -> "CurrentView":
         """
         Add text annotation at a specific position.
 
@@ -581,14 +581,14 @@ class GenomicPositionVisualizer:
             )
         return self
 
-    def clear_annotations(self) -> "GenomicPositionVisualizer":
+    def clear_annotations(self) -> "CurrentView":
         if self._signal_viz and not self._update_signal_viz:
             self._signal_viz.clear_annotations()
         else:
             self._pending_modifications.append(("clear_annotations", (), {}))
         return self
 
-    def set_title(self, title: str) -> "GenomicPositionVisualizer":
+    def set_title(self, title: str) -> "CurrentView":
         """Set plot title."""
         self.logger.debug(f"Setting title: {title}")
         self.title = title
@@ -607,7 +607,7 @@ class GenomicPositionVisualizer:
 
     def set_ylim(
         self, bottom: Optional[float] = None, top: Optional[float] = None
-    ) -> "GenomicPositionVisualizer":
+    ) -> "CurrentView":
         """Set y-axis limits for signal plot."""
         self.logger.debug(f"Setting y-axis limits: bottom={bottom}, top={top}")
 
@@ -690,7 +690,7 @@ class GenomicPositionVisualizer:
 
             print("=" * 60 + "\n")
 
-    def clear(self) -> "GenomicPositionVisualizer":
+    def clear(self) -> "CurrentView":
         """Clear all conditions and reset visualizations."""
         self.logger.info("Clearing all conditions")
 
@@ -713,7 +713,7 @@ class GenomicPositionVisualizer:
 
         return self
 
-    def remove_condition(self, label: str) -> "GenomicPositionVisualizer":
+    def remove_condition(self, label: str) -> "CurrentView":
         """
         Remove a specific condition by label.
 
@@ -875,9 +875,7 @@ class GenomicPositionVisualizer:
         self._update_signal_viz = True
         self._update_stats_viz = True
 
-    def set_signals_style(
-        self, style: Union[PlotStyle, str]
-    ) -> "GenomicPositionVisualizer":
+    def set_signals_style(self, style: Union[PlotStyle, str]) -> "CurrentView":
         """
         Update the style for signal plots.
 
@@ -902,9 +900,7 @@ class GenomicPositionVisualizer:
         self.logger.debug(f"Set new signals plot style - will recreate visualizer")
         return self
 
-    def set_stats_style(
-        self, style: Union[PlotStyle, str]
-    ) -> "GenomicPositionVisualizer":
+    def set_stats_style(self, style: Union[PlotStyle, str]) -> "CurrentView":
         """
         Update the style for stats plots.
 

@@ -2,7 +2,7 @@ from dash import Input, Output, State, callback, ctx, html, ALL
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
-from currentview import GenomicPositionVisualizer, PlotStyle
+from currentview import CurrentView, PlotStyle
 from ..utils import (
     validate_window_size,
     validate_json_string,
@@ -210,7 +210,7 @@ def register_initialization_callbacks():
         params["signal_processing_fn"] = signal_processing_fn
 
         # Create visualizer instance
-        viz = GenomicPositionVisualizer(**params)
+        viz = CurrentView(**params)
         visualizers[session_id] = viz
 
         # Construct success message
@@ -233,6 +233,6 @@ def register_initialization_callbacks():
         )
 
 
-def get_visualizer(session_id: str) -> GenomicPositionVisualizer:
+def get_visualizer(session_id: str) -> CurrentView:
     """Get visualizer instance for a session."""
     return visualizers.get(session_id)

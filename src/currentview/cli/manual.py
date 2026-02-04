@@ -34,24 +34,86 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
 
     # Condition 1 (required)
-    parser.add_argument("--bam-path-1", type=str, required=True, help="Path to the first BAM file.")
-    parser.add_argument("--pod5-path-1", type=str, required=True, help="Path to the first POD5 file.")
-    parser.add_argument("--contig-1", type=str, required=True, help="Contig name for the first condition.")
-    parser.add_argument("--pos-1", type=int, required=True, help="Genomic position for the first condition.")
-    parser.add_argument("--max-reads-1", type=int, default=None, help="Max reads for condition 1 (optional).")
-    parser.add_argument("--label-1", type=str, default=None, help="Label for condition 1 (optional).")
-    parser.add_argument("--color-1", type=str, default=None, help="Color for condition 1 (optional).")
-    parser.add_argument("--opacity-1", type=float, default=None, help="Opacity for condition 1 (optional).")
+    parser.add_argument(
+        "--bam-path-1", type=str, required=True, help="Path to the first BAM file."
+    )
+    parser.add_argument(
+        "--pod5-path-1", type=str, required=True, help="Path to the first POD5 file."
+    )
+    parser.add_argument(
+        "--contig-1",
+        type=str,
+        required=True,
+        help="Contig name for the first condition.",
+    )
+    parser.add_argument(
+        "--pos-1",
+        type=int,
+        required=True,
+        help="Genomic position for the first condition.",
+    )
+    parser.add_argument(
+        "--max-reads-1",
+        type=int,
+        default=None,
+        help="Max reads for condition 1 (optional).",
+    )
+    parser.add_argument(
+        "--label-1", type=str, default=None, help="Label for condition 1 (optional)."
+    )
+    parser.add_argument(
+        "--color-1", type=str, default=None, help="Color for condition 1 (optional)."
+    )
+    parser.add_argument(
+        "--opacity-1",
+        type=float,
+        default=None,
+        help="Opacity for condition 1 (optional).",
+    )
 
     # Condition 2 (optional)
-    parser.add_argument("--bam-path-2", type=str, default=None, help="Path to the second BAM file (optional).")
-    parser.add_argument("--pod5-path-2", type=str, default=None, help="Path to the second POD5 file (optional).")
-    parser.add_argument("--contig-2", type=str, default=None, help="Contig name for the second condition (optional).")
-    parser.add_argument("--pos-2", type=int, default=None, help="Genomic position for the second condition (optional).")
-    parser.add_argument("--max-reads-2", type=int, default=None, help="Max reads for condition 2 (optional).")
-    parser.add_argument("--label-2", type=str, default=None, help="Label for condition 2 (optional).")
-    parser.add_argument("--color-2", type=str, default=None, help="Color for condition 2 (optional).")
-    parser.add_argument("--opacity-2", type=float, default=None, help="Opacity for condition 2 (optional).")
+    parser.add_argument(
+        "--bam-path-2",
+        type=str,
+        default=None,
+        help="Path to the second BAM file (optional).",
+    )
+    parser.add_argument(
+        "--pod5-path-2",
+        type=str,
+        default=None,
+        help="Path to the second POD5 file (optional).",
+    )
+    parser.add_argument(
+        "--contig-2",
+        type=str,
+        default=None,
+        help="Contig name for the second condition (optional).",
+    )
+    parser.add_argument(
+        "--pos-2",
+        type=int,
+        default=None,
+        help="Genomic position for the second condition (optional).",
+    )
+    parser.add_argument(
+        "--max-reads-2",
+        type=int,
+        default=None,
+        help="Max reads for condition 2 (optional).",
+    )
+    parser.add_argument(
+        "--label-2", type=str, default=None, help="Label for condition 2 (optional)."
+    )
+    parser.add_argument(
+        "--color-2", type=str, default=None, help="Color for condition 2 (optional)."
+    )
+    parser.add_argument(
+        "--opacity-2",
+        type=float,
+        default=None,
+        help="Opacity for condition 2 (optional).",
+    )
 
     # Output
     parser.add_argument(
@@ -72,9 +134,9 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def cmd_manual(args: argparse.Namespace) -> int:
-    from ..genomic_visualizer import GenomicPositionVisualizer
+    from ..genomic_visualizer import CurrentView
 
-    visualizer = GenomicPositionVisualizer(
+    visualizer = CurrentView(
         K=args.window_size,
         stats=[s.strip() for s in args.stats.split(",") if s.strip()],
         verbosity=args.verbosity_level,
@@ -93,7 +155,12 @@ def cmd_manual(args: argparse.Namespace) -> int:
     )
 
     # Add condition 2 only if the required fields are present
-    if args.bam_path_2 and args.pod5_path_2 and args.contig_2 and (args.pos_2 is not None):
+    if (
+        args.bam_path_2
+        and args.pod5_path_2
+        and args.contig_2
+        and (args.pos_2 is not None)
+    ):
         visualizer.add_condition(
             bam_path=args.bam_path_2,
             pod5_path=args.pod5_path_2,

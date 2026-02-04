@@ -25,7 +25,8 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="TSV file describing conditions (one row per condition).",
     )
     parser.add_argument(
-        "-k", "--window-size",
+        "-k",
+        "--window-size",
         type=int,
         default=9,
         help="Size of the window around the genomic position (default: 9)",
@@ -66,11 +67,11 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def cmd_tsv(args: argparse.Namespace) -> int:
-    from ..genomic_visualizer import GenomicPositionVisualizer
+    from ..genomic_visualizer import CurrentView
 
     conditions = load_conditions_tsv(args.conditions_tsv, base_dir=args.base_dir)
 
-    visualizer = GenomicPositionVisualizer(
+    visualizer = CurrentView(
         K=args.window_size,
         stats=args.stats.split(","),
         verbosity=args.verbosity_level,
@@ -126,7 +127,9 @@ def _resolve_path(p: Optional[str], base_dir: str) -> Optional[str]:
     return p if osp.isabs(p) else osp.normpath(osp.join(base_dir, p))
 
 
-def load_conditions_tsv(tsv_path: str, base_dir: Optional[str] = None) -> list[Dict[str, Any]]:
+def load_conditions_tsv(
+    tsv_path: str, base_dir: Optional[str] = None
+) -> list[Dict[str, Any]]:
     if base_dir is None:
         base_dir = osp.dirname(osp.abspath(tsv_path))
 

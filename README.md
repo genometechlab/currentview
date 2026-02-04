@@ -23,7 +23,7 @@ A Python package for visualizing nanopore sequencing signals at specific genomic
     - [Dependencies](#dependencies)
   - [Quick Start](#quick-start)
   - [Core API](#core-api)
-    - [GenomicPositionVisualizer](#genomicpositionvisualizer)
+    - [CurrentView](#currentview-1)
       - [Main Methods](#main-methods)
         - [add\_condition()](#add_condition)
         - [update\_condition()](#update_condition)
@@ -62,13 +62,13 @@ CurrentView is implemented and tested with Python 3.12.8.
 ## Quick Start
 
 ```python
-from currentview import GenomicPositionVisualizer, PlotStyle
+from currentview import CurrentView, PlotStyle
 
 # Create visualizer for a 9-base window with statistics
-gpv = GenomicPositionVisualizer(K=9, stats=['mean', 'std', 'median'])
+cv = CurrentView(K=9, stats=['mean', 'std', 'median'])
 
 # Add signals from a genomic position
-gpv.add_condition(
+cv.add_condition(
     bam_path="sample1.bam",
     pod5_path="sample1.pod5",
     contig="chr1",
@@ -77,7 +77,7 @@ gpv.add_condition(
 )
 
 # Add another condition for comparison
-gpv.add_condition(
+cv.add_condition(
     bam_path="sample2.bam",
     pod5_path="sample2.pod5",
     contig="chr1",
@@ -87,25 +87,25 @@ gpv.add_condition(
 )
 
 # Display the signal plot
-gpv.show_signals()
+cv.show_signals()
 
 # Display the stats plot
-gpv.show_stats()
+cv.show_stats()
 
 # Or display both
-gpv.show()
+cv.show()
 ```
 
 **Implementation examples are provided under example folder**
 
 ## Core API
 
-### GenomicPositionVisualizer
+### CurrentView
 
 The main class for visualization.
 
 ```python
-GenomicPositionVisualizer(
+CurrentView(
     K: int = 9,
     kmer: Optional[List[Union[str, int]]] = None,
     stats: Optional[List[Union[str, Callable]]] = None,
@@ -143,7 +143,7 @@ GenomicPositionVisualizer(
 Add and process a new condition from BAM and POD5 files.
 
 ```python
-gpv.add_condition(
+cv.add_condition(
     bam_path: Union[str, Path],
     pod5_path: Union[str, Path],
     contig: str,
@@ -159,7 +159,7 @@ gpv.add_condition(
     alpha: Optional[float] = None,
     line_width: Optional[float] = None,
     line_style: Optional[str] = None
-) -> GenomicPositionVisualizer
+) -> CurrentView
 ```
 
 **Parameters:**
@@ -183,88 +183,88 @@ gpv.add_condition(
 Update visualization parameters of an existing condition.
 
 ```python
-gpv.update_condition(
+cv.update_condition(
     label: str,
     *,
     color: Optional[str] = None,
     alpha: Optional[float] = None,
     line_width: Optional[float] = None,
     line_style: Optional[str] = None
-) -> GenomicPositionVisualizer
+) -> CurrentView
 ```
 
 ##### show(), show_signals(), and show_stats()
 
 ```python
 # Display both signals and stats plots
-gpv.show()
+cv.show()
 
 # Display only the signals plot
-gpv.show_signals()
+cv.show_signals()
 
 # Display only the stats plot
-gpv.show_stats()
+cv.show_stats()
 ```
 
 ##### save(), save_signals(), and save_stats()
 
 ```python
 # Save both plots (adds _signals and _stats suffixes)
-gpv.save(path="output.png", format='png', scale=1)
+cv.save(path="output.png", format='png', scale=1)
 
 # Save only signals plot
-gpv.save_signals(path="signals.png", format='png', scale=1)
+cv.save_signals(path="signals.png", format='png', scale=1)
 
 # Save only stats plot
-gpv.save_stats(path="stats.png", format='png', scale=1)
+cv.save_stats(path="stats.png", format='png', scale=1)
 ```
 
 #### Other Methods
 
 ```python
 # Highlight a position in the window
-gpv.highlight_position(window_idx=4, color='red', alpha=0.2)
+cv.highlight_position(window_idx=4, color='red', alpha=0.2)
 
 # Highlight the center position
-gpv.highlight_center(color='red', alpha=0.2)
+cv.highlight_center(color='red', alpha=0.2)
 
 # Remove all highlights
-gpv.clear_highlights()
+cv.clear_highlights()
 
 # Add text annotation
-gpv.add_annotation(window_idx=4, text="SNP", y_position=150)
+cv.add_annotation(window_idx=4, text="SNP", y_position=150)
 
 # Remove annotations
-gpv.clear_annotations()
+cv.clear_annotations()
 
 # Set plot title
-gpv.set_title("Signal comparison at chr1:1000000")
+cv.set_title("Signal comparison at chr1:1000000")
 
 # Set y-axis limits
-gpv.set_ylim(bottom=50, top=200)
+cv.set_ylim(bottom=50, top=200)
 
 # Get/print summary
-summary = gpv.get_summary()
-gpv.print_summary()
+summary = cv.get_summary()
+cv.print_summary()
 
 # Remove a condition
-gpv.remove_condition("Control")
+cv.remove_condition("Control")
 
 # Clear all conditions
-gpv.clear()
+cv.clear()
 
 # Get condition names
-names = gpv.get_condition_names()
+names = cv.get_condition_names()
 
 # Get specific condition
-cond = gpv.get_condition("Control")
+cond = cv.get_condition("Control")
 
 # Change verbosity
-gpv.set_verbosity(3)  # Set to INFO level
+cv.set_verbosity(3)  # Set to INFO level
 
 # Update styles
-gpv.set_signals_style(new_style)
-gpv.set_stats_style(new_style)
+cv.set_signals_style(new_style)
+cv.set_stats_style(new_style)
 ```
 
 ##### GMM Methods
@@ -273,7 +273,7 @@ Fit and visualize Gaussian Mixture Models:
 
 ```python
 # Fit GMMs and get results
-gmm_results = gpv.fit_gmms(
+gmm_results = cv.fit_gmms(
     stat1='mean',
     stat2='std',
     K=5,  # Optional: span of signal, must be equal or smaller that K value of GenomicPositionVizualizer
@@ -284,7 +284,7 @@ gmm_results = gpv.fit_gmms(
 # Fit and plot GMMs
 gmm_viz = gmm_handler.visualize()
 # or
-gmm_viz = gpv.plot_gmms(
+gmm_viz = cv.plot_gmms(
     stat1='mean',
     stat2='std',
     K=5,
@@ -332,7 +332,7 @@ style = PlotStyle(
     # ... more options
 )
 
-gpv = GenomicPositionVisualizer(
+cv = CurrentView(
     K=9,
     signals_plot_style=style,
     stats_plot_style=style,
@@ -349,29 +349,29 @@ Implementation examples are provided under example folder
 **Example 1: Basic Single Condition**
 
 ```python
-from currentview import GenomicPositionVisualizer
+from currentview import CurrentView
 
-gpv = GenomicPositionVisualizer(K=9, verbosity=3)
+cv = CurrentView(K=9, verbosity=3)
 
-gpv.add_condition(
+cv.add_condition(
     bam_path="sample.bam",
     pod5_path="sample.pod5",
     contig="chr1",
     target_position=100
 )
 
-gpv.set_title("Nanopore Signals at chr1:1000000")
-gpv.show_signals()
+cv.set_title("Nanopore Signals at chr1:1000000")
+cv.show_signals()
 ```
 
 **Example 2: Comparing Multiple Conditions**
 
 ```python
-from currentview import GenomicPositionVisualizer
+from currentview import CurrentView
 from currentview.utils.plotly_utils import PlotStyle
 
 style = PlotStyle(width=1400, height=800)
-gpv = GenomicPositionVisualizer(K=9, signals_plot_style=style)
+cv = CurrentView(K=9, signals_plot_style=style)
 
 conditions = [
     ("control.bam", "control.pod5", "Control", "blue"),
@@ -380,7 +380,7 @@ conditions = [
 ]
 
 for bam, pod5, label, color in conditions:
-    gpv.add_condition(
+    cv.add_condition(
         bam_path=bam,
         pod5_path=pod5,
         contig="chr1",
@@ -390,21 +390,21 @@ for bam, pod5, label, color in conditions:
         max_reads=50
     )
 
-gpv.highlight_center(color='yellow', alpha=0.3)
-gpv.add_annotation(window_idx=4, text="Target")
-gpv.set_title("Signal Comparison at chr1:1000000")
-gpv.save("comparison.png")
+cv.highlight_center(color='yellow', alpha=0.3)
+cv.add_annotation(window_idx=4, text="Target")
+cv.set_title("Signal Comparison at chr1:1000000")
+cv.save("comparison.png")
 ```
 
 **Example 3: With Statistics**
 
 ```python
-gpv = GenomicPositionVisualizer(
+cv = CurrentView(
     K=9,
     stats=['mean', 'median', 'std', 'skewness']
 )
 
-gpv.add_condition(
+cv.add_condition(
     bam_path="sample.bam",
     pod5_path="sample.pod5",
     contig="chr1",
@@ -413,13 +413,13 @@ gpv.add_condition(
 )
 
 # View signals
-gpv.show_signals()
+cv.show_signals()
 
 # View statistics
-gpv.show_stats()
+cv.show_stats()
 
 # Print summary
-gpv.print_summary()
+cv.print_summary()
 ```
 
 **Example 4: Filtering Specific Reads**
@@ -427,9 +427,9 @@ gpv.print_summary()
 ```python
 target_reads = ["read_001", "read_002", "read_003"]
 
-gpv = GenomicPositionVisualizer(K=11)
+cv = CurrentView(K=11)
 
-gpv.add_condition(
+cv.add_condition(
     bam_path="sample.bam",
     pod5_path="sample.pod5",
     contig="chr2",
@@ -439,14 +439,14 @@ gpv.add_condition(
     label="Selected Reads"
 )
 
-gpv.print_summary()
-gpv.show()
+cv.print_summary()
+cv.show()
 ```
 
 **Example 5: Method Chaining**
 
 ```python
-(GenomicPositionVisualizer(K=9, stats=['mean'])
+(CurrentView(K=9, stats=['mean'])
     .add_condition("sample.bam", "sample.pod5", "chr1", 12345, label="Sample")
     .highlight_center(color='red')
     .set_title("My Analysis")
@@ -461,18 +461,18 @@ Processing BAM and POD5 files can be computationally expensive. For better perfo
 
 1. **Limit reads for large datasets**:
    ```python
-   gpv.add_condition(..., max_reads=100)
+   cv.add_condition(..., max_reads=100)
    ```
 
 2. **Filter out reads with indels**:
    ```python
-   gpv.add_condition(..., exclude_reads_with_indels=True)
+   cv.add_condition(..., exclude_reads_with_indels=True)
    ```
 
 3. **Use appropriate verbosity**:
    ```python
-   gpv = GenomicPositionVisualizer(K=9, verbosity=0)  # Silent for production
-   gpv.set_verbosity(4)  # Debug for troubleshooting
+   cv = CurrentView(K=9, verbosity=0)  # Silent for production
+   cv.set_verbosity(4)  # Debug for troubleshooting
    ```
 
 ### Visual Clarity
@@ -480,12 +480,12 @@ Processing BAM and POD5 files can be computationally expensive. For better perfo
 1. **Adjust alpha for overlapping signals**:
    ```python
    style = PlotStyle(opacity_mode='auto')  # Auto-adjusts based on read count
-   gpv.add_condition(..., alpha=0.5)       # Or set manually
+   cv.add_condition(..., alpha=0.5)       # Or set manually
    ```
 
 2. **Use contrasting colors**:
    ```python
-   gpv = GenomicPositionVisualizer(color_palette="colorblind")
+   cv = CurrentView(color_palette="colorblind")
    ```
 
 3. **Limit window size for clarity**: K=9 or K=11 work well for most cases
@@ -519,7 +519,7 @@ Currentview is also available as a web application. After completing the install
 
 Once the application has initialized, it will automatically open the Currentview web interface in your default browser.
 
-On the landing page, users can configure general visualization parameters, including the k-mer window size and the statistics to be displayed. This functionality is largely equivalent to the `GenomicPositionVisualizer` component of the Python API.
+On the landing page, users can configure general visualization parameters, including the k-mer window size and the statistics to be displayed. This functionality is largely equivalent to the `CurrentView` component of the Python API.
 
 !['Application landing page'](images/app_homepage.png)
 
