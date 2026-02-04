@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from collections import OrderedDict
 
+from currentview.gmm.gmm_handler import GMMHandler
+from currentview.umap.umap_handler import UMAPConfig
+from currentview.umap.umap_visualizer import UMAPVisualizer
+
 from .utils.path_utils import validate_files
 from .utils.arg_utils import _split_and_normalize_configs
 from .utils.data_classes import ReadAlignment, Condition, ConditionStyle
@@ -1081,7 +1085,7 @@ class GenomicPositionVisualizer:
         self,
         stat1: str,
         stat2: str,
-        K: Optional[int] = None,
+        offsets_window: Tuple[int, int] = None,
         *,
         gmm_config: Optional["GMMConfig | dict"] = None,
         preprocess_config: Optional["PreprocessConfig | dict"] = None,
@@ -1089,12 +1093,16 @@ class GenomicPositionVisualizer:
     ):
         from .gmm import GMMHandler, GMMConfig, PreprocessConfig
 
-        if K is not None and K > self.K:
-            raise ValueError(
-                f"Specified K ({K}) cannot be larger than the GenomicPositionVisualizer window size ({self.K})"
-            )
-        if K is None:
-            K = self.K
+        if offsets_window is not None:
+            if (
+                offsets_window[0] < -self.half_window
+                or offsets_window[1] > self.half_window
+            ):
+                raise ValueError(
+                    f"offsets_window {offsets_window} out of range for K={self.K}"
+                )
+        if offsets_window is None:
+            offsets_window = (self.K // 2, self.K // 2)
 
         if len(self._conditions) == 0:
             raise SystemError(f"No conditions are added yet.")
@@ -1104,14 +1112,14 @@ class GenomicPositionVisualizer:
             preprocess_config,
             gmm_kwargs,
             logger=self.logger,
-            GMMConfig=GMMConfig,
+            ModelConfig=GMMConfig,
             PreprocessConfig=PreprocessConfig,
         )
 
         handler = GMMHandler(
             stat1,
             stat2,
-            K=K,
+            offsets_window=offsets_window,
             gmm_config=cfg,
             preprocess_config=pp_cfg,
             logger=self.logger,
@@ -1123,18 +1131,16 @@ class GenomicPositionVisualizer:
         self,
         stat1: str,
         stat2: str,
-        K: Optional[int] = None,
+        offsets_window: Tuple[int, int] = None,
         *,
         gmm_config: Optional["GMMConfig | dict"] = None,
         preprocess_config: Optional["PreprocessConfig | dict"] = None,
         **gmm_kwargs,
     ):
-        if K is None:
-            K = self.K
         handler = self._get_gmm_handler(
             stat1,
             stat2,
-            K,
+            offsets_window=offsets_window,
             gmm_config=gmm_config,
             preprocess_config=preprocess_config,
             **gmm_kwargs,
@@ -1145,7 +1151,7 @@ class GenomicPositionVisualizer:
         self,
         stat1: str,
         stat2: str,
-        K: Optional[int] = None,
+        offsets_window: Tuple[int, int] = None,
         *,
         gmm_style: Optional["PlotStyle"] = None,
         gmm_config: Optional["GMMConfig | dict"] = None,
@@ -1156,7 +1162,7 @@ class GenomicPositionVisualizer:
         handler = self._get_gmm_handler(
             stat1,
             stat2,
-            K,
+            offsets_window=offsets_window,
             gmm_config=gmm_config,
             preprocess_config=preprocess_config,
             **gmm_kwargs,
@@ -1167,3 +1173,90 @@ class GenomicPositionVisualizer:
         gmm_viz = GMMVisualizer.from_handler(handler, style=gmm_style)
         gmm_viz.show()
         return gmm_viz
+
+    def _get_umap_handler(
+        self,
+        stats: List[str],
+        offsets_window: Tuple[int, int] = None,
+        *,
+        umap_config: Optional["UMAPConfig | dict"] = None,
+        preprocess_config: Optional["PreprocessConfig | dict"] = None,
+        **umap_kwargs,
+    ):
+        from .umap import UMAPHandler, UMAPConfig, PreprocessConfig
+
+        if offsets_window is not None:
+            if (
+                offsets_window[0] < -self.half_window
+                or offsets_window[1] > self.half_window
+            ):
+                raise ValueError(
+                    f"offsets_window {offsets_window} out of range for K={self.K}"
+                )
+        if offsets_window is None:
+            offsets_window = (self.K // 2, self.K // 2)
+
+        if len(self._conditions) == 0:
+            raise SystemError(f"No conditions are added yet.")
+
+        cfg, pp_cfg = _split_and_normalize_configs(
+            umap_config,
+            preprocess_config,
+            umap_kwargs,
+            logger=self.logger,
+            ModelConfig=UMAPConfig,
+            PreprocessConfig=PreprocessConfig,
+        )
+
+        handler = UMAPHandler(
+            stats,
+            offsets_window=offsets_window,
+            umap_config=cfg,
+            preprocess_config=pp_cfg,
+            logger=self.logger,
+        )
+        handler.fit_umap(self._conditions.values())
+        return handler
+
+    def fit_umap(
+        self,
+        stats: List[str],
+        offsets_window: Tuple[int, int] = None,
+        *,
+        umap_config: Optional[UMAPConfig | dict] = None,
+        preprocess_config: Optional[PreprocessConfig | dict] = None,
+        **umap_kwargs,
+    ):
+        handler = self._get_umap_handler(
+            stats,
+            offsets_window,
+            umap_config=umap_config,
+            preprocess_config=preprocess_config,
+            **umap_kwargs,
+        )
+        return handler
+
+    def plot_umaps(
+        self,
+        stats: List[str],
+        offsets_window: Tuple[int, int] = None,
+        *,
+        umap_style: Optional["PlotStyle"] = None,
+        umap_config: Optional["UMAPConfig | dict"] = None,
+        preprocess_config: Optional["PreprocessConfig | dict"] = None,
+        **umap_kwargs,  # mixed bag accepted (we'll split it)
+    ):
+        # Pass keyword-only args as keywords, and expand **gmm_kwargs
+        handler = self._get_umap_handler(
+            stats,
+            offsets_window,
+            umap_config=umap_config,
+            preprocess_config=preprocess_config,
+            **umap_kwargs,
+        )
+
+        from .umap import UMAPVisualizer
+
+        umap_viz = UMAPVisualizer.from_handler(handler, style=umap_style)
+        umap_viz.show()
+        return umap_viz
