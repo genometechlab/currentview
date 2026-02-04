@@ -175,7 +175,7 @@ class StatsVisualizer:
         reads = condition.reads
         positions = condition.positions
         label = condition.label
-        color = condition.style.color
+        cond_style = condition.style
 
         self.logger.debug(
             f"plot_condition called: label='{label}', n_reads={len(reads)}, positions={positions[0]}-{positions[-1]}"
@@ -186,12 +186,14 @@ class StatsVisualizer:
             self.logger.warning(f"Condition '{label}' already plotted. Updating it.")
             self.remove_condition(label)
 
+        condition_info = {"style": cond_style}
+
         # Plot the stats and collect trace indices
         self.logger.info(f"Plotting stats for condition '{label}'")
         self._plot_stats(condition)
 
         # Store plotted condition
-        self._conditions_info[condition.label] = condition
+        self._conditions_info[condition.label] = condition_info
 
     def _plot_stats(self, condition: Condition):
         """Plot statistics for a condition."""
