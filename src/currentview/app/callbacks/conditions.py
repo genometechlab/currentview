@@ -28,30 +28,6 @@ def register_condition_callbacks():
     """Register all condition management callbacks."""
 
     @callback(
-        [
-            Output("gmm-tab", "disabled"),
-            Output("umap-tab", "disabled"),
-        ],
-        [
-            Input("conditions-metadata", "data"),
-            Input("stats-store", "data"),
-        ],
-    )
-    def toggle_analysis_tabs(conditions_metadata, stored_stats):
-        """Enable or disable analysis tabs based on whether conditions and stats are available."""
-        # Check if we have at least one condition
-        has_conditions = len(conditions_metadata) > 0 if conditions_metadata else False
-
-        # Check if we have at least one stat
-        has_stats = len(stored_stats) > 0 if stored_stats else False
-
-        # Both conditions AND stats must be available to enable tabs
-        if has_conditions and has_stats:
-            return False, False  # Enable tabs
-        else:
-            return True, True  # Disable tabs
-
-    @callback(
         [Output("gmm-inputs", "style"), Output("umap-inputs", "style")],
         Input("tabs", "active_tab"),
     )
@@ -95,7 +71,7 @@ def register_condition_callbacks():
             State("contig", "value"),
             State("position", "value"),
             State("molecule-type-store", "data"),
-            State("matched-query-base", "value"),
+            State("matched-query-base", "data"),
             State("max-reads", "value"),
             State("condition-label", "value"),
             State("condition-color", "value"),

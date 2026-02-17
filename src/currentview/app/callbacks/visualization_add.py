@@ -10,16 +10,68 @@ def register_visualization_add_callbacks():
     """Register all visualization related callbacks."""
 
     @callback(
+        [
+            Output("gmm-position-range", "min"),
+            Output("gmm-position-range", "max"),
+            Output("gmm-position-range", "value"),
+            Output("gmm-position-range", "marks"),
+        ],
+        Input("init-btn", "n_clicks"),
+        State("session-id", "data"),
+        prevent_initial_call=True,
+    )
+    def update_gmm_position_range(init_clicks, session_id):
+        """Update GMM position range slider based on window size K."""
+        viz = get_visualizer(session_id)
+
+        if not viz:
+            return -5, 5, [-5, 5], {-5: "-5", 0: "0", 5: "5"}
+
+        K = viz.K
+        half_k = K // 2
+
+        marks = {}
+
+        if K > 20:
+            step = K // 10
+            for i in range(-half_k + step, half_k, step):
+                marks[i] = str(i)
+
+        return -half_k, half_k, [-half_k, half_k], marks
+
+    @callback(
+        [
+            Output("gmm-stat1", "options"),
+            Output("gmm-stat2", "options"),
+        ],
+        Input("stats-store", "data"),
+    )
+    def update_gmm_stat_options(stored_stats):
+        """Update GMM stat dropdowns based on stored statistics."""
+        if not stored_stats:
+            return [], []
+        return stored_stats, stored_stats
+
+    @callback(
         Output("plot-container", "children", allow_duplicate=True),
         Input("gmm-run-btn", "n_clicks"),
         [
             State("session-id", "data"),
-            State("gmm-n-components", "value"),
-            State("gmm-covariance", "value"),
+            State("gmm-stat1", "value"),
+            State("gmm-stat2", "value"),
+            State("gmm-covariance-type", "value"),
+            State("gmm-position-range", "value"),
         ],
         prevent_initial_call=True,
     )
-    def generate_gmm_plot(n_clicks, session_id, n_components, covariance):
+    def generate_gmm_plot(
+        n_clicks,
+        session_id,
+        stat1,
+        stat2,
+        covariance_type,
+        position_range,
+    ):
         """Generate GMM plot when Run GMM button is clicked."""
         viz = get_visualizer(session_id)
         if not viz:
@@ -29,20 +81,40 @@ def register_visualization_add_callbacks():
                 className="text-center",
             )
 
-        try:
-            # TODO: Add your GMM plot generation logic here
-            # fig = viz.get_gmm_fig(n_components=n_components, covariance=covariance)
-            # For now, return a placeholder
+        # Validate stats
+        if not stat1 or not stat2:
             return dbc.Alert(
-                f"GMM plot generation not yet implemented (n_components={n_components}, covariance={covariance})",
+                "Please select both Stat 1 and Stat 2",
                 color="warning",
                 className="text-center",
             )
 
-            # When implemented, return:
-            # return dcc.Loading(
-            #     dcc.Graph(id="plot", figure=fig, style={"height": DEFAULT_PLOT_HEIGHT})
-            # )
+        try:
+            # Extract position range
+            start_pos, end_pos = position_range
+
+            # Fit UMAP with user-selected parameters
+            gmm_handler = viz.fit_gmms(
+                stat1=stat1,
+                stat2=stat2,
+                offsets_window=(start_pos, end_pos),
+                covariance_type=covariance_type,
+            )
+
+            # Generate visualization
+            fig = gmm_handler.visualize().get_fig()
+
+            # Return the plot
+            return dcc.Loading(
+                dcc.Graph(id="plot", figure=fig, style={"height": DEFAULT_PLOT_HEIGHT})
+            )
+
+        except ValueError as e:
+            return dbc.Alert(
+                f"Invalid parameter values: {str(e)}",
+                color="danger",
+                className="text-center",
+            )
         except Exception as e:
             return dbc.Alert(
                 f"Error generating GMM plot: {str(e)}",

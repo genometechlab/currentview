@@ -538,9 +538,9 @@ def create_add_condition_card() -> html.Div:
                             create_file_inputs(),
                             html.Hr(style={"opacity": "0.0", "margin": "8px 0"}),
                             create_condition_parameters(),
-                            html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
+                            html.Hr(style={"opacity": "0.1", "margin": "8 0"}),
                             create_visualization_style_inputs(),
-                            html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
+                            html.Hr(style={"opacity": "0.1", "margin": "12 0px"}),
                             dbc.Row(
                                 [
                                     dbc.Col(
@@ -612,6 +612,7 @@ def create_file_inputs() -> dbc.Row:
                             create_button(
                                 "Browse",
                                 id="bam-browse",
+                                size="sm",
                                 color="secondary",
                                 icon="bi bi-folder-open",
                             ),
@@ -634,6 +635,7 @@ def create_file_inputs() -> dbc.Row:
                             create_button(
                                 "Browse",
                                 id="pod5-browse",
+                                size="sm",
                                 color="secondary",
                                 icon="bi bi-folder-open",
                             ),
@@ -670,23 +672,41 @@ def create_condition_parameters() -> dbc.Row:
             dbc.Col(
                 [
                     html.Label("Matched Query Base", className="modern-label"),
-                    dbc.Checklist(
-                        id="matched-query-base",
-                        options=[
-                            {"label": "A", "value": "A"},
-                            {"label": "C", "value": "C"},
-                            {"label": "G", "value": "G"},
-                            {"label": "T", "value": "T"},
+                    dbc.ButtonGroup(
+                        [
+                            dbc.Button(
+                                "A",
+                                id="base-a",
+                                outline=True,
+                                color="secondary",
+                                size="sm",
+                                style={"padding": "8px 6px"},
+                            ),
+                            dbc.Button(
+                                "C",
+                                id="base-c",
+                                outline=True,
+                                color="secondary",
+                                size="sm",
+                                style={"padding": "8px 6px"},
+                            ),
+                            dbc.Button(
+                                "G",
+                                id="base-g",
+                                outline=True,
+                                color="secondary",
+                                size="sm",
+                                style={"padding": "8px 6px"},
+                            ),
+                            dbc.Button(
+                                "T",
+                                id="base-t",
+                                outline=True,
+                                color="secondary",
+                                size="sm",
+                                style={"padding": "8px 6px"},
+                            ),
                         ],
-                        value=[],
-                        inline=False,
-                        className="matched-query-base-grid",
-                        style={
-                            "display": "grid",
-                            "gridTemplateColumns": "1fr 1fr",
-                            "gap": "4px",
-                            "marginTop": "0",
-                        },
                     ),
                 ],
                 width=2,
@@ -702,7 +722,7 @@ def create_condition_parameters() -> dbc.Row:
             ),
             dbc.Col(
                 [
-                    html.Label("Label (optional)", className="modern-label"),
+                    html.Label("Label", className="modern-label"),
                     create_input(id="condition-label", placeholder="Auto-generated"),
                 ],
                 width=3,
@@ -717,7 +737,7 @@ def create_visualization_style_inputs() -> dbc.Row:
         [
             dbc.Col(
                 [
-                    html.Label("Visualization Style", className="modern-label mb-3"),
+                    create_label("Visualization Style", required=False),
                     dbc.Row(
                         [
                             dbc.Col(
@@ -748,6 +768,7 @@ def create_visualization_style_inputs() -> dbc.Row:
                                             "borderRadius": "10px",
                                             "border": "1px solid rgba(0, 0, 0, 0.1)",
                                             "background": "rgba(255, 255, 255, 0.9)",
+                                            "padding": "8px 16px",
                                         },
                                     ),
                                 ],
@@ -765,6 +786,7 @@ def create_visualization_style_inputs() -> dbc.Row:
                                                 min=0.1,
                                                 max=5.0,
                                                 step=0.1,
+                                                style={"borderRadius": "10px 0 0 10px"},
                                             ),
                                             dbc.InputGroupText(
                                                 "px",
@@ -787,11 +809,14 @@ def create_visualization_style_inputs() -> dbc.Row:
                                                 min=1,
                                                 max=100,
                                                 step=1,
+                                                style={"borderRadius": "10px 0 0 10px"},
                                             ),
                                             dbc.InputGroupText(
                                                 "%",
                                                 id="opacity-text",
-                                                style={"borderRadius": "0 10px 10px 0"},
+                                                style={
+                                                    "borderRadius": "0 10px 10px 0"
+                                                },  # Only round the RIGHT side
                                             ),
                                         ]
                                     ),
@@ -1011,34 +1036,88 @@ def create_gmm_inputs() -> html.Div:
     """Create input bar for GMM tab."""
     return html.Div(
         [
-            create_input_row(
+            # First row: Range slider for position selection
+            dbc.Row(
                 [
-                    {
-                        "component": dbc.Input(
-                            placeholder="Number of components",
-                            type="number",
-                            id="gmm-n-components",
-                        ),
-                        "width": 3,
-                    },
-                    {
-                        "component": dbc.Input(
-                            placeholder="Covariance type",
-                            type="text",
-                            id="gmm-covariance",
-                        ),
-                        "width": 3,
-                    },
-                    {
-                        "component": dbc.Button(
+                    dbc.Col(
+                        [
+                            create_label("Position Range", required=True),
+                            dcc.RangeSlider(
+                                id="gmm-position-range",
+                                min=-5,
+                                max=5,
+                                step=1,
+                                value=[-5, 5],
+                                marks={},
+                                tooltip={"placement": "bottom", "always_visible": True},
+                                className="mb-3",
+                            ),
+                        ],
+                        width=12,
+                    ),
+                ],
+                className="mb-3",
+            ),
+            # Second row: GMM parameters
+            dbc.Row(
+                [
+                    # Stat 1 dropdown
+                    dbc.Col(
+                        [
+                            create_label("Statistic 1", required=True),
+                            dbc.Select(
+                                id="gmm-stat1",
+                                options=None,
+                                placeholder="Stat 1...",
+                                style={"borderRadius": "10px"},
+                            ),
+                        ],
+                        width=2,
+                    ),
+                    # Stat 2 dropdown
+                    dbc.Col(
+                        [
+                            create_label("Statistic 2", required=False),
+                            dbc.Select(
+                                id="gmm-stat2",
+                                options=None,
+                                placeholder="Stat 2...",
+                                style={"borderRadius": "10px"},
+                            ),
+                        ],
+                        width=2,
+                    ),
+                    # Covariance type dropdown
+                    dbc.Col(
+                        [
+                            create_label("Covariance Type", required=True),
+                            dbc.Select(
+                                id="gmm-covariance-type",
+                                options=[
+                                    {"label": "Full", "value": "full"},
+                                    {"label": "Tied", "value": "tied"},
+                                    {"label": "Diagonal", "value": "diag"},
+                                    {"label": "Spherical", "value": "spherical"},
+                                ],
+                                value="full",
+                                style={"borderRadius": "10px"},
+                            ),
+                        ],
+                        width=2,
+                    ),
+                    # Run button
+                    dbc.Col(
+                        create_button(
                             "Run GMM",
+                            id="gmm-run-btn",
                             color="primary",
                             size="sm",
-                            id="gmm-run-btn",
                         ),
-                        "width": "auto",
-                    },
-                ]
+                        width="auto",
+                        className="ms-auto",
+                    ),
+                ],
+                className="g-2",
             ),
         ],
         id="gmm-inputs",
@@ -1056,7 +1135,7 @@ def create_umap_inputs() -> html.Div:
                 [
                     dbc.Col(
                         [
-                            html.Label("Position Range", className="modern-label mb-2"),
+                            create_label("Position Range", required=True),
                             dcc.RangeSlider(
                                 id="umap-position-range",
                                 min=-5,  # Will be updated by callback based on K
@@ -1078,6 +1157,7 @@ def create_umap_inputs() -> html.Div:
                 [
                     dbc.Col(
                         [
+                            create_label("Statistics", required=True),
                             dbc.InputGroup(
                                 [
                                     dbc.Select(
@@ -1100,19 +1180,25 @@ def create_umap_inputs() -> html.Div:
                         width=4,
                     ),
                     dbc.Col(
-                        dbc.Input(
-                            placeholder="Number of neighbors",
-                            type="number",
-                            id="umap-n-neighbors",
-                        ),
+                        [
+                            create_label("Number of neighbors", required=True),
+                            create_input(
+                                id="umap-n-neighbors",
+                                type="number",
+                                value=10,
+                            ),
+                        ],
                         width=2,
                     ),
                     dbc.Col(
-                        dbc.Input(
-                            placeholder="Min distance",
-                            type="number",
-                            id="umap-min-dist",
-                        ),
+                        [
+                            create_label("Min distance", required=True),
+                            create_input(
+                                id="umap-min-dist",
+                                type="number",
+                                value=0.1,
+                            ),
+                        ],
                         width=2,
                     ),
                     dbc.Col(

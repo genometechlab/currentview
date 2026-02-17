@@ -48,7 +48,7 @@ def create_card(children, className="", id="", style=None):
 
 
 def create_button(
-    text, id, color="primary", size="md", className="", icon=None, **kwargs
+    text, id, color="primary", size="md", className="", icon=None, style=None, **kwargs
 ):
     """Create a flat styled button with optional icon."""
     color_styles = {
@@ -104,6 +104,8 @@ def create_button(
         **size_styles.get(size, size_styles["md"]),
     }
 
+    button_style = {**button_style, **(style or {})}
+
     content = [html.I(className=icon, style={"marginRight": "8px"})] if icon else []
     content.append(text)
 
@@ -116,22 +118,29 @@ def create_button(
     )
 
 
-def create_input(id, type="text", placeholder="", value=None, className="", **kwargs):
+def create_input(
+    id, type="text", placeholder="", value=None, className="", style=None, **kwargs
+):
     """Create a flat styled input field."""
+    default_style = {
+        "borderRadius": "8px",
+        "border": "1px solid #e5e7eb",
+        "background": "#ffffff",
+        "padding": "8px 16px",
+        "transition": "all 0.2s ease",
+        "fontSize": "0.95rem",
+    }
+
+    # Merge styles, user-provided styles override defaults
+    merged_style = {**default_style, **(style or {})}
+
     return dbc.Input(
         id=id,
         type=type,
         placeholder=placeholder,
         value=value,
-        className="modern-input {className}",
-        style={
-            "borderRadius": "8px",
-            "border": "1px solid #e5e7eb",
-            "background": "#ffffff",
-            "padding": "12px 16px",
-            "transition": "all 0.2s ease",
-            "fontSize": "0.95rem",
-        },
+        className=f"modern-input {className}".strip(),
+        style=merged_style,
         **kwargs,
     )
 
