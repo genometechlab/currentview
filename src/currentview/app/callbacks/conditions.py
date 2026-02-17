@@ -108,6 +108,7 @@ def register_condition_callbacks():
         trigger,
     ):
         """Add a new condition."""
+        print(matched_query_base)
 
         error_messages = _validate_inputs(files, contig, pos)
 

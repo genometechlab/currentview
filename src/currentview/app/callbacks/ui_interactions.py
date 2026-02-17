@@ -105,3 +105,12 @@ def register_ui_callbacks():
             states["base-t"],
             store_value,
         )
+
+    @callback(
+        Output("base-t", "children"),
+        Input("molecule-type-store", "data"),
+        prevent_initial_call=True,
+    )
+    def update_base_t_label(molecule_type):
+        """Update the label of the T/U base button based on molecule type."""
+        return "U" if molecule_type == "rna" else "T"
