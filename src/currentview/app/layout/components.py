@@ -1,6 +1,6 @@
 import dash_bootstrap_components as dbc
 from dash import dcc, html
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from ..config import (
     WINDOW_SIZE_MIN,
@@ -19,6 +19,52 @@ from ..config import (
 )
 
 from .elements import create_button, create_card, create_input, create_label
+
+
+# ============================================================================
+# Styling Constants
+# ============================================================================
+
+TAB_STYLE = {"borderRadius": "8px 8px 0 0"}
+ACTIVE_TAB_STYLE = {
+    "borderRadius": "8px 8px 0 0",
+    "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    "color": "white",
+}
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+
+def create_tab(label: str, tab_id: str, disabled: bool = False) -> dbc.Tab:
+    """Create a styled tab component."""
+    kwargs = {
+        "label": label,
+        "id": f"{tab_id}-tab",
+        "tab_id": tab_id,
+        "disabled": disabled,
+        "tab_style": TAB_STYLE,
+        "active_tab_style": ACTIVE_TAB_STYLE,
+    }
+
+    return dbc.Tab(**kwargs)
+
+
+def create_input_row(inputs: List[Dict[str, Any]], className: str = "g-2") -> dbc.Row:
+    """Create a row of input fields.
+
+    Args:
+        inputs: List of dicts with keys: component, width
+        className: CSS class for the row
+    """
+    cols = [dbc.Col(inp["component"], width=inp.get("width", "auto")) for inp in inputs]
+    return dbc.Row(cols, className=className)
+
+
+# ============================================================================
+# Top Bar
+# ============================================================================
 
 
 def create_top_bar() -> html.Div:
@@ -47,7 +93,7 @@ def create_top_bar() -> html.Div:
                         [
                             html.Img(
                                 src="assets/icon.png",
-                                height="40px",  # Adjust size as needed
+                                height="40px",
                                 style={"marginRight": "15px"},
                             ),
                             html.H2(
@@ -120,6 +166,11 @@ def create_top_bar() -> html.Div:
             "zIndex": 1030,
         },
     )
+
+
+# ============================================================================
+# Initialization Card
+# ============================================================================
 
 
 def create_initialization_card() -> html.Div:
@@ -211,16 +262,16 @@ def create_initialization_card() -> html.Div:
                                             html.Br(),
                                             html.Label(
                                                 "Molecule Type",
-                                                className="modern-label"
+                                                className="modern-label",
                                             ),
                                             dbc.RadioItems(
                                                 options=[
-                                                    {"label": "DNA", "value": 'dna'},
-                                                    {"label": "RNA", "value": 'rna'},
+                                                    {"label": "DNA", "value": "dna"},
+                                                    {"label": "RNA", "value": "rna"},
                                                 ],
-                                                value='rna',
+                                                value="rna",
                                                 id="molecule-type-options",
-                                                className="modern-checklist"
+                                                className="modern-checklist",
                                             ),
                                         ]
                                     ),
@@ -313,7 +364,6 @@ def create_advanced_options() -> html.Div:
                             ),
                             html.Br(),
                             html.Label("Signal Filtering", className="modern-label"),
-                            # Bessel filter toggle
                             dbc.RadioItems(
                                 id="filtering-options",
                                 options=FILTERING_OPTIONS,
@@ -321,7 +371,6 @@ def create_advanced_options() -> html.Div:
                                 className="modern-checklist",
                                 inline=True,
                             ),
-                            # Bessel params (disabled until checked)
                             dbc.Collapse(
                                 id="gaussian-params",
                                 is_open=False,
@@ -438,6 +487,11 @@ def create_advanced_options() -> html.Div:
     )
 
 
+# ============================================================================
+# Add Condition Card
+# ============================================================================
+
+
 def create_add_condition_card() -> html.Div:
     """Create the add condition card component with modern design."""
     card = create_card(
@@ -468,7 +522,6 @@ def create_add_condition_card() -> html.Div:
                                 color="link",
                                 size="sm",
                                 className="float-end p-0",
-                                # style={"color": "#667eea"}
                             ),
                         ],
                         width=2,
@@ -533,7 +586,7 @@ def create_add_condition_alert_box() -> dbc.Alert:
         id="add-condition-alert",
         is_open=False,
         duration=4000,
-        color="danger",  # This will give you a red alert
+        color="danger",
         style={
             "borderRadius": "12px",
             "border": "none",
@@ -754,6 +807,11 @@ def create_visualization_style_inputs() -> dbc.Row:
     )
 
 
+# ============================================================================
+# Conditions List Card
+# ============================================================================
+
+
 def create_conditions_list_card():
     card = create_card(
         [
@@ -916,106 +974,265 @@ def create_condition_card(
     )
 
 
+# ============================================================================
+# Analysis Tab Input Bars
+# ============================================================================
+
+
+def create_stat_selector_with_list(
+    select_id: str,
+    add_button_id: str,
+    list_id: str,
+) -> List:
+    """Create a statistic selector dropdown with add button and badge list."""
+    return [
+        dbc.InputGroup(
+            [
+                dbc.Select(
+                    id=select_id,
+                    options=None,
+                    placeholder="Select statistic...",
+                    style={"borderRadius": "10px 0 0 10px"},
+                ),
+                create_button(
+                    "Add",
+                    id=add_button_id,
+                    color="success",
+                    size="sm",
+                ),
+            ],
+            style={"borderRadius": "10px"},
+        ),
+        html.Div(id=list_id, className="mt-3"),
+    ]
+
+
+def create_gmm_inputs() -> html.Div:
+    """Create input bar for GMM tab."""
+    return html.Div(
+        [
+            create_input_row(
+                [
+                    {
+                        "component": dbc.Input(
+                            placeholder="Number of components",
+                            type="number",
+                            id="gmm-n-components",
+                        ),
+                        "width": 3,
+                    },
+                    {
+                        "component": dbc.Input(
+                            placeholder="Covariance type",
+                            type="text",
+                            id="gmm-covariance",
+                        ),
+                        "width": 3,
+                    },
+                    {
+                        "component": dbc.Button(
+                            "Run GMM",
+                            color="primary",
+                            size="sm",
+                            id="gmm-run-btn",
+                        ),
+                        "width": "auto",
+                    },
+                ]
+            ),
+        ],
+        id="gmm-inputs",
+        style={"display": "none"},
+        className="mb-3 p-3 bg-light rounded",
+    )
+
+
+def create_umap_inputs() -> html.Div:
+    """Create input bar for UMAP tab with stat selector and position range slider."""
+    return html.Div(
+        [
+            # First row: Range slider for position selection
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            html.Label("Position Range", className="modern-label mb-2"),
+                            dcc.RangeSlider(
+                                id="umap-position-range",
+                                min=-5,  # Will be updated by callback based on K
+                                max=5,  # Will be updated by callback based on K
+                                step=1,
+                                value=[-5, 5],  # Will be updated by callback
+                                marks={},  # Will be populated by callback
+                                tooltip={"placement": "bottom", "always_visible": True},
+                                className="mb-3",
+                            ),
+                        ],
+                        width=12,
+                    ),
+                ],
+                className="mb-3",
+            ),
+            # Second row: Stats selector and parameters
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            dbc.InputGroup(
+                                [
+                                    dbc.Select(
+                                        id="umap-stats-select",
+                                        options=None,
+                                        placeholder="Select statistic...",
+                                        style={"borderRadius": "10px 0 0 10px"},
+                                    ),
+                                    create_button(
+                                        "Add",
+                                        id="select-umap-stat",
+                                        color="success",
+                                        size="sm",
+                                    ),
+                                ],
+                                style={"borderRadius": "10px"},
+                            ),
+                            html.Div(id="umap-stats-list", className="mt-3"),
+                        ],
+                        width=4,
+                    ),
+                    dbc.Col(
+                        dbc.Input(
+                            placeholder="Number of neighbors",
+                            type="number",
+                            id="umap-n-neighbors",
+                        ),
+                        width=2,
+                    ),
+                    dbc.Col(
+                        dbc.Input(
+                            placeholder="Min distance",
+                            type="number",
+                            id="umap-min-dist",
+                        ),
+                        width=2,
+                    ),
+                    dbc.Col(
+                        create_button(
+                            "Run UMAP",
+                            id="umap-run-btn",
+                            color="primary",
+                            size="sm",
+                        ),
+                        width="auto",
+                        className="ms-auto",
+                    ),
+                ],
+                className="g-2",
+            ),
+        ],
+        id="umap-inputs",
+        style={"display": "none"},
+        className="mb-3 p-3 bg-light rounded",
+    )
+
+
+# ============================================================================
+# Visualization Card (Main Plot Area)
+# ============================================================================
+
+
 def create_visualization_card() -> html.Div:
     """Create a visualization card for the plot."""
-    return create_card(
+    card = create_card(
         [
+            # Tabs
             dbc.Tabs(
                 [
-                    dbc.Tab(
-                        label="Signals",
-                        tab_id="signals",
-                        tab_style={"borderRadius": "8px 8px 0 0"},
-                        active_tab_style={
-                            "borderRadius": "8px 8px 0 0",
-                            "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                            "color": "white",
-                        },
-                    ),
-                    dbc.Tab(
-                        label="Statistics",
-                        tab_id="stats",
-                        disabled=True,
-                        id="stats-tab",
-                        tab_style={"borderRadius": "8px 8px 0 0"},
-                        active_tab_style={
-                            "borderRadius": "8px 8px 0 0",
-                            "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                            "color": "white",
-                        },
-                    ),
+                    create_tab("Signals", "signals"),
+                    create_tab("Statistics", "stats", disabled=True),
+                    create_tab("GMM", "gmm", disabled=True),
+                    create_tab("UMAP", "umap", disabled=True),
                 ],
                 id="tabs",
                 active_tab="signals",
                 className="nav-pills mb-3",
             ),
+            # Tab-specific input bars
+            create_gmm_inputs(),
+            create_umap_inputs(),
+            # Divider
             html.Hr(style={"opacity": "0.1"}),
+            # Control buttons
             dbc.Row(
                 [
                     dbc.Col(
-                        [
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        [
-                                            create_button(
-                                                "Refresh Plot",
-                                                id="generate",
-                                                color="secondary",
-                                                size="sm",
-                                                icon="bi bi-arrow-clockwise",
-                                            ),
-                                        ],
-                                        width="auto",
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    create_button(
+                                        "Refresh Plot",
+                                        id="generate",
+                                        color="secondary",
+                                        size="sm",
+                                        icon="bi bi-arrow-clockwise",
                                     ),
-                                    dbc.Col(
-                                        [
-                                            create_button(
-                                                "Clear Cache",
-                                                id="clear-cache",
-                                                color="warning",
-                                                size="sm",
-                                                icon="bi bi-trash",
-                                            ),
-                                        ],
-                                        width="auto",
+                                    width="auto",
+                                ),
+                                dbc.Col(
+                                    create_button(
+                                        "Clear Cache",
+                                        id="clear-cache",
+                                        color="warning",
+                                        size="sm",
+                                        icon="bi bi-trash",
                                     ),
-                                ],
-                                className="g-2",
-                            ),
-                        ],
+                                    width="auto",
+                                ),
+                            ],
+                            className="g-2",
+                        ),
                         width=6,
                         className="d-flex justify-content-start",
                     ),
                     dbc.Col(
-                        [
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        [
-                                            create_button(
-                                                "Export",
-                                                id="export-browse",
-                                                color="success",
-                                                size="sm",
-                                                icon="bi bi-save",
-                                            ),
-                                        ],
-                                        width="auto",
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    create_button(
+                                        "Export",
+                                        id="export-browse",
+                                        color="success",
+                                        size="sm",
+                                        icon="bi bi-save",
                                     ),
-                                ],
-                                className="g-2",
-                            ),
-                        ],
+                                    width="auto",
+                                ),
+                            ],
+                            className="g-2",
+                        ),
                         width=6,
                         className="d-flex justify-content-end",
                     ),
                 ],
                 className="mb-3",
             ),
+            # Plot container
             html.Div(
                 id="plot-container",
                 className="d-flex justify-content-center",
             ),
         ]
+    )
+
+    # Wrap in loading component like the other cards
+    return dcc.Loading(
+        [card],
+        type="circle",
+        overlay_style={
+            "visibility": "visible",
+            "opacity": 0.25,
+        },
+        delay_show=100,
+        custom_spinner=html.H2(
+            ["Generating Plot ", dbc.Spinner(color="primary")],
+        ),
     )

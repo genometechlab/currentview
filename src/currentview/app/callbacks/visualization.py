@@ -23,7 +23,6 @@ def register_visualization_callbacks():
         """Generate plot based on various triggers."""
         viz = get_visualizer(session_id)
         if not viz:
-            # Return error message instead of empty plot
             return dbc.Alert(
                 "Please initialize visualizer first",
                 color="warning",
@@ -42,13 +41,34 @@ def register_visualization_callbacks():
             # Generate appropriate plot based on active tab
             if active_tab == "signals":
                 fig = viz.get_signals_fig()
-            else:
+            elif active_tab == "stats":
                 fig = viz.get_stats_fig()
+            elif active_tab == "gmm":
+                # Show instructions when switching to GMM tab
+                return dbc.Alert(
+                    "Configure GMM parameters above and click 'Run GMM' to generate plot",
+                    color="info",
+                    className="text-center",
+                )
+            elif active_tab == "umap":
+                # Show instructions when switching to UMAP tab
+                return dbc.Alert(
+                    "Configure UMAP parameters above and click 'Run UMAP' to generate plot",
+                    color="info",
+                    className="text-center",
+                )
+            else:
+                return dbc.Alert(
+                    "Invalid tab selected",
+                    color="danger",
+                    className="text-center",
+                )
 
-            # Return the graph component wrapped in loading
+            # Return the graph component wrapped in loading (for signals/stats)
             return dcc.Loading(
                 dcc.Graph(id="plot", figure=fig, style={"height": DEFAULT_PLOT_HEIGHT})
             )
+
         except ValueError as e:
             # Handle specific ValueError which might be the "not in list" error
             error_msg = str(e)

@@ -27,7 +27,7 @@ def create_label(text, required=False):
         return html.Label(text, className="modern-label")
 
 
-def create_card(children, className="", style=None):
+def create_card(children, className="", id="", style=None):
     """Create a modern glass-morphism card with flat design."""
     default_style = {
         "background": "rgba(255, 255, 255, 0.8)",  # More opaque, less glassy
@@ -42,7 +42,9 @@ def create_card(children, className="", style=None):
     if style:
         default_style.update(style)
 
-    return html.Div(children, className=f"glass-card {className}", style=default_style)
+    return html.Div(
+        children, className=f"glass-card {className}", id=id, style=default_style
+    )
 
 
 def create_button(

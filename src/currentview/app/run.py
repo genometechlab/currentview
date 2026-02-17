@@ -13,6 +13,7 @@ from .callbacks.file_browser import (
 from .callbacks.initialization import register_initialization_callbacks
 from .callbacks.conditions import register_condition_callbacks
 from .callbacks.visualization import register_visualization_callbacks
+from .callbacks.visualization_add import register_visualization_add_callbacks
 from .callbacks.plot_settings import register_plot_settings_callbacks
 from .callbacks.theme import register_theme_callbacks
 from .callbacks.ui_interactions import register_ui_callbacks
@@ -59,6 +60,7 @@ def create_app() -> dash.Dash:
     register_initialization_callbacks()
     register_condition_callbacks()
     register_visualization_callbacks()
+    register_visualization_add_callbacks()
     register_plot_settings_callbacks()
     register_theme_callbacks(app)
     register_ui_callbacks()

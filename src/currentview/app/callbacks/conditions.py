@@ -29,6 +29,55 @@ def register_condition_callbacks():
 
     @callback(
         [
+            Output("gmm-tab", "disabled"),
+            Output("umap-tab", "disabled"),
+        ],
+        [
+            Input("conditions-metadata", "data"),
+            Input("stats-store", "data"),
+        ],
+    )
+    def toggle_analysis_tabs(conditions_metadata, stored_stats):
+        """Enable or disable analysis tabs based on whether conditions and stats are available."""
+        # Check if we have at least one condition
+        has_conditions = len(conditions_metadata) > 0 if conditions_metadata else False
+
+        # Check if we have at least one stat
+        has_stats = len(stored_stats) > 0 if stored_stats else False
+
+        # Both conditions AND stats must be available to enable tabs
+        if has_conditions and has_stats:
+            return False, False  # Enable tabs
+        else:
+            return True, True  # Disable tabs
+
+    @callback(
+        [Output("gmm-inputs", "style"), Output("umap-inputs", "style")],
+        Input("tabs", "active_tab"),
+    )
+    def toggle_input_bars(active_tab):
+        base_style = {
+            "marginBottom": "1rem",
+            "padding": "1rem",
+            "background": "#f8f9fa",
+            "borderRadius": "0.25rem",
+        }
+
+        gmm_style = (
+            {**base_style, "display": "block"}
+            if active_tab == "gmm"
+            else {"display": "none"}
+        )
+        umap_style = (
+            {**base_style, "display": "block"}
+            if active_tab == "umap"
+            else {"display": "none"}
+        )
+
+        return gmm_style, umap_style
+
+    @callback(
+        [
             Output("conditions", "children"),
             Output("add-condition-alert", "children", allow_duplicate=True),
             Output("add-condition-alert", "is_open", allow_duplicate=True),
@@ -38,6 +87,7 @@ def register_condition_callbacks():
             Output("pod5-display", "value", allow_duplicate=True),
             Output("conditions-metadata", "data", allow_duplicate=True),
             Output("plot-trigger", "data", allow_duplicate=True),
+            # TODO:Remove Output("conditions-available", "data", allow_duplicate=True),
         ],
         Input("add-condition-button", "n_clicks"),
         [
