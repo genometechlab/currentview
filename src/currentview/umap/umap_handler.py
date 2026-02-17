@@ -266,9 +266,13 @@ class UMAPHandler:
 
         # Permute and reshape to get (n_reads, n_stats * n_positions)
         feat_mat = np.transpose(feat_mat, (1, 0, 2))  # (n_reads, n_positions, n_stats)
+
         feat_mat = feat_mat.reshape(
-            condition.n_reads, -1
+            len(feat_mat), -1
         )  # (n_reads, n_stats * n_positions)
+
+        # drop row if any position has NaN (e.g. due to indel/exclusion)
+        feat_mat = feat_mat[~np.isnan(feat_mat).any(axis=1)]
 
         self.logger.debug(
             f"Fetched raw data for '{condition.label}': shape={feat_mat.shape}, "
