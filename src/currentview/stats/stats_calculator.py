@@ -180,6 +180,13 @@ class StatsCalculator:
 
                 valid_signals.append(signal)
 
+            else:
+                valid_signals.append(
+                    [
+                        np.nan,
+                    ]
+                )
+
         # Calculate statistics for each signal
         if valid_signals:
             # Use pre-compiled functions for efficiency
