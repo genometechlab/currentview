@@ -489,9 +489,9 @@ def create_add_condition_card() -> html.Div:
             dbc.Collapse(
                 [
                     create_file_inputs(),
-                    html.Div(style={"height": "16px"}),
+                    html.Div(style={"height": "8px"}),
                     create_condition_parameters(),
-                    html.Div(style={"height": "16px"}),
+                    html.Div(style={"height": "8px"}),
                     create_visualization_style_inputs(),
                     html.Div(style={"height": "24px"}),
                     create_button(
@@ -590,60 +590,109 @@ def create_file_inputs() -> dbc.Row:
     )
 
 
-def create_condition_parameters() -> dbc.Row:
+from .elements import (
+    create_button,
+    create_card,
+    create_input,
+    create_label,
+    create_select,
+    create_button_group,
+    COLOR_TEXT_MUTED,
+)
+
+
+def create_condition_parameters() -> html.Div:
     """Create condition parameter inputs with modern styling."""
-    return dbc.Row(
+    checkbox_style = {
+        "fontSize": "0.875rem",
+        "fontWeight": "500",
+        "color": COLOR_TEXT_MUTED,
+    }
+
+    return html.Div(
         [
-            dbc.Col(
+            dbc.Row(
                 [
-                    create_label("Contig", required=True),
-                    create_input(id="contig", placeholder="e.g., chr1, chrX"),
-                ],
-                width=3,
-            ),
-            dbc.Col(
-                [
-                    create_label("Target Position", required=True),
-                    create_input(
-                        id="position", type="number", placeholder="e.g., 12345"
-                    ),
-                ],
-                width=2,
-            ),
-            dbc.Col(
-                [
-                    create_label("Matched Query Base"),
-                    create_button_group(
+                    dbc.Col(
                         [
-                            {"text": "A", "id": "base-a"},
-                            {"text": "C", "id": "base-c"},
-                            {"text": "G", "id": "base-g"},
-                            {"text": "T", "id": "base-t"},
+                            create_label("Contig", required=True),
+                            create_input(id="contig", placeholder="e.g., chr1, chrX"),
                         ],
-                        size="md",
+                        width=3,
+                    ),
+                    dbc.Col(
+                        [
+                            create_label("Target Position", required=True),
+                            create_input(
+                                id="position", type="number", placeholder="e.g., 12345"
+                            ),
+                        ],
+                        width=2,
+                    ),
+                    dbc.Col(
+                        [
+                            create_label("Matched Query Base"),
+                            create_button_group(
+                                [
+                                    {"text": "A", "id": "base-a"},
+                                    {"text": "C", "id": "base-c"},
+                                    {"text": "G", "id": "base-g"},
+                                    {"text": "T", "id": "base-t"},
+                                ],
+                                size="md",
+                            ),
+                        ],
+                        width=2,
+                    ),
+                    dbc.Col(
+                        [
+                            create_label("Max Reads"),
+                            create_input(
+                                id="max-reads", type="number", placeholder="e.g., 100"
+                            ),
+                        ],
+                        width=2,
+                    ),
+                    dbc.Col(
+                        [
+                            create_label("Label"),
+                            create_input(
+                                id="condition-label", placeholder="Auto-generated"
+                            ),
+                        ],
+                        width=3,
                     ),
                 ],
-                width=2,
+                className="g-3",
+                align="end",
             ),
-            dbc.Col(
+            dbc.Row(
                 [
-                    create_label("Max Reads"),
-                    create_input(
-                        id="max-reads", type="number", placeholder="e.g., 100"
+                    dbc.Col(
+                        dbc.Checkbox(
+                            id="exclude-indels",
+                            label="Exclude reads with indels",
+                            value=False,
+                            className="modern-checkbox",
+                            style=checkbox_style,
+                        ),
+                        width="auto",
+                    ),
+                    dbc.Col(
+                        dbc.Checkbox(
+                            id="exclude-non-primaries",
+                            label="Exclude non-primaries",
+                            value=True,
+                            className="modern-checkbox",
+                            style=checkbox_style,
+                        ),
+                        width="auto",
                     ),
                 ],
-                width=2,
+                className="mt-3",
+                justify="center",
             ),
-            dbc.Col(
-                [
-                    create_label("Label"),
-                    create_input(id="condition-label", placeholder="Auto-generated"),
-                ],
-                width=3,
-            ),
-        ],
-        className="g-3",
-        align="end",
+        ]
     )
 
 
