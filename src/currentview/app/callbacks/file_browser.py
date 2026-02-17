@@ -72,15 +72,18 @@ def register_single_browser_callbacks(prefix: str, extension: str):
         # Get config or use defaults
         ext = config.get("extension") if config else extension
         allow_dir = config.get("allow_dir", False) if config else False
-        show_files = not allow_dir
+        allow_both = config.get("allow_both", False) if config else False  # NEW
+        show_files = (
+            not allow_dir or allow_both
+        )  # NEW - show files if allow_both is True
 
         items, actual_path = get_directory_contents(path, ext, show_files)
 
         children = []
         for item in items:
             if item["type"] == "dir":
-                # For directory selection mode, make directories selectable
-                if allow_dir and item["name"] != "..":
+                # Show select badge if allow_dir OR allow_both
+                if (allow_dir or allow_both) and item["name"] != "..":  # CHANGED
                     children.append(
                         dbc.ListGroupItem(
                             [
@@ -94,11 +97,11 @@ def register_single_browser_callbacks(prefix: str, extension: str):
                                     ],
                                     id={"type": f"{prefix}-dir", "path": item["path"]},
                                     style={"cursor": "pointer", "flex": "1"},
-                                ),  # Takes up remaining space
+                                ),
                                 # Separate clickable area for selection
                                 dbc.Badge(
                                     "Select",
-                                    color="primary",
+                                    color="success",  # Changed to success for consistency
                                     id={
                                         "type": f"{prefix}-select-dir",
                                         "path": item["path"],
@@ -107,7 +110,7 @@ def register_single_browser_callbacks(prefix: str, extension: str):
                                 ),
                             ],
                             className="d-flex align-items-center",
-                            action=True,  # Remove the default hover effect
+                            action=False,  # Remove default hover effect
                         )
                     )
                 else:
@@ -122,21 +125,24 @@ def register_single_browser_callbacks(prefix: str, extension: str):
                             id={"type": f"{prefix}-dir", "path": item["path"]},
                             style={"cursor": "pointer"},
                             n_clicks=0,
-                        )  # Important for preventing event bubbling)
+                        )
                     )
             else:
-                # Files
-                children.append(
-                    dbc.ListGroupItem(
-                        [
-                            html.I(className="bi bi-file-earmark text-primary me-2"),
-                            item["name"] + f" ({item.get('size', '')})",
-                        ],
-                        action=True,
-                        id={"type": f"{prefix}-file", "path": item["path"]},
-                        style={"cursor": "pointer"},
+                # Files - only show if allow_both OR not allow_dir
+                if allow_both or not allow_dir:  # NEW
+                    children.append(
+                        dbc.ListGroupItem(
+                            [
+                                html.I(
+                                    className="bi bi-file-earmark text-primary me-2"
+                                ),
+                                item["name"] + f" ({item.get('size', '')})",
+                            ],
+                            action=True,
+                            id={"type": f"{prefix}-file", "path": item["path"]},
+                            style={"cursor": "pointer"},
+                        )
                     )
-                )
 
         return dbc.ListGroup(children, flush=True), actual_path
 

@@ -18,19 +18,16 @@ from ..config import (
     DEFAULT_OPACITY,
 )
 
-from .elements import create_button, create_card, create_input, create_label
+from .elements import (
+    create_button,
+    create_card,
+    create_input,
+    create_label,
+    create_select,
+    create_button_group,
+)
 
-
-# ============================================================================
-# Styling Constants
-# ============================================================================
-
-TAB_STYLE = {"borderRadius": "8px 8px 0 0"}
-ACTIVE_TAB_STYLE = {
-    "borderRadius": "8px 8px 0 0",
-    "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    "color": "white",
-}
+from .constants import *
 
 # ============================================================================
 # Helper Functions
@@ -47,7 +44,6 @@ def create_tab(label: str, tab_id: str, disabled: bool = False) -> dbc.Tab:
         "tab_style": TAB_STYLE,
         "active_tab_style": ACTIVE_TAB_STYLE,
     }
-
     return dbc.Tab(**kwargs)
 
 
@@ -59,7 +55,7 @@ def create_input_row(inputs: List[Dict[str, Any]], className: str = "g-2") -> db
         className: CSS class for the row
     """
     cols = [dbc.Col(inp["component"], width=inp.get("width", "auto")) for inp in inputs]
-    return dbc.Row(cols, className=className)
+    return dbc.Row(cols, className=className, align="end")
 
 
 # ============================================================================
@@ -179,142 +175,118 @@ def create_initialization_card() -> html.Div:
         [
             create_card(
                 [
-                    html.Div(
+                    html.H4(
                         [
-                            html.H4(
+                            html.I(className="bi bi-rocket-takeoff me-2"),
+                            "Initialize Visualizer",
+                        ],
+                        className="mb-4 card-title",
+                        style={"fontWeight": "600", "color": "#2d3748"},
+                    ),
+                    dbc.Row(
+                        [
+                            dbc.Col(
                                 [
-                                    html.I(className="bi bi-rocket-takeoff me-2"),
-                                    "Initialize Visualizer",
+                                    create_label("Window Size (K)", required=True),
+                                    create_input(
+                                        id="window-size",
+                                        type="number",
+                                        value=WINDOW_SIZE_DEFAULT,
+                                        min=WINDOW_SIZE_MIN,
+                                        max=WINDOW_SIZE_MAX,
+                                        step=WINDOW_SIZE_STEP,
+                                    ),
+                                    dbc.FormFeedback(
+                                        "Must be odd number", type="invalid"
+                                    ),
+                                    html.Div(style={"height": "16px"}),  # Spacer
+                                    create_label("K-mer Labels"),
+                                    dbc.Textarea(
+                                        id="kmer-labels",
+                                        rows=2,
+                                        placeholder="Enter custom labels (comma separated)\nExample: A,T,G,C,A,T,G,C,A",
+                                        style={
+                                            "fontFamily": "'Fira Code', monospace",
+                                            "borderRadius": "10px",
+                                            "border": "1.5px solid #e2e8f0",
+                                            "padding": "10px 14px",
+                                        },
+                                    ),
+                                    dbc.FormText(
+                                        "Optional: Custom labels for each window position"
+                                    ),
                                 ],
-                                className="mb-4 card-title",
-                                style={"fontWeight": "600", "color": "#2d3748"},
+                                width=6,
                             ),
-                            dbc.Row(
+                            dbc.Col(
                                 [
-                                    dbc.Col(
+                                    create_label("Statistics Functions", required=True),
+                                    dbc.InputGroup(
                                         [
-                                            html.Label(
-                                                "Window Size (K)",
-                                                className="modern-label",
+                                            create_select(
+                                                id="stat-select",
+                                                options=STATISTICS_OPTIONS,
+                                                placeholder="Select statistic...",
+                                                style={"borderRadius": RADIUS_LEFT},
                                             ),
-                                            create_input(
-                                                id="window-size",
-                                                type="number",
-                                                value=WINDOW_SIZE_DEFAULT,
-                                                min=WINDOW_SIZE_MIN,
-                                                max=WINDOW_SIZE_MAX,
-                                                step=WINDOW_SIZE_STEP,
-                                            ),
-                                            dbc.FormFeedback(
-                                                "Must be odd number", type="invalid"
-                                            ),
-                                            html.Br(),
-                                            html.Label(
-                                                "K-mer Labels", className="modern-label"
-                                            ),
-                                            dbc.Textarea(
-                                                id="kmer-labels",
-                                                rows=2,
-                                                placeholder="Enter custom labels for each position (comma separated)\nExample: A,T,G,C,A,T,G,C,A",
-                                                style={
-                                                    "fontFamily": "'Fira Code', monospace",
-                                                    "borderRadius": "10px",
-                                                    "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                                    "background": "rgba(255, 255, 255, 0.5)",
-                                                    "padding": "12px",
-                                                },
-                                            ),
-                                            dbc.FormText(
-                                                "Optional: Provide custom labels for each position in the window"
+                                            create_button(
+                                                "Add",
+                                                id="add-stat",
+                                                color="success",
+                                                size="md",
+                                                style={"borderRadius": RADIUS_RIGHT},
                                             ),
                                         ],
-                                        width=6,
                                     ),
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Statistics Functions",
-                                                className="modern-label",
-                                            ),
-                                            dbc.InputGroup(
-                                                [
-                                                    dbc.Select(
-                                                        id="stat-select",
-                                                        options=STATISTICS_OPTIONS,
-                                                        placeholder="Select statistic...",
-                                                        style={
-                                                            "borderRadius": "10px 0 0 10px"
-                                                        },
-                                                    ),
-                                                    create_button(
-                                                        "Add",
-                                                        id="add-stat",
-                                                        color="success",
-                                                        size="sm",
-                                                    ),
-                                                ],
-                                                style={"borderRadius": "10px"},
-                                            ),
-                                            html.Div(id="stats-list", className="mt-3"),
-                                            dbc.FormText(
-                                                "Select statistics to calculate for each position"
-                                            ),
-                                            html.Br(),
-                                            html.Label(
-                                                "Molecule Type",
-                                                className="modern-label",
-                                            ),
-                                            dbc.RadioItems(
-                                                options=[
-                                                    {"label": "DNA", "value": "dna"},
-                                                    {"label": "RNA", "value": "rna"},
-                                                ],
-                                                value="rna",
-                                                id="molecule-type-options",
-                                                className="modern-checklist",
-                                            ),
-                                        ]
+                                    html.Div(id="stats-list", className="mt-3"),
+                                    dbc.FormText(
+                                        "Statistics to calculate for each position"
                                     ),
-                                ]
-                            ),
-                            dbc.Row(
-                                [
-                                    html.Div(
-                                        style={"height": "29px"}
-                                    ),  # Spacer to align button
-                                    create_button(
-                                        "Initialize",
-                                        id="init-btn",
-                                        color="primary",
-                                        className="w-100",
-                                        icon="bi bi-play-fill",
+                                    html.Div(style={"height": "16px"}),  # Spacer
+                                    create_label("Molecule Type", required=True),
+                                    dbc.RadioItems(
+                                        options=[
+                                            {"label": "DNA", "value": "dna"},
+                                            {"label": "RNA", "value": "rna"},
+                                        ],
+                                        value="rna",
+                                        id="molecule-type-options",
+                                        className="modern-checklist",
                                     ),
-                                ]
-                            ),
-                            html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
-                            dbc.Collapse(
-                                [create_advanced_options()],
-                                id="advanced",
-                                is_open=False,
-                            ),
-                            dbc.Button(
-                                [
-                                    "▼ Advanced Options",
                                 ],
-                                id="toggle-adv",
-                                color="link",
-                                size="sm",
-                                style={
-                                    "padding": "0",
-                                    "textDecoration": "none",
-                                    "color": "#667eea",
-                                },
+                                width=6,
                             ),
-                        ]
-                    )
+                        ],
+                        className="g-4",
+                    ),
+                    html.Div(style={"height": "24px"}),  # Spacer
+                    create_button(
+                        "Initialize",
+                        id="init-btn",
+                        color="primary",
+                        size="lg",
+                        className="w-100",
+                        icon="bi bi-play-fill",
+                    ),
+                    html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
+                    dbc.Collapse(
+                        [create_advanced_options()],
+                        id="advanced",
+                        is_open=False,
+                    ),
+                    dbc.Button(
+                        "▼ Advanced Options",
+                        id="toggle-adv",
+                        color="link",
+                        size="sm",
+                        style={
+                            "padding": "0",
+                            "textDecoration": "none",
+                            "color": "#667eea",
+                        },
+                    ),
                 ],
                 className="mb-4",
-                style={"animation": "fadeIn 0.5s ease"},
             )
         ],
         id="init-card",
@@ -329,32 +301,24 @@ def create_advanced_options() -> html.Div:
                 [
                     dbc.Col(
                         [
-                            html.Label("Title", className="modern-label"),
+                            create_label("Title"),
                             create_input(
                                 id="custom-title",
                                 placeholder="Nanopore Signal Visualization",
                             ),
-                            html.Br(),
-                            html.Label("Verbosity Level", className="modern-label"),
-                            dbc.Select(
+                            html.Div(style={"height": "16px"}),
+                            create_label("Verbosity Level"),
+                            create_select(
                                 id="verbosity",
                                 options=VERBOSITY_LEVELS,
                                 value="0",
-                                style={
-                                    "borderRadius": "10px",
-                                    "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                    "background": "rgba(255, 255, 255, 0.9)",
-                                    "padding": "12px",
-                                },
                             ),
                         ],
                         width=6,
                     ),
                     dbc.Col(
                         [
-                            html.Label(
-                                "Signal Normalization", className="modern-label"
-                            ),
+                            create_label("Signal Normalization"),
                             dbc.RadioItems(
                                 id="normalization-options",
                                 options=NORMALIZATION_METHODS,
@@ -362,8 +326,8 @@ def create_advanced_options() -> html.Div:
                                 inline=True,
                                 className="modern-checklist",
                             ),
-                            html.Br(),
-                            html.Label("Signal Filtering", className="modern-label"),
+                            html.Div(style={"height": "16px"}),
+                            create_label("Signal Filtering"),
                             dbc.RadioItems(
                                 id="filtering-options",
                                 options=FILTERING_OPTIONS,
@@ -371,86 +335,80 @@ def create_advanced_options() -> html.Div:
                                 className="modern-checklist",
                                 inline=True,
                             ),
+                            # Collapse sections for filter params
                             dbc.Collapse(
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            [
+                                                create_label("Sigma"),
+                                                create_input(
+                                                    id="gaussian-sigma",
+                                                    type="number",
+                                                    value=1,
+                                                    min=0,
+                                                    step=0.1,
+                                                    size="sm",
+                                                ),
+                                            ],
+                                            width=6,
+                                        ),
+                                    ],
+                                    className="g-2 mt-2",
+                                ),
                                 id="gaussian-params",
                                 is_open=False,
-                                children=[
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                [
-                                                    html.Label(
-                                                        "Sigma", className="small-label"
-                                                    ),
-                                                    dbc.Input(
-                                                        id="gaussian-sigma",
-                                                        type="number",
-                                                        min=0,
-                                                        step=0.1,
-                                                        value=1,
-                                                    ),
-                                                ],
-                                                width=6,
-                                            ),
-                                        ],
-                                        className="g-2",
-                                    ),
-                                ],
                             ),
                             dbc.Collapse(
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            [
+                                                create_label("Order"),
+                                                create_input(
+                                                    id="bessel-order",
+                                                    type="number",
+                                                    value=4,
+                                                    min=1,
+                                                    step=1,
+                                                    size="sm",
+                                                ),
+                                            ],
+                                            width=6,
+                                        ),
+                                        dbc.Col(
+                                            [
+                                                create_label("Cutoff (0–1)"),
+                                                create_input(
+                                                    id="bessel-cutoff",
+                                                    type="number",
+                                                    value=0.2,
+                                                    min=0,
+                                                    max=1,
+                                                    step=0.01,
+                                                    size="sm",
+                                                ),
+                                            ],
+                                            width=6,
+                                        ),
+                                    ],
+                                    className="g-2 mt-2",
+                                ),
                                 id="bessel-params",
                                 is_open=False,
-                                children=[
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                [
-                                                    html.Label(
-                                                        "Order", className="small-label"
-                                                    ),
-                                                    dbc.Input(
-                                                        id="bessel-order",
-                                                        type="number",
-                                                        min=1,
-                                                        step=1,
-                                                        value=4,
-                                                    ),
-                                                ],
-                                                width=6,
-                                            ),
-                                            dbc.Col(
-                                                [
-                                                    html.Label(
-                                                        "Cutoff (0–1)",
-                                                        className="small-label",
-                                                    ),
-                                                    dbc.Input(
-                                                        id="bessel-cutoff",
-                                                        type="number",
-                                                        min=0,
-                                                        max=1,
-                                                        step=0.01,
-                                                        value=0.2,
-                                                    ),
-                                                ],
-                                                width=6,
-                                            ),
-                                        ],
-                                        className="g-2",
-                                    ),
-                                ],
                             ),
                         ],
                         width=6,
                     ),
-                ]
+                ],
+                className="g-4",
             ),
             html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
             dbc.Row(
                 [
                     dbc.Col(
                         [
-                            html.Label("Plot Styles", className="modern-label"),
+                            create_label("Plot Styles"),
                             dbc.Checklist(
                                 id="style-options",
                                 options=STYLE_OPTIONS,
@@ -458,10 +416,8 @@ def create_advanced_options() -> html.Div:
                                 inline=True,
                                 className="modern-checklist",
                             ),
-                            html.Br(),
-                            html.Label(
-                                "Custom Plot Style (JSON)", className="modern-label"
-                            ),
+                            html.Div(style={"height": "16px"}),
+                            create_label("Custom Plot Style (JSON)"),
                             dbc.Textarea(
                                 id="custom-style",
                                 rows=3,
@@ -469,9 +425,8 @@ def create_advanced_options() -> html.Div:
                                 style={
                                     "fontFamily": "'Fira Code', monospace",
                                     "borderRadius": "10px",
-                                    "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                    "background": "rgba(255, 255, 255, 0.5)",
-                                    "padding": "12px",
+                                    "border": "1.5px solid #e2e8f0",
+                                    "padding": "10px 14px",
                                 },
                             ),
                             dbc.FormText(
@@ -505,7 +460,7 @@ def create_add_condition_card() -> html.Div:
                                     html.I(className="bi bi-plus-circle me-2"),
                                     "Add Condition",
                                 ],
-                                className="mb-0 card-title",
+                                className="mb-0",
                                 style={"fontWeight": "600", "color": "#2d3748"},
                             ),
                         ],
@@ -533,33 +488,20 @@ def create_add_condition_card() -> html.Div:
             ),
             dbc.Collapse(
                 [
-                    html.Div(
-                        [
-                            create_file_inputs(),
-                            html.Hr(style={"opacity": "0.0", "margin": "8px 0"}),
-                            create_condition_parameters(),
-                            html.Hr(style={"opacity": "0.1", "margin": "8 0"}),
-                            create_visualization_style_inputs(),
-                            html.Hr(style={"opacity": "0.1", "margin": "12 0px"}),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        [
-                                            create_button(
-                                                "Add Condition",
-                                                id="add-condition-button",
-                                                color="success",
-                                                className="w-100",
-                                                size="lg",
-                                                icon="bi bi-plus-lg",
-                                            ),
-                                        ],
-                                        width=12,
-                                    ),
-                                ]
-                            ),
-                        ]
-                    )
+                    create_file_inputs(),
+                    html.Div(style={"height": "16px"}),
+                    create_condition_parameters(),
+                    html.Div(style={"height": "16px"}),
+                    create_visualization_style_inputs(),
+                    html.Div(style={"height": "24px"}),
+                    create_button(
+                        "Add Condition",
+                        id="add-condition-button",
+                        color="success",
+                        className="w-100",
+                        size="lg",
+                        icon="bi bi-plus-lg",
+                    ),
                 ],
                 id="add-condition-collapse",
                 is_open=True,
@@ -567,17 +509,13 @@ def create_add_condition_card() -> html.Div:
         ],
         className="mb-4",
     )
+
     return dcc.Loading(
         [card],
         type="circle",
-        overlay_style={
-            "visibility": "visible",
-            "opacity": 0.25,
-        },
+        overlay_style={"visibility": "visible", "opacity": 0.25},
         delay_show=100,
-        custom_spinner=html.H2(
-            ["Adding Condition ", dbc.Spinner(color="primary")],
-        ),
+        custom_spinner=html.H2(["Adding Condition ", dbc.Spinner(color="primary")]),
     )
 
 
@@ -590,7 +528,7 @@ def create_add_condition_alert_box() -> dbc.Alert:
         style={
             "borderRadius": "12px",
             "border": "none",
-            "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1),",
+            "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1)",
         },
     )
 
@@ -608,44 +546,47 @@ def create_file_inputs() -> dbc.Row:
                                 id="bam-display",
                                 disabled=True,
                                 placeholder="No file selected",
+                                style={"borderRadius": RADIUS_LEFT},
                             ),
                             create_button(
                                 "Browse",
                                 id="bam-browse",
-                                size="sm",
+                                size="md",
                                 color="secondary",
                                 icon="bi bi-folder-open",
+                                style={"borderRadius": RADIUS_RIGHT},
                             ),
-                        ],
-                        style={"gap": "8px"},
+                        ]
                     ),
                 ],
                 width=6,
             ),
             dbc.Col(
                 [
-                    create_label("POD5 Directory", required=True),
+                    create_label("POD5 File or Directory", required=True),
                     dbc.InputGroup(
                         [
                             create_input(
                                 id="pod5-display",
                                 disabled=True,
                                 placeholder="No file selected",
+                                style={"borderRadius": RADIUS_LEFT},
                             ),
                             create_button(
                                 "Browse",
                                 id="pod5-browse",
-                                size="sm",
+                                size="md",
                                 color="secondary",
                                 icon="bi bi-folder-open",
+                                style={"borderRadius": RADIUS_RIGHT},
                             ),
-                        ],
-                        style={"gap": "8px"},
+                        ]
                     ),
                 ],
                 width=6,
             ),
-        ]
+        ],
+        className="g-3",
     )
 
 
@@ -655,7 +596,7 @@ def create_condition_parameters() -> dbc.Row:
         [
             dbc.Col(
                 [
-                    create_label("contig", required=True),
+                    create_label("Contig", required=True),
                     create_input(id="contig", placeholder="e.g., chr1, chrX"),
                 ],
                 width=3,
@@ -671,49 +612,22 @@ def create_condition_parameters() -> dbc.Row:
             ),
             dbc.Col(
                 [
-                    html.Label("Matched Query Base", className="modern-label"),
-                    dbc.ButtonGroup(
+                    create_label("Matched Query Base"),
+                    create_button_group(
                         [
-                            dbc.Button(
-                                "A",
-                                id="base-a",
-                                outline=True,
-                                color="secondary",
-                                size="sm",
-                                style={"padding": "8px 6px"},
-                            ),
-                            dbc.Button(
-                                "C",
-                                id="base-c",
-                                outline=True,
-                                color="secondary",
-                                size="sm",
-                                style={"padding": "8px 6px"},
-                            ),
-                            dbc.Button(
-                                "G",
-                                id="base-g",
-                                outline=True,
-                                color="secondary",
-                                size="sm",
-                                style={"padding": "8px 6px"},
-                            ),
-                            dbc.Button(
-                                "T",
-                                id="base-t",
-                                outline=True,
-                                color="secondary",
-                                size="sm",
-                                style={"padding": "8px 6px"},
-                            ),
+                            {"text": "A", "id": "base-a"},
+                            {"text": "C", "id": "base-c"},
+                            {"text": "G", "id": "base-g"},
+                            {"text": "T", "id": "base-t"},
                         ],
+                        size="md",
                     ),
                 ],
                 width=2,
             ),
             dbc.Col(
                 [
-                    html.Label("Max Reads", className="modern-label"),
+                    create_label("Max Reads"),
                     create_input(
                         id="max-reads", type="number", placeholder="e.g., 100"
                     ),
@@ -722,12 +636,14 @@ def create_condition_parameters() -> dbc.Row:
             ),
             dbc.Col(
                 [
-                    html.Label("Label", className="modern-label"),
+                    create_label("Label"),
                     create_input(id="condition-label", placeholder="Auto-generated"),
                 ],
                 width=3,
             ),
-        ]
+        ],
+        className="g-3",
+        align="end",
     )
 
 
@@ -737,18 +653,18 @@ def create_visualization_style_inputs() -> dbc.Row:
         [
             dbc.Col(
                 [
-                    create_label("Visualization Style", required=False),
+                    create_label("Visualization Style"),
                     dbc.Row(
                         [
                             dbc.Col(
                                 [
-                                    html.Label("Color", className="small-label"),
+                                    html.Label("Color", className="small-label mb-1"),
                                     dbc.Input(
                                         id="condition-color",
                                         type="color",
                                         value=DEFAULT_COLOR,
                                         style={
-                                            "height": "44px",
+                                            "height": FORM_CONTROL_HEIGHT,
                                             "borderRadius": "10px",
                                             "cursor": "pointer",
                                             "padding": "4px",
@@ -759,24 +675,22 @@ def create_visualization_style_inputs() -> dbc.Row:
                             ),
                             dbc.Col(
                                 [
-                                    html.Label("Line Style", className="small-label"),
-                                    dbc.Select(
+                                    html.Label(
+                                        "Line Style", className="small-label mb-1"
+                                    ),
+                                    create_select(
                                         id="line-style",
                                         options=LINE_STYLES,
                                         value="solid",
-                                        style={
-                                            "borderRadius": "10px",
-                                            "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                            "background": "rgba(255, 255, 255, 0.9)",
-                                            "padding": "8px 16px",
-                                        },
                                     ),
                                 ],
                                 width=3,
                             ),
                             dbc.Col(
                                 [
-                                    html.Label("Line Width", className="small-label"),
+                                    html.Label(
+                                        "Line Width", className="small-label mb-1"
+                                    ),
                                     dbc.InputGroup(
                                         [
                                             create_input(
@@ -786,11 +700,15 @@ def create_visualization_style_inputs() -> dbc.Row:
                                                 min=0.1,
                                                 max=5.0,
                                                 step=0.1,
-                                                style={"borderRadius": "10px 0 0 10px"},
+                                                style={"borderRadius": RADIUS_LEFT},
                                             ),
                                             dbc.InputGroupText(
                                                 "px",
-                                                style={"borderRadius": "0 10px 10px 0"},
+                                                style={
+                                                    "background": COLOR_BG_INPUT,
+                                                    "borderRadius": RADIUS_RIGHT,
+                                                    "height": FORM_CONTROL_HEIGHT,
+                                                },
                                             ),
                                         ]
                                     ),
@@ -799,7 +717,7 @@ def create_visualization_style_inputs() -> dbc.Row:
                             ),
                             dbc.Col(
                                 [
-                                    html.Label("Opacity", className="small-label"),
+                                    html.Label("Opacity", className="small-label mb-1"),
                                     dbc.InputGroup(
                                         [
                                             create_input(
@@ -809,21 +727,23 @@ def create_visualization_style_inputs() -> dbc.Row:
                                                 min=1,
                                                 max=100,
                                                 step=1,
-                                                style={"borderRadius": "10px 0 0 10px"},
+                                                style={"borderRadius": RADIUS_LEFT},
                                             ),
                                             dbc.InputGroupText(
                                                 "%",
-                                                id="opacity-text",
                                                 style={
-                                                    "borderRadius": "0 10px 10px 0"
-                                                },  # Only round the RIGHT side
+                                                    "background": COLOR_BG_INPUT,
+                                                    "borderRadius": RADIUS_RIGHT,
+                                                    "height": FORM_CONTROL_HEIGHT,
+                                                },
                                             ),
                                         ]
                                     ),
                                 ],
                                 width=3,
                             ),
-                        ]
+                        ],
+                        className="g-2",
                     ),
                 ],
                 width=12,
@@ -841,11 +761,8 @@ def create_conditions_list_card():
     card = create_card(
         [
             html.H4(
-                [
-                    html.I(className="bi bi-list-check me-2"),
-                    "Conditions",
-                ],
-                className="mb-3 card-title",
+                [html.I(className="bi bi-list-check me-2"), "Conditions"],
+                className="mb-3",
                 style={"fontWeight": "600", "color": "#2d3748"},
             ),
             html.Hr(style={"opacity": "0.1"}),
@@ -856,14 +773,9 @@ def create_conditions_list_card():
     return dcc.Loading(
         [card],
         type="circle",
-        overlay_style={
-            "visibility": "visible",
-            "opacity": 0.25,
-        },
+        overlay_style={"visibility": "visible", "opacity": 0.25},
         delay_show=100,
-        custom_spinner=html.H2(
-            ["Updating Conditions ", dbc.Spinner(color="primary")],
-        ),
+        custom_spinner=html.H2(["Updating Conditions ", dbc.Spinner(color="primary")]),
     )
 
 
@@ -873,31 +785,22 @@ def create_condition_card(
     """Create a condition card for the conditions list with modern design."""
     return create_card(
         [
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            html.H6(
-                                label,
-                                className="mb-3",
-                                style={"fontWeight": "600", "color": "#2d3748"},
-                            ),
-                        ],
-                        width=12,
-                    ),
-                ]
+            html.H6(
+                label,
+                className="mb-3",
+                style={"fontWeight": "600", "color": "#2d3748"},
             ),
             dbc.Row(
                 [
                     dbc.Col(
                         [
-                            html.Label("Color", className="small-label"),
+                            html.Label("Color", className="small-label mb-1"),
                             dbc.Input(
                                 id={"type": "color-edit", "index": label},
                                 type="color",
                                 value=color,
                                 style={
-                                    "height": "40px",
+                                    "height": FORM_CONTROL_HEIGHT_SM,
                                     "borderRadius": "8px",
                                     "cursor": "pointer",
                                     "padding": "2px",
@@ -908,19 +811,19 @@ def create_condition_card(
                     ),
                     dbc.Col(
                         [
-                            html.Label("Line Style", className="small-label"),
-                            dbc.Select(
+                            html.Label("Line Style", className="small-label mb-1"),
+                            create_select(
                                 id={"type": "line-style-edit", "index": label},
                                 options=LINE_STYLES,
                                 value=line_style,
-                                style={"borderRadius": "8px", "fontSize": "0.9rem"},
+                                size="sm",
                             ),
                         ],
                         width=2,
                     ),
                     dbc.Col(
                         [
-                            html.Label("Line Width", className="small-label"),
+                            html.Label("Line Width", className="small-label mb-1"),
                             dbc.InputGroup(
                                 [
                                     create_input(
@@ -930,19 +833,25 @@ def create_condition_card(
                                         min=0.1,
                                         max=5.0,
                                         step=0.1,
+                                        size="sm",
+                                        style={"borderRadius": "8px 0 0 8px"},
                                     ),
                                     dbc.InputGroupText(
-                                        "px", style={"fontSize": "0.9rem"}
+                                        "px",
+                                        style={
+                                            "background": COLOR_BG_INPUT,
+                                            "borderRadius": "0 8px 8px 0",
+                                            "fontSize": "0.875rem",
+                                        },
                                     ),
-                                ],
-                                size="sm",
+                                ]
                             ),
                         ],
                         width=2,
                     ),
                     dbc.Col(
                         [
-                            html.Label("Opacity", className="small-label"),
+                            html.Label("Opacity", className="small-label mb-1"),
                             dbc.InputGroup(
                                 [
                                     create_input(
@@ -952,12 +861,18 @@ def create_condition_card(
                                         min=1,
                                         max=100,
                                         step=1,
+                                        size="sm",
+                                        style={"borderRadius": "8px 0 0 8px"},
                                     ),
                                     dbc.InputGroupText(
-                                        "%", style={"fontSize": "0.9rem"}
+                                        "%",
+                                        style={
+                                            "background": COLOR_BG_INPUT,
+                                            "borderRadius": "0 8px 8px 0",
+                                            "fontSize": "0.875rem",
+                                        },
                                     ),
-                                ],
-                                size="sm",
+                                ]
                             ),
                         ],
                         width=2,
@@ -983,15 +898,16 @@ def create_condition_card(
                                     ),
                                 ],
                                 style={
-                                    "marginTop": "24px",
+                                    "marginTop": "20px",
                                     "display": "flex",
                                     "justifyContent": "flex-end",
                                 },
-                            )
+                            ),
                         ],
                         width=4,
                     ),
-                ]
+                ],
+                align="end",
             ),
         ],
         className="mb-3",
@@ -1004,39 +920,10 @@ def create_condition_card(
 # ============================================================================
 
 
-def create_stat_selector_with_list(
-    select_id: str,
-    add_button_id: str,
-    list_id: str,
-) -> List:
-    """Create a statistic selector dropdown with add button and badge list."""
-    return [
-        dbc.InputGroup(
-            [
-                dbc.Select(
-                    id=select_id,
-                    options=None,
-                    placeholder="Select statistic...",
-                    style={"borderRadius": "10px 0 0 10px"},
-                ),
-                create_button(
-                    "Add",
-                    id=add_button_id,
-                    color="success",
-                    size="sm",
-                ),
-            ],
-            style={"borderRadius": "10px"},
-        ),
-        html.Div(id=list_id, className="mt-3"),
-    ]
-
-
 def create_gmm_inputs() -> html.Div:
     """Create input bar for GMM tab."""
     return html.Div(
         [
-            # First row: Range slider for position selection
             dbc.Row(
                 [
                     dbc.Col(
@@ -1050,7 +937,7 @@ def create_gmm_inputs() -> html.Div:
                                 value=[-5, 5],
                                 marks={},
                                 tooltip={"placement": "bottom", "always_visible": True},
-                                className="mb-3",
+                                className="mb-2",
                             ),
                         ],
                         width=12,
@@ -1058,40 +945,30 @@ def create_gmm_inputs() -> html.Div:
                 ],
                 className="mb-3",
             ),
-            # Second row: GMM parameters
             dbc.Row(
                 [
-                    # Stat 1 dropdown
                     dbc.Col(
                         [
                             create_label("Statistic 1", required=True),
-                            dbc.Select(
-                                id="gmm-stat1",
-                                options=None,
-                                placeholder="Stat 1...",
-                                style={"borderRadius": "10px"},
+                            create_select(
+                                id="gmm-stat1", options=None, placeholder="Stat 1..."
                             ),
                         ],
                         width=2,
                     ),
-                    # Stat 2 dropdown
                     dbc.Col(
                         [
-                            create_label("Statistic 2", required=False),
-                            dbc.Select(
-                                id="gmm-stat2",
-                                options=None,
-                                placeholder="Stat 2...",
-                                style={"borderRadius": "10px"},
+                            create_label("Statistic 2"),
+                            create_select(
+                                id="gmm-stat2", options=None, placeholder="Stat 2..."
                             ),
                         ],
                         width=2,
                     ),
-                    # Covariance type dropdown
                     dbc.Col(
                         [
                             create_label("Covariance Type", required=True),
-                            dbc.Select(
+                            create_select(
                                 id="gmm-covariance-type",
                                 options=[
                                     {"label": "Full", "value": "full"},
@@ -1100,24 +977,20 @@ def create_gmm_inputs() -> html.Div:
                                     {"label": "Spherical", "value": "spherical"},
                                 ],
                                 value="full",
-                                style={"borderRadius": "10px"},
                             ),
                         ],
                         width=2,
                     ),
-                    # Run button
                     dbc.Col(
                         create_button(
-                            "Run GMM",
-                            id="gmm-run-btn",
-                            color="primary",
-                            size="sm",
+                            "Run GMM", id="gmm-run-btn", color="primary", size="md"
                         ),
                         width="auto",
                         className="ms-auto",
                     ),
                 ],
                 className="g-2",
+                align="end",
             ),
         ],
         id="gmm-inputs",
@@ -1130,7 +1003,6 @@ def create_umap_inputs() -> html.Div:
     """Create input bar for UMAP tab with stat selector and position range slider."""
     return html.Div(
         [
-            # First row: Range slider for position selection
             dbc.Row(
                 [
                     dbc.Col(
@@ -1138,13 +1010,13 @@ def create_umap_inputs() -> html.Div:
                             create_label("Position Range", required=True),
                             dcc.RangeSlider(
                                 id="umap-position-range",
-                                min=-5,  # Will be updated by callback based on K
-                                max=5,  # Will be updated by callback based on K
+                                min=-5,
+                                max=5,
                                 step=1,
-                                value=[-5, 5],  # Will be updated by callback
-                                marks={},  # Will be populated by callback
+                                value=[-5, 5],
+                                marks={},
                                 tooltip={"placement": "bottom", "always_visible": True},
-                                className="mb-3",
+                                className="mb-2",
                             ),
                         ],
                         width=12,
@@ -1152,7 +1024,6 @@ def create_umap_inputs() -> html.Div:
                 ],
                 className="mb-3",
             ),
-            # Second row: Stats selector and parameters
             dbc.Row(
                 [
                     dbc.Col(
@@ -1160,59 +1031,53 @@ def create_umap_inputs() -> html.Div:
                             create_label("Statistics", required=True),
                             dbc.InputGroup(
                                 [
-                                    dbc.Select(
+                                    create_select(
                                         id="umap-stats-select",
                                         options=None,
                                         placeholder="Select statistic...",
-                                        style={"borderRadius": "10px 0 0 10px"},
+                                        style={"borderRadius": RADIUS_LEFT},
                                     ),
                                     create_button(
                                         "Add",
                                         id="select-umap-stat",
                                         color="success",
-                                        size="sm",
+                                        size="md",
+                                        style={"borderRadius": RADIUS_RIGHT},
                                     ),
-                                ],
-                                style={"borderRadius": "10px"},
+                                ]
                             ),
-                            html.Div(id="umap-stats-list", className="mt-3"),
+                            html.Div(id="umap-stats-list", className="mt-2"),
                         ],
                         width=4,
                     ),
                     dbc.Col(
                         [
-                            create_label("Number of neighbors", required=True),
+                            create_label("Neighbors", required=True),
                             create_input(
-                                id="umap-n-neighbors",
-                                type="number",
-                                value=10,
+                                id="umap-n-neighbors", type="number", value=10
                             ),
                         ],
                         width=2,
                     ),
                     dbc.Col(
                         [
-                            create_label("Min distance", required=True),
+                            create_label("Min Distance", required=True),
                             create_input(
-                                id="umap-min-dist",
-                                type="number",
-                                value=0.1,
+                                id="umap-min-dist", type="number", value=0.1, step=0.01
                             ),
                         ],
                         width=2,
                     ),
                     dbc.Col(
                         create_button(
-                            "Run UMAP",
-                            id="umap-run-btn",
-                            color="primary",
-                            size="sm",
+                            "Run UMAP", id="umap-run-btn", color="primary", size="md"
                         ),
                         width="auto",
                         className="ms-auto",
                     ),
                 ],
                 className="g-2",
+                align="end",
             ),
         ],
         id="umap-inputs",
@@ -1230,7 +1095,6 @@ def create_visualization_card() -> html.Div:
     """Create a visualization card for the plot."""
     card = create_card(
         [
-            # Tabs
             dbc.Tabs(
                 [
                     create_tab("Signals", "signals"),
@@ -1242,12 +1106,9 @@ def create_visualization_card() -> html.Div:
                 active_tab="signals",
                 className="nav-pills mb-3",
             ),
-            # Tab-specific input bars
             create_gmm_inputs(),
             create_umap_inputs(),
-            # Divider
             html.Hr(style={"opacity": "0.1"}),
-            # Control buttons
             dbc.Row(
                 [
                     dbc.Col(
@@ -1280,20 +1141,12 @@ def create_visualization_card() -> html.Div:
                         className="d-flex justify-content-start",
                     ),
                     dbc.Col(
-                        dbc.Row(
-                            [
-                                dbc.Col(
-                                    create_button(
-                                        "Export",
-                                        id="export-browse",
-                                        color="success",
-                                        size="sm",
-                                        icon="bi bi-save",
-                                    ),
-                                    width="auto",
-                                ),
-                            ],
-                            className="g-2",
+                        create_button(
+                            "Export",
+                            id="export-browse",
+                            color="success",
+                            size="sm",
+                            icon="bi bi-save",
                         ),
                         width=6,
                         className="d-flex justify-content-end",
@@ -1301,24 +1154,14 @@ def create_visualization_card() -> html.Div:
                 ],
                 className="mb-3",
             ),
-            # Plot container
-            html.Div(
-                id="plot-container",
-                className="d-flex justify-content-center",
-            ),
+            html.Div(id="plot-container", className="d-flex justify-content-center"),
         ]
     )
 
-    # Wrap in loading component like the other cards
     return dcc.Loading(
         [card],
         type="circle",
-        overlay_style={
-            "visibility": "visible",
-            "opacity": 0.25,
-        },
+        overlay_style={"visibility": "visible", "opacity": 0.25},
         delay_show=100,
-        custom_spinner=html.H2(
-            ["Generating Plot ", dbc.Spinner(color="primary")],
-        ),
+        custom_spinner=html.H2(["Generating Plot ", dbc.Spinner(color="primary")]),
     )

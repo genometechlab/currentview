@@ -2,12 +2,33 @@
 """Plot style settings components for the settings panel."""
 
 import dash_bootstrap_components as dbc
-from dash import html, dcc
+from dash import html
 
 from ..config import LINE_STYLES
 
-# Assuming you'll import these from utils:
-from .elements import create_input, create_button, create_switch
+from .elements import (
+    create_input,
+    create_button,
+    create_select,
+    create_label,
+)
+
+from .constants import *
+
+# Shared style for InputGroupText units ("px", "%") — right-side cap
+_UNIT_TEXT_STYLE = {
+    "borderRadius": RADIUS_RIGHT,
+    "background": COLOR_BG_INPUT,
+    "border": f"1.5px solid {COLOR_BORDER}",
+    "height": FORM_CONTROL_HEIGHT,
+}
+
+# Inline switch style used directly in the panel
+_SWITCH_STYLE = {
+    "fontSize": "0.9375rem",
+    "fontWeight": "500",
+    "color": "#475569",
+}
 
 
 def create_settings_section(title: str, icon: str, children) -> html.Div:
@@ -30,6 +51,24 @@ def create_settings_section(title: str, icon: str, children) -> html.Div:
     )
 
 
+def _px_input(id: str, value, min, max, step=1) -> dbc.InputGroup:
+    """Shorthand for a number input with a px unit cap."""
+    return dbc.InputGroup(
+        [
+            create_input(
+                id=id,
+                type="number",
+                value=value,
+                min=min,
+                max=max,
+                step=step,
+                style={"borderRadius": RADIUS_LEFT},
+            ),
+            dbc.InputGroupText("px", style=_UNIT_TEXT_STYLE),
+        ]
+    )
+
+
 def create_plot_style_settings(prefix: str = "signals") -> html.Div:
     """Create plot style settings for signals or stats with modern design.
 
@@ -42,217 +81,149 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
             create_settings_section(
                 "Dimensions",
                 "aspect-ratio",
-                [
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    html.Label("Width", className="modern-label"),
-                                    dbc.InputGroup(
-                                        [
-                                            create_input(
-                                                id=f"{prefix}-width",
-                                                type="number",
-                                                value=1200,
-                                                min=400,
-                                                max=4000,
-                                                step=50,
-                                            ),
-                                            dbc.InputGroupText(
-                                                "px",
-                                                style={
-                                                    "borderRadius": "0 10px 10px 0",
-                                                    "background": "rgba(255, 255, 255, 0.1)",
-                                                    "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                                },
-                                            ),
-                                        ]
-                                    ),
-                                ],
-                                width=6,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.Label("Height", className="modern-label"),
-                                    dbc.InputGroup(
-                                        [
-                                            create_input(
-                                                id=f"{prefix}-height",
-                                                type="number",
-                                                value=800,
-                                                min=300,
-                                                max=3000,
-                                                step=50,
-                                            ),
-                                            dbc.InputGroupText(
-                                                "px",
-                                                style={
-                                                    "borderRadius": "0 10px 10px 0",
-                                                    "background": "rgba(255, 255, 255, 0.1)",
-                                                    "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                                },
-                                            ),
-                                        ]
-                                    ),
-                                ],
-                                width=6,
-                            ),
-                        ],
-                        className="mb-4",
-                    ),
-                ],
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                create_label("Width"),
+                                _px_input(
+                                    f"{prefix}-width",
+                                    value=1200,
+                                    min=400,
+                                    max=4000,
+                                    step=50,
+                                ),
+                            ],
+                            width=6,
+                        ),
+                        dbc.Col(
+                            [
+                                create_label("Height"),
+                                _px_input(
+                                    f"{prefix}-height",
+                                    value=800,
+                                    min=300,
+                                    max=3000,
+                                    step=50,
+                                ),
+                            ],
+                            width=6,
+                        ),
+                    ],
+                    className="mb-4",
+                ),
             ),
             html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
             # Line Styling Section
             create_settings_section(
                 "Line Styling",
                 "brush",
-                [
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    html.Label("Line Width", className="modern-label"),
-                                    dbc.InputGroup(
-                                        [
-                                            create_input(
-                                                id=f"{prefix}-line-width-style",
-                                                type="number",
-                                                value=2.0,
-                                                min=0.1,
-                                                max=10.0,
-                                                step=0.1,
-                                            ),
-                                            dbc.InputGroupText(
-                                                "px",
-                                                style={
-                                                    "borderRadius": "0 10px 10px 0",
-                                                    "background": "rgba(255, 255, 255, 0.1)",
-                                                    "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                                },
-                                            ),
-                                        ]
-                                    ),
-                                ],
-                                width=6,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.Label("Line Style", className="modern-label"),
-                                    dbc.Select(
-                                        id=f"{prefix}-line-style-default",
-                                        options=LINE_STYLES,
-                                        value="solid",
-                                        style={
-                                            "borderRadius": "10px",
-                                            "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                            "background": "rgba(255, 255, 255, 0.9)",
-                                            "padding": "12px 16px",
-                                            "transition": "all 0.3s ease",
-                                        },
-                                    ),
-                                ],
-                                width=6,
-                            ),
-                        ],
-                        className="mb-3",
-                    ),
-                ],
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                create_label("Line Width"),
+                                _px_input(
+                                    f"{prefix}-line-width-style",
+                                    value=2.0,
+                                    min=0.1,
+                                    max=10.0,
+                                    step=0.1,
+                                ),
+                            ],
+                            width=6,
+                        ),
+                        dbc.Col(
+                            [
+                                create_label("Line Style"),
+                                create_select(
+                                    id=f"{prefix}-line-style-default",
+                                    options=LINE_STYLES,
+                                    value="solid",
+                                ),
+                            ],
+                            width=6,
+                        ),
+                    ],
+                    className="mb-3",
+                ),
             ),
             html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
             # Colors and Theme Section
             create_settings_section(
                 "Colors and Theme",
                 "palette",
-                [
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    html.Label("Template", className="modern-label"),
-                                    dbc.Select(
-                                        id=f"{prefix}-template",
-                                        options=[
-                                            {"label": "Light", "value": "light"},
-                                            {"label": "Dark", "value": "dark"},
-                                        ],
-                                        value="light",
-                                        style={
-                                            "borderRadius": "10px",
-                                            "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                            "background": "rgba(255, 255, 255, 0.9)",
-                                            "padding": "12px 16px",
-                                            "transition": "all 0.3s ease",
-                                        },
-                                    ),
-                                ],
-                                width=12,
-                            ),
-                        ],
-                        className="mb-4",
-                    ),
-                ],
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                create_label("Template"),
+                                create_select(
+                                    id=f"{prefix}-template",
+                                    options=[
+                                        {"label": "Light", "value": "light"},
+                                        {"label": "Dark", "value": "dark"},
+                                    ],
+                                    value="light",
+                                ),
+                            ],
+                            width=12,
+                        ),
+                    ],
+                    className="mb-4",
+                ),
             ),
             html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
             # Grid and Axes Section
             create_settings_section(
                 "Grid and Axes",
                 "grid-3x3",
-                [
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    create_switch(
-                                        id=f"{prefix}-show-grid",
-                                        label="Grid",
-                                        value=False,
-                                    ),
-                                ],
-                                width=6,
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            dbc.Switch(
+                                id=f"{prefix}-show-grid",
+                                label="Grid",
+                                value=False,
+                                style=_SWITCH_STYLE,
                             ),
-                            dbc.Col(
-                                [
-                                    create_switch(
-                                        id=f"{prefix}-show-legend",
-                                        label="Legend",
-                                        value=False,
-                                    ),
-                                ],
-                                width=6,
+                            width=6,
+                        ),
+                        dbc.Col(
+                            dbc.Switch(
+                                id=f"{prefix}-show-legend",
+                                label="Legend",
+                                value=False,
+                                style=_SWITCH_STYLE,
                             ),
-                        ],
-                        className="mb-3",
-                    ),
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    create_switch(
-                                        id=f"{prefix}-zeroline",
-                                        label="Zero Line",
-                                        value=False,
-                                    ),
-                                ],
-                                width=6,
+                            width=6,
+                        ),
+                        dbc.Col(
+                            dbc.Switch(
+                                id=f"{prefix}-zeroline",
+                                label="Zero Line",
+                                value=False,
+                                style=_SWITCH_STYLE,
                             ),
-                            dbc.Col(
-                                [
-                                    create_switch(
-                                        id=f"{prefix}-showline",
-                                        label="Axis Lines",
-                                        value=True,
-                                    ),
-                                ],
-                                width=6,
+                            width=6,
+                            className="mt-2",
+                        ),
+                        dbc.Col(
+                            dbc.Switch(
+                                id=f"{prefix}-showline",
+                                label="Axis Lines",
+                                value=True,
+                                style=_SWITCH_STYLE,
                             ),
-                        ],
-                        className="mb-4",
-                    ),
-                ],
+                            width=6,
+                            className="mt-2",
+                        ),
+                    ],
+                    className="mb-4",
+                ),
             ),
             html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
-            # Font Sizes Section
+            # Typography Section
             create_settings_section(
                 "Typography",
                 "fonts",
@@ -261,7 +232,7 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
                         [
                             dbc.Col(
                                 [
-                                    html.Label("Title Size", className="modern-label"),
+                                    create_label("Title Size"),
                                     create_input(
                                         id=f"{prefix}-title-font-size",
                                         type="number",
@@ -275,9 +246,7 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
                             ),
                             dbc.Col(
                                 [
-                                    html.Label(
-                                        "Axis Title Size", className="modern-label"
-                                    ),
+                                    create_label("Axis Title Size"),
                                     create_input(
                                         id=f"{prefix}-axis-title-font-size",
                                         type="number",
@@ -296,9 +265,7 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
                         [
                             dbc.Col(
                                 [
-                                    html.Label(
-                                        "Tick Labels Size", className="modern-label"
-                                    ),
+                                    create_label("Tick Labels Size"),
                                     create_input(
                                         id=f"{prefix}-tick-font-size",
                                         type="number",
@@ -312,7 +279,7 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
                             ),
                             dbc.Col(
                                 [
-                                    html.Label("Legend Size", className="modern-label"),
+                                    create_label("Legend Size"),
                                     create_input(
                                         id=f"{prefix}-legend-font-size",
                                         type="number",
@@ -334,69 +301,67 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
             create_settings_section(
                 "Margins",
                 "arrows-expand",
-                [
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    html.Label("Left", className="small-label"),
-                                    create_input(
-                                        id=f"{prefix}-margin-l",
-                                        type="number",
-                                        value=80,
-                                        min=0,
-                                        max=200,
-                                        step=10,
-                                    ),
-                                ],
-                                width=3,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.Label("Right", className="small-label"),
-                                    create_input(
-                                        id=f"{prefix}-margin-r",
-                                        type="number",
-                                        value=80,
-                                        min=0,
-                                        max=200,
-                                        step=10,
-                                    ),
-                                ],
-                                width=3,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.Label("Top", className="small-label"),
-                                    create_input(
-                                        id=f"{prefix}-margin-t",
-                                        type="number",
-                                        value=100,
-                                        min=0,
-                                        max=200,
-                                        step=10,
-                                    ),
-                                ],
-                                width=3,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.Label("Bottom", className="small-label"),
-                                    create_input(
-                                        id=f"{prefix}-margin-b",
-                                        type="number",
-                                        value=80,
-                                        min=0,
-                                        max=200,
-                                        step=10,
-                                    ),
-                                ],
-                                width=3,
-                            ),
-                        ],
-                        className="mb-4",
-                    ),
-                ],
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                create_label("Left"),
+                                create_input(
+                                    id=f"{prefix}-margin-l",
+                                    type="number",
+                                    value=80,
+                                    min=0,
+                                    max=200,
+                                    step=10,
+                                ),
+                            ],
+                            width=3,
+                        ),
+                        dbc.Col(
+                            [
+                                create_label("Right"),
+                                create_input(
+                                    id=f"{prefix}-margin-r",
+                                    type="number",
+                                    value=80,
+                                    min=0,
+                                    max=200,
+                                    step=10,
+                                ),
+                            ],
+                            width=3,
+                        ),
+                        dbc.Col(
+                            [
+                                create_label("Top"),
+                                create_input(
+                                    id=f"{prefix}-margin-t",
+                                    type="number",
+                                    value=100,
+                                    min=0,
+                                    max=200,
+                                    step=10,
+                                ),
+                            ],
+                            width=3,
+                        ),
+                        dbc.Col(
+                            [
+                                create_label("Bottom"),
+                                create_input(
+                                    id=f"{prefix}-margin-b",
+                                    type="number",
+                                    value=80,
+                                    min=0,
+                                    max=200,
+                                    step=10,
+                                ),
+                            ],
+                            width=3,
+                        ),
+                    ],
+                    className="mb-4",
+                ),
             ),
             html.Hr(style={"opacity": "0.1", "margin": "24px 0"}),
             # K-mer Barrier Style Section
@@ -408,29 +373,18 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
                         [
                             dbc.Col(
                                 [
-                                    html.Label(
-                                        "Barrier Style", className="modern-label"
-                                    ),
-                                    dbc.Select(
+                                    create_label("Barrier Style"),
+                                    create_select(
                                         id=f"{prefix}-barrier-style",
                                         options=LINE_STYLES,
                                         value="solid",
-                                        style={
-                                            "borderRadius": "10px",
-                                            "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                            "background": "rgba(255, 255, 255, 0.9)",
-                                            "padding": "12px 16px",
-                                            "transition": "all 0.3s ease",
-                                        },
                                     ),
                                 ],
                                 width=6,
                             ),
                             dbc.Col(
                                 [
-                                    html.Label(
-                                        "Barrier Opacity", className="modern-label"
-                                    ),
+                                    create_label("Barrier Opacity"),
                                     dbc.InputGroup(
                                         [
                                             create_input(
@@ -440,14 +394,10 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
                                                 min=0.0,
                                                 max=1.0,
                                                 step=0.05,
+                                                style={"borderRadius": RADIUS_LEFT},
                                             ),
                                             dbc.InputGroupText(
-                                                "%",
-                                                style={
-                                                    "borderRadius": "0 10px 10px 0",
-                                                    "background": "rgba(255, 255, 255, 0.1)",
-                                                    "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                                },
+                                                "%", style=_UNIT_TEXT_STYLE
                                             ),
                                         ]
                                     ),
@@ -461,20 +411,18 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
                         [
                             dbc.Col(
                                 [
-                                    html.Label(
-                                        "Barrier Color", className="modern-label"
-                                    ),
+                                    create_label("Barrier Color"),
                                     dbc.Input(
                                         id=f"{prefix}-barrier-color",
                                         type="color",
                                         value="#808080",
                                         style={
-                                            "height": "44px",
-                                            "borderRadius": "10px",
+                                            "height": FORM_CONTROL_HEIGHT,
+                                            "borderRadius": BORDER_RADIUS,
                                             "cursor": "pointer",
                                             "padding": "4px",
-                                            "border": "1px solid rgba(0, 0, 0, 0.1)",
-                                            "background": "rgba(255, 255, 255, 0.9)",
+                                            "border": f"1.5px solid {COLOR_BORDER}",
+                                            "background": COLOR_BG_INPUT,
                                         },
                                     ),
                                 ],
@@ -487,16 +435,14 @@ def create_plot_style_settings(prefix: str = "signals") -> html.Div:
             ),
             # Apply button
             html.Div(
-                [
-                    create_button(
-                        f"Apply {prefix.capitalize()} Style",
-                        id=f"{prefix}-apply-style",
-                        color="primary",
-                        className="w-100",
-                        size="lg",
-                        icon="bi bi-check-circle",
-                    ),
-                ],
+                create_button(
+                    f"Apply {prefix.capitalize()} Style",
+                    id=f"{prefix}-apply-style",
+                    color="primary",
+                    className="w-100",
+                    size="lg",
+                    icon="bi bi-check-circle",
+                ),
                 style={"marginTop": "32px"},
             ),
         ],
