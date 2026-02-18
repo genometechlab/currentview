@@ -1095,7 +1095,6 @@ def create_umap_inputs() -> html.Div:
                                     ),
                                 ]
                             ),
-                            html.Div(id="umap-stats-list", className="mt-2"),
                         ],
                         width=4,
                     ),
@@ -1128,6 +1127,8 @@ def create_umap_inputs() -> html.Div:
                 className="g-2",
                 align="end",
             ),
+            # Selected stats badges — only visible once stats are added
+            html.Div(id="umap-stats-list", style={"marginTop": "12px"}),
         ],
         id="umap-inputs",
         style={"display": "none"},
