@@ -310,7 +310,7 @@ ks_result = gmm_handler.ks_test(
     verbose=True)
 
 # Jensen-shannon divergence
-js_result = gmm_handler.js_test(
+js_result = gmm_handler.js_divergence(
     label_p='label_p', # Label of the first condition
     label_p='label_q', # Label of the second condition
     n_samples=20000,

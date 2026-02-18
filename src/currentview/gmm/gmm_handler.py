@@ -468,7 +468,7 @@ class GMMHandler:
             verbose=verbose,
         )
 
-    def js_test(
+    def js_divergence(
         self,
         label_p: str,
         label_q: str,
@@ -477,9 +477,9 @@ class GMMHandler:
         random_state: Optional[int] = None,
         verbose: bool = True,
     ) -> "JSTestResult":
-        from .gmm_tests import js_test
+        from .gmm_tests import js_divergence
 
-        return js_test(
+        return js_divergence(
             gmm_handler=self,
             label_p=label_p,
             label_q=label_q,

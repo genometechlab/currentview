@@ -214,7 +214,7 @@ class JSTestResult:
     js_distance: float
 
 
-def js_test(
+def js_divergence(
     gmm_handler: GMMHandler,
     label_p: str,
     label_q: str,
@@ -296,7 +296,7 @@ def js_test(
 
     if verbose:
         msg = (
-            "Jensen–Shannon test (MC, between fitted GMMs)\n"
+            "Jensen–Shannon (MC, between fitted GMMs)\n"
             f"Populations: {label_p} vs {label_q}\n"
             f"n_samples={n_samples} (n_p={n_p}, n_q={n_q}) | base={base} | random_state={random_state}\n"
             f"JS divergence={js_div:.6g} | JS distance={js_dist:.6g}"
