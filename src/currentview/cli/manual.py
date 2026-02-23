@@ -18,7 +18,7 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--window-size",
         type=int,
         default=9,
-        help="Size of the window around the genomic position (default: 9).",
+        help="Size of the window around the reference position (default: 9).",
     )
     parser.add_argument(
         "--stats",
@@ -50,7 +50,7 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--pos-1",
         type=int,
         required=True,
-        help="Genomic position for the first condition.",
+        help="Reference position for the first condition.",
     )
     parser.add_argument(
         "--max-reads-1",
@@ -94,7 +94,7 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--pos-2",
         type=int,
         default=None,
-        help="Genomic position for the second condition (optional).",
+        help="Reference position for the second condition (optional).",
     )
     parser.add_argument(
         "--max-reads-2",

@@ -36,7 +36,7 @@ class VerbosityLevel(IntEnum):
 
 class CurrentView:
     """
-    Visualize nanopore signals at specific genomic positions using Plotly.
+    Visualize nanopore signals at specific reference positions using Plotly.
 
     This class provides a unified interface for processing and visualizing
     nanopore sequencing data with interactive plots and optional statistical analysis.
@@ -179,7 +179,7 @@ class CurrentView:
             bam_path: Path to BAM alignment file
             pod5_path: Path to POD5 signal file
             contig: Chromosome/contig name (e.g., 'chr1', 'chrX')
-            target_position: Genomic position of interest (1-based)
+            target_position: reference position of interest (1-based)
             matched_query_base: Expected base at target position (for validation)
             read_ids: Specific read IDs to include (None = all reads)
             max_reads: Maximum number of reads to process
@@ -668,7 +668,7 @@ class CurrentView:
 
         if self.verbosity > VerbosityLevel.SILENT:
             print("\n" + "=" * 60)
-            print("Genomic Position Visualization Summary")
+            print("Referencd Position Visualization Summary")
             print("=" * 60)
             print(f"Window Size: {summary['K']} bases")
             print(f"Conditions: {summary['n_conditions']}")

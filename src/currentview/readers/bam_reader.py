@@ -12,7 +12,7 @@ from ..utils.data_classes import ReadAlignment, AlignedBase, BaseType, SignalRan
 
 
 class AlignmentExtractor:
-    """API for extracting nanopore signal data aligned to genomic positions."""
+    """API for extracting nanopore signal data aligned to reference positions."""
 
     def __init__(
         self,
@@ -57,10 +57,10 @@ class AlignmentExtractor:
         max_reads: Optional[int] = None,
     ) -> List[ReadAlignment]:
         """
-        Extract signal data for reads covering a target genomic position.
+        Extract signal data for reads covering a target referencd position.
 
         Args:
-            target_position: Genomic position of interest
+            target_position: Genomic reference of interest
             window_size: Number of bases around target (will be made odd)
             read_ids: Specific read IDs to process (if None, process all)
             max_reads: Maximum number of reads to process

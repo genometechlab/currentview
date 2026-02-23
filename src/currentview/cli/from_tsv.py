@@ -29,7 +29,7 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--window-size",
         type=int,
         default=9,
-        help="Size of the window around the genomic position (default: 9)",
+        help="Size of the window around the reference position (default: 9)",
     )
     parser.add_argument(
         "--stats",

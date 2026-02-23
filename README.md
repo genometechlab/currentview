@@ -1,10 +1,10 @@
 # CurrentView
 
-A Python package for visualizing nanopore sequencing signals at specific genomic positions. This tool enables researchers to plot and compare signal patterns from POD5 files aligned to reference genomes via BAM files.
+A Python package for visualizing nanopore sequencing signals at specific reference positions. This tool enables researchers to plot and compare signal patterns from POD5 files aligned to reference genomes via BAM files.
 
 ## Features
 
-- **Signal Visualization**: Plot nanopore signals from POD5 files at specific genomic positions
+- **Signal Visualization**: Plot nanopore signals from POD5 files at specific reference positions
 - **Multi-condition Comparison**: Overlay multiple conditions/samples for direct comparison
 - **Statistical Analysis**: Calculate and visualize statistics across positions
 - **GMM Fitting**: Fit Gaussian Mixture Models for advanced analysis
@@ -74,7 +74,7 @@ from currentview import CurrentView, PlotStyle
 # Create visualizer for a 9-base window with statistics
 cv = CurrentView(K=9, stats=['mean', 'std', 'median'])
 
-# Add signals from a genomic position
+# Add signals aligned to a reference position
 cv.add_condition(
     bam_path="sample1.bam",
     pod5_path="sample1.pod5",
@@ -173,7 +173,7 @@ cv.add_condition(
 - `bam_path`: Path to BAM alignment file (required)
 - `pod5_path`: Path to POD5 signal file (required)
 - `contig`: Chromosome/contig name, e.g., "chr1" (required)
-- `target_position`: 1-based reference genomic position (required)
+- `target_position`: 1-based reference position (required)
 - `molecule_type`: Type of molecule, "RNA" or "DNA" (default: "RNA")
 - `matched_query_base`: Expected base at target position for validation (default: None)
 - `read_ids`: Specific read IDs to include (default: None - all aligned reads)
