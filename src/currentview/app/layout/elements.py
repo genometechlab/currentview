@@ -33,27 +33,24 @@ def create_label(text: str, required: bool = False) -> dbc.Label:
 
 
 def create_card(
-    children, className: str = "", id: str = "", style: Optional[Dict] = None
+    children,
+    className: str = "",
+    id: str = "",
+    style: Optional[Dict] = None,
+    variant: str = "default",  # "default" | "flat" | "ghost"
 ) -> html.Div:
-    """Create a modern card with subtle depth and clean aesthetics."""
-    default_style = {
-        "background": "rgba(255, 255, 255, 0.95)",
-        "backdropFilter": "blur(12px)",
-        "WebkitBackdropFilter": "blur(12px)",
-        "borderRadius": "16px",
-        "border": "1px solid rgba(0, 0, 0, 0.06)",
-        "boxShadow": "0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.03)",
-        "padding": "28px",
-        "transition": TRANSITION,
-    }
+    """Create a card UI element.
 
-    merged_style = {**default_style, **(style or {})}
-
+    Variants:
+        default — bordered card with shadow (standard)
+        flat    — no shadow, subtle border only
+        ghost   — no border, no shadow, transparent background
+    """
     return html.Div(
         children,
-        className=f"glass-card {className}".strip(),
+        className=f"glass-card glass-card--{variant} {className}".strip(),
         id=id,
-        style=merged_style,
+        style=style or {},
     )
 
 
@@ -72,7 +69,7 @@ def create_button(
     style: Optional[Dict] = None,
     **kwargs,
 ) -> dbc.Button:
-    """Create a modern flat button with optional icon and consistent height."""
+    """Create a button with optional icon and consistent height."""
 
     # Modern color palette
     color_styles = {
@@ -178,7 +175,7 @@ def create_input(
     style: Optional[Dict] = None,
     **kwargs,
 ) -> dbc.Input:
-    """Create a modern flat input field with consistent height."""
+    """Create a input field with consistent height."""
 
     # Size-based heights
     size_styles = {
@@ -225,7 +222,7 @@ def create_select(
     style: Optional[Dict] = None,
     **kwargs,
 ) -> dbc.Select:
-    """Create a modern select dropdown with consistent height."""
+    """Create a select dropdown."""
 
     # Size-based heights
     size_styles = {

@@ -17,14 +17,14 @@ def _create_browser_navigation(modal_id: str, default: str) -> dbc.InputGroup:
             create_button(
                 "Go",
                 id=f"{modal_id}-go",
-                size="sm",
+                size="md",
                 color="primary",
                 style={"borderRadius": "0 0 0 0"},
             ),
             create_button(
                 "↑",
                 id=f"{modal_id}-up",
-                size="sm",
+                size="md",
                 color="primary",
                 style={"borderRadius": "0 10px 10px 0"},
             ),
@@ -53,28 +53,28 @@ def create_input_modal(
     modal_id: str,
     title: str,
     file_extension: Optional[str] = None,
-    allow_dir: bool = False,
-    allow_both: bool = False,
-    default: str = "/data/tRNA",
+    mode: str = "file",  # "file" | "dir" | "both"
+    default: Optional[str] = None,
 ) -> dbc.Modal:
     """Create a file/directory selection modal.
 
     Args:
-        modal_id: Unique identifier for the modal
-        title: Modal title
+        modal_id:       Unique identifier for the modal
+        title:          Modal title
         file_extension: File extension to filter (e.g., '.bam'). None shows all files.
-        allow_dir: If True, allows selecting directories instead of files
-        allow_both: If True, allows selecting both files AND directories (shows select badges on dirs)
-        default: Default directory path
+        mode:           "file" — select files only
+                        "dir"  — select directories only
+                        "both" — select files or directories
+        default:        Default directory path to open
 
     Returns:
         dbc.Modal component
     """
-    placeholder = (
-        "No file or directory selected"
-        if allow_both
-        else ("No directory selected" if allow_dir else "No file selected")
-    )
+    placeholders = {
+        "file": "No file selected",
+        "dir": "No directory selected",
+        "both": "No file or directory selected",
+    }
 
     return dbc.Modal(
         [
@@ -85,28 +85,16 @@ def create_input_modal(
                     _create_file_list(modal_id),
                     dcc.Store(
                         id=f"{modal_id}-config",
-                        data={
-                            "extension": file_extension,
-                            "allow_dir": allow_dir,
-                            "allow_both": allow_both,
-                        },
+                        data={"extension": file_extension, "mode": mode},
                     ),
                 ]
             ),
             dbc.ModalFooter(
                 [
-                    dbc.InputGroup(
-                        [
-                            dbc.Col(
-                                create_input(
-                                    id=f"{modal_id}-selected",
-                                    placeholder=placeholder,
-                                    disabled=True,
-                                    className="mt-3",
-                                ),
-                            ),
-                        ],
-                        className="g-2",
+                    create_input(
+                        id=f"{modal_id}-selected",
+                        placeholder=placeholders.get(mode, "No file selected"),
+                        disabled=True,
                     ),
                     create_button("Cancel", id=f"{modal_id}-cancel", color="danger"),
                     create_button("Select", id=f"{modal_id}-select", color="success"),
@@ -124,24 +112,23 @@ def create_export_modal(
     title: str,
     file_extensions: List[str],
     default_extension: str,
-    allow_dir: bool = False,
-    default: str = "/data/tRNA",
+    mode: str = "file",  # "file" | "dir"
+    default: Optional[str] = None,
 ) -> dbc.Modal:
     """Create a file export/save modal with format selection.
 
     Args:
-        modal_id: Unique identifier for the modal
-        title: Modal title
-        file_extensions: List of allowed file extensions
-        default_extension: Default file extension (e.g., '.html')
-        allow_dir: If True, allows selecting directories instead of files
-        default: Default directory path
+        modal_id:           Unique identifier for the modal
+        title:              Modal title
+        file_extensions:    List of allowed file extensions
+        default_extension:  Default file extension (e.g., '.html')
+        mode:               "file" — save as file
+                            "dir"  — select output directory
+        default:            Default directory path to open
 
     Returns:
         dbc.Modal component
     """
-    default_filename = f"out{default_extension}"
-
     return dbc.Modal(
         [
             dbc.ModalHeader(dbc.ModalTitle(title)),
@@ -151,21 +138,19 @@ def create_export_modal(
                     _create_file_list(modal_id),
                     dcc.Store(
                         id=f"{modal_id}-config",
-                        data={"extension": default_extension, "allow_dir": allow_dir},
+                        data={"extension": default_extension, "mode": mode},
                     ),
                 ]
             ),
             dbc.ModalFooter(
                 [
-                    # Filename input + format dropdown
-                    dbc.InputGroup(
+                    dbc.Row(
                         [
                             dbc.Col(
                                 create_input(
                                     id=f"{modal_id}-input-path",
-                                    value=default_filename,
+                                    value=f"out{default_extension}",
                                     placeholder="Enter filename...",
-                                    className="mt-3",
                                 ),
                                 width=9,
                             ),
@@ -175,14 +160,13 @@ def create_export_modal(
                                     options=file_extensions,
                                     value=default_extension,
                                     clearable=False,
-                                    style={"marginTop": "16px"},
                                 ),
                                 width=3,
                             ),
                         ],
-                        className="g-2",
+                        className="g-2 w-100 mb-3",
+                        align="center",
                     ),
-                    # Action buttons
                     html.Div(
                         [
                             create_button(
@@ -192,7 +176,7 @@ def create_export_modal(
                                 "Save", id=f"{modal_id}-save", color="success"
                             ),
                         ],
-                        className="d-flex justify-content-end gap-2 mt-3",
+                        className="d-flex justify-content-end gap-2",
                     ),
                 ]
             ),

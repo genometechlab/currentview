@@ -552,7 +552,7 @@ def create_file_inputs() -> dbc.Row:
                                 "Browse",
                                 id="bam-browse",
                                 size="md",
-                                color="secondary",
+                                color="info",
                                 icon="bi bi-folder-open",
                                 style={"borderRadius": RADIUS_RIGHT},
                             ),
@@ -576,7 +576,7 @@ def create_file_inputs() -> dbc.Row:
                                 "Browse",
                                 id="pod5-browse",
                                 size="md",
-                                color="secondary",
+                                color="info",
                                 icon="bi bi-folder-open",
                                 style={"borderRadius": RADIUS_RIGHT},
                             ),
@@ -971,7 +971,7 @@ def create_condition_card(
 
 def create_gmm_inputs() -> html.Div:
     """Create input bar for GMM tab."""
-    return html.Div(
+    return create_card(
         [
             dbc.Row(
                 [
@@ -1045,12 +1045,13 @@ def create_gmm_inputs() -> html.Div:
         id="gmm-inputs",
         style={"display": "none"},
         className="mb-3 p-3 bg-light rounded",
+        variant="ghost",
     )
 
 
 def create_umap_inputs() -> html.Div:
     """Create input bar for UMAP tab with stat selector and position range slider."""
-    return html.Div(
+    return create_card(
         [
             dbc.Row(
                 [
@@ -1133,6 +1134,7 @@ def create_umap_inputs() -> html.Div:
         id="umap-inputs",
         style={"display": "none"},
         className="mb-3 p-3 bg-light rounded",
+        variant="ghost",
     )
 
 
