@@ -3,21 +3,115 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 from dash import html
 from pathlib import Path
-from .initialization import get_visualizer
 
+from .initialization import get_visualizer
 from ..utils.file_utils import get_directory_contents
 
 
+# ============================================================================
+# Shared Helpers
+# ============================================================================
+
+
+def _resolve_path(trigger, prefix: str, current: str) -> str:
+    """Resolve the target path based on the callback trigger."""
+    if trigger == f"{prefix}-modal-up":
+        return str(Path(current).parent)
+    if isinstance(trigger, dict) and trigger.get("type") == f"{prefix}-dir":
+        return trigger["path"]
+    return str(Path(current).resolve())
+
+
+def _build_file_list(items: list, prefix: str, mode: str) -> dbc.ListGroup:
+    """Build a ListGroup from directory items.
+
+    Args:
+        items:  Output of get_directory_contents
+        prefix: Modal prefix (e.g. "bam", "pod5", "export")
+        mode:   "file" | "dir" | "both"
+    """
+    allow_dir = mode in ("dir", "both")
+    show_files = mode in ("file", "both")
+    children = []
+
+    for item in items:
+        if item["type"] == "dir":
+            is_parent = item["name"] == ".."
+            if allow_dir and not is_parent:
+                # Navigable + selectable directory
+                children.append(
+                    dbc.ListGroupItem(
+                        [
+                            html.Div(
+                                [
+                                    html.I(
+                                        className="bi bi-folder-fill text-warning me-2"
+                                    ),
+                                    html.Span(item["name"]),
+                                ],
+                                id={"type": f"{prefix}-dir", "path": item["path"]},
+                                n_clicks=0,
+                                style={"cursor": "pointer", "flex": "1"},
+                            ),
+                            dbc.Badge(
+                                "Select",
+                                color="success",
+                                id={
+                                    "type": f"{prefix}-select-dir",
+                                    "path": item["path"],
+                                },
+                                style={"cursor": "pointer"},
+                            ),
+                        ],
+                        className="d-flex align-items-center",
+                        action=False,
+                    )
+                )
+            else:
+                # Navigation-only directory (or parent "..")
+                children.append(
+                    dbc.ListGroupItem(
+                        [
+                            html.I(className="bi bi-folder-fill text-warning me-2"),
+                            item["name"],
+                        ],
+                        action=True,
+                        id={"type": f"{prefix}-dir", "path": item["path"]},
+                        n_clicks=0,
+                        style={"cursor": "pointer"},
+                    )
+                )
+
+        elif show_files:
+            children.append(
+                dbc.ListGroupItem(
+                    [
+                        html.I(className="bi bi-file-earmark text-primary me-2"),
+                        item["name"] + f" ({item.get('size', '')})",
+                    ],
+                    action=True,
+                    id={"type": f"{prefix}-file", "path": item["path"]},
+                    n_clicks=0,
+                    style={"cursor": "pointer"},
+                )
+            )
+
+    return dbc.ListGroup(children, flush=True)
+
+
+# ============================================================================
+# File Browser (BAM / POD5)
+# ============================================================================
+
+
 def register_file_browser_callbacks():
-    """Register all file browser related callbacks."""
-
-    # Register callbacks for both file types
+    """Register file browser callbacks for all file types."""
     for prefix, ext in [("bam", ".bam"), ("pod5", ".pod5")]:
-        register_single_browser_callbacks(prefix, ext)
+        _register_browser(prefix, ext)
 
 
-def register_single_browser_callbacks(prefix: str, extension: str):
-    """Register callbacks for a single file browser type."""
+def _register_browser(prefix: str, extension: str):
+    """Register callbacks for a single file browser modal."""
 
     @callback(
         Output(f"{prefix}-modal", "is_open"),
@@ -29,9 +123,7 @@ def register_single_browser_callbacks(prefix: str, extension: str):
         prevent_initial_call=True,
     )
     def toggle_modal(browse, cancel, select):
-        """Toggle modal visibility."""
-        trigger = ctx.triggered_id
-        return trigger == f"{prefix}-browse"
+        return ctx.triggered_id == f"{prefix}-browse"
 
     @callback(
         [
@@ -51,100 +143,18 @@ def register_single_browser_callbacks(prefix: str, extension: str):
         prevent_initial_call=True,
     )
     def update_browser(browse, go, up, dir_clicks, current, config):
-        """Update file browser contents."""
         trigger = ctx.triggered_id
 
-        if trigger == f"{prefix}-modal-up":
-            path = str(Path(current).parent)
-        elif trigger == f"{prefix}-modal-go":
-            path = Path(current).resolve()
-        elif trigger == f"{prefix}-browse":
-            path = Path(current).resolve()
-        elif isinstance(trigger, dict) and trigger.get("type") == f"{prefix}-dir":
-            # Check if any directory was actually clicked
-            if any(dir_clicks):
-                path = trigger["path"]
-            else:
-                raise PreventUpdate
-        else:
-            path = Path(current).resolve()
+        # Guard: ignore pattern-match trigger if no dir was actually clicked
+        if isinstance(trigger, dict) and not any(dir_clicks):
+            raise PreventUpdate
 
-        # Get config or use defaults
-        ext = config.get("extension") if config else extension
-        allow_dir = config.get("allow_dir", False) if config else False
-        allow_both = config.get("allow_both", False) if config else False  # NEW
-        show_files = (
-            not allow_dir or allow_both
-        )  # NEW - show files if allow_both is True
+        path = _resolve_path(trigger, prefix, current)
+        mode = (config or {}).get("mode", "file")
+        show_files = mode in ("file", "both")
 
-        items, actual_path = get_directory_contents(path, ext, show_files)
-
-        children = []
-        for item in items:
-            if item["type"] == "dir":
-                # Show select badge if allow_dir OR allow_both
-                if (allow_dir or allow_both) and item["name"] != "..":  # CHANGED
-                    children.append(
-                        dbc.ListGroupItem(
-                            [
-                                # Clickable area for navigation
-                                html.Div(
-                                    [
-                                        html.I(
-                                            className="bi bi-folder-fill text-warning me-2"
-                                        ),
-                                        html.Span(item["name"]),
-                                    ],
-                                    id={"type": f"{prefix}-dir", "path": item["path"]},
-                                    style={"cursor": "pointer", "flex": "1"},
-                                ),
-                                # Separate clickable area for selection
-                                dbc.Badge(
-                                    "Select",
-                                    color="success",  # Changed to success for consistency
-                                    id={
-                                        "type": f"{prefix}-select-dir",
-                                        "path": item["path"],
-                                    },
-                                    style={"cursor": "pointer"},
-                                ),
-                            ],
-                            className="d-flex align-items-center",
-                            action=False,  # Remove default hover effect
-                        )
-                    )
-                else:
-                    # Regular navigation for directories
-                    children.append(
-                        dbc.ListGroupItem(
-                            [
-                                html.I(className="bi bi-folder-fill text-warning me-2"),
-                                item["name"],
-                            ],
-                            action=True,
-                            id={"type": f"{prefix}-dir", "path": item["path"]},
-                            style={"cursor": "pointer"},
-                            n_clicks=0,
-                        )
-                    )
-            else:
-                # Files - only show if allow_both OR not allow_dir
-                if allow_both or not allow_dir:  # NEW
-                    children.append(
-                        dbc.ListGroupItem(
-                            [
-                                html.I(
-                                    className="bi bi-file-earmark text-primary me-2"
-                                ),
-                                item["name"] + f" ({item.get('size', '')})",
-                            ],
-                            action=True,
-                            id={"type": f"{prefix}-file", "path": item["path"]},
-                            style={"cursor": "pointer"},
-                        )
-                    )
-
-        return dbc.ListGroup(children, flush=True), actual_path
+        items, actual_path = get_directory_contents(path, extension, show_files)
+        return _build_file_list(items, prefix, mode), actual_path
 
     @callback(
         Output(f"{prefix}-modal-selected", "value"),
@@ -152,23 +162,13 @@ def register_single_browser_callbacks(prefix: str, extension: str):
             Input({"type": f"{prefix}-file", "path": ALL}, "n_clicks"),
             Input({"type": f"{prefix}-select-dir", "path": ALL}, "n_clicks"),
         ],
-        [
-            State({"type": f"{prefix}-file", "path": ALL}, "id"),
-            State({"type": f"{prefix}-select-dir", "path": ALL}, "id"),
-        ],
         prevent_initial_call=True,
     )
-    def select_item(file_clicks, dir_clicks, file_ids, dir_ids):
-        """Handle item selection in the browser."""
-        # Check files
-        if any(file_clicks):
-            idx = next(i for i, c in enumerate(file_clicks) if c)
-            return file_ids[idx]["path"]
-        # Check directories
-        if any(dir_clicks):
-            idx = next(i for i, c in enumerate(dir_clicks) if c)
-            return dir_ids[idx]["path"]
-        raise PreventUpdate
+    def select_item(file_clicks, dir_clicks):
+        trigger = ctx.triggered_id
+        if not trigger:
+            raise PreventUpdate
+        return trigger["path"]
 
     @callback(
         [
@@ -176,27 +176,31 @@ def register_single_browser_callbacks(prefix: str, extension: str):
             Output("files-store", "data", allow_duplicate=True),
         ],
         Input(f"{prefix}-modal-select", "n_clicks"),
-        [State(f"{prefix}-modal-selected", "value"), State("files-store", "data")],
+        [
+            State(f"{prefix}-modal-selected", "value"),
+            State("files-store", "data"),
+        ],
         prevent_initial_call=True,
     )
     def confirm_selection(n, selected, files):
-        """Confirm file selection and update store."""
         if not selected:
             raise PreventUpdate
         files[prefix] = selected
         return selected, files
 
 
+# ============================================================================
+# File Saver (Export)
+# ============================================================================
+
+
 def register_file_saver_callbacks():
-    """Register all file browser related callbacks."""
-
-    # Register callbacks for both file types
-    for prefix in ["export"]:
-        register_single_saver_callbacks(prefix)
+    """Register file saver callbacks for all export targets."""
+    _register_saver("export")
 
 
-def register_single_saver_callbacks(prefix: str):
-    """Register callbacks for a single file browser type."""
+def _register_saver(prefix: str):
+    """Register callbacks for a single file saver modal."""
 
     @callback(
         [
@@ -209,24 +213,23 @@ def register_single_saver_callbacks(prefix: str):
             Input(f"{prefix}-modal-cancel", "n_clicks"),
             Input(f"{prefix}-modal-save", "n_clicks"),
         ],
-        [State("session-id", "data"), State("tabs", "active_tab")],
+        [
+            State("session-id", "data"),
+            State("tabs", "active_tab"),
+        ],
         prevent_initial_call=True,
     )
-    def toggle_modal(n_clicks, cancel, select, session_id, active_tab):
-        """Toggle modal visibility."""
-        if not n_clicks:
+    def toggle_modal(browse, cancel, save, session_id, active_tab):
+        if not browse:
             raise PreventUpdate
 
         viz = get_visualizer(session_id)
         if not viz:
-            return "No visualizer to clear", True, False
-
-        # Check if there are any conditions
+            return "No visualizer found", True, False
         if viz.n_conditions == 0:
             return f"No {active_tab} plot is currently available", True, False
 
-        trigger = ctx.triggered_id
-        return None, False, trigger == f"{prefix}-browse"
+        return None, False, ctx.triggered_id == f"{prefix}-browse"
 
     @callback(
         [
@@ -246,94 +249,27 @@ def register_single_saver_callbacks(prefix: str):
         ],
         prevent_initial_call=True,
     )
-    def update_browser(browse, go, up, dir_clicks, format, current, config):
-        """Update file browser contents."""
+    def update_browser(browse, go, up, dir_clicks, fmt, current, config):
         trigger = ctx.triggered_id
 
-        if trigger == f"{prefix}-modal-up":
-            path = str(Path(current).parent)
-        elif trigger == f"{prefix}-modal-go":
-            path = Path(current).resolve()
-        elif trigger == f"{prefix}-browse":
-            path = Path(current).resolve()
-        elif isinstance(trigger, dict) and trigger.get("type") == f"{prefix}-dir":
-            path = trigger["path"]
-        else:
-            path = Path(current).resolve()
+        if isinstance(trigger, dict) and not any(dir_clicks):
+            raise PreventUpdate
 
-        # Get config or use defaults
-        ext = format
-        allow_dir = config.get("allow_dir", False) if config else False
-        show_files = not allow_dir
-        items, actual_path = get_directory_contents(path, ext, show_files)
+        path = _resolve_path(trigger, prefix, current)
+        mode = (config or {}).get("mode", "file")
+        show_files = mode in ("file", "both")
 
-        children = []
-        for item in items:
-            if item["type"] == "dir":
-                # For directory selection mode, make directories selectable
-                if allow_dir and item["name"] != "..":
-                    children.append(
-                        dbc.ListGroupItem(
-                            [
-                                html.I(className="bi bi-folder-fill text-warning me-2"),
-                                item["name"],
-                                dbc.Badge(
-                                    "Select",
-                                    color="primary",
-                                    className="ms-auto",
-                                    id={
-                                        "type": f"{prefix}-select-dir",
-                                        "path": item["path"],
-                                    },
-                                ),
-                            ],
-                            action=True,
-                            id={"type": f"{prefix}-dir", "path": item["path"]},
-                            style={"cursor": "pointer"},
-                        )
-                    )
-                else:
-                    # Regular navigation for directories
-                    children.append(
-                        dbc.ListGroupItem(
-                            [
-                                html.I(className="bi bi-folder-fill text-warning me-2"),
-                                item["name"],
-                            ],
-                            action=True,
-                            id={"type": f"{prefix}-dir", "path": item["path"]},
-                            style={"cursor": "pointer"},
-                        )
-                    )
-            else:
-                # Files
-                children.append(
-                    dbc.ListGroupItem(
-                        [
-                            html.I(className="bi bi-file-earmark text-primary me-2"),
-                            item["name"] + f" ({item.get('size', '')})",
-                        ],
-                        action=True,
-                        id={"type": f"{prefix}-file", "path": item["path"]},
-                        style={"cursor": "pointer"},
-                    )
-                )
-
-        return dbc.ListGroup(children, flush=True), actual_path
+        items, actual_path = get_directory_contents(path, fmt, show_files)
+        return _build_file_list(items, prefix, mode), actual_path
 
     @callback(
         Output(f"{prefix}-modal-input-path", "value"),
-        [
-            Input(f"{prefix}-modal-format", "value"),
-        ],
-        [
-            State(f"{prefix}-modal-input-path", "value"),
-        ],
+        Input(f"{prefix}-modal-format", "value"),
+        State(f"{prefix}-modal-input-path", "value"),
         prevent_initial_call=True,
     )
-    def select_item(format, current):
-        """Handle item selection in the browser."""
-        # Check files
-        if current and not current.endswith(format):
-            return str(Path(current).with_suffix(format))
+    def update_filename_extension(fmt, current):
+        """Update the filename extension when format changes."""
+        if current and not current.endswith(fmt):
+            return str(Path(current).with_suffix(fmt))
         return current
