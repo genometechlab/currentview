@@ -1,109 +1,283 @@
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Union, Literal
-from matplotlib.colors import to_rgba
-import re
+from typing import Dict, List, Optional, Literal
 
 
 @dataclass
 class PlotStyle:
-    """Configuration for Plotly plot styling."""
+    """
+    Unified style configuration for both Plotly and Matplotlib backends.
+    Fields are grouped by which backend uses them.
+    Fields marked [BOTH] are used by both backends.
+    Fields marked [PLOTLY] are Plotly-only.
+    Fields marked [MPL] are Matplotlib-only.
+    """
 
-    # Figure dimensions
-    width: int = 1200  # pixels
-    height: int = 800  # pixels
+    # -------------------------------------------------------------------------
+    # [BOTH] Figure dimensions
+    # -------------------------------------------------------------------------
+    width: int = 1200  # pixels — used directly by Plotly
+    height: int = 800  # pixels — used directly by Plotly
 
-    # Backend
-    renderer: Literal["SVG", "WebGL"] = "SVG"
+    # [MPL] Physical size in inches — independent of DPI.
+    # At dpi=150: 8x5.33" -> 1200x800px output
+    # At dpi=600: 8x5.33" -> 4800x3200px output (hi-res, same physical size)
+    mpl_fig_width_in: float = 8.0
+    mpl_fig_height_in: float = 5.33
+    dpi: int = 150  # [MPL] dots per inch — ignored by Plotly
 
-    # Trace styling
+    # -------------------------------------------------------------------------
+    # [BOTH] Trace / line styling
+    # -------------------------------------------------------------------------
     line_width: float = 2.0
     line_style: str = "solid"  # "solid", "dash", "dot", "dashdot"
+    # Plotly uses these names natively;
+    # Mpl maps them (see _mpl_linestyle)
     opacity_mode: Literal["auto", "fixed"] = "auto"
     fixed_opacity: float = 0.8
     fill_opacity: float = 0.3
 
-    # Layout and spacing
-    margin: Dict[str, int] = field(
-        default_factory=lambda: {"l": 80, "r": 80, "t": 100, "b": 80}
-    )
-
-    # Grids, kmer barriers, and axes
-    show_grid: bool = False
-    grid_color: str = "rgba(128, 128, 128, 0.2)"
-    zeroline: bool = False
+    # -------------------------------------------------------------------------
+    # [BOTH] Position barriers
+    # -------------------------------------------------------------------------
     positions_padding: float = 0.025
     barrier_style: str = "solid"
-    barrier_opacity: str = 0.25
+    barrier_opacity: float = 0.25
     barrier_color: str = "grey"
 
-    # Background colors
+    # -------------------------------------------------------------------------
+    # [BOTH] Background
+    # -------------------------------------------------------------------------
     plot_bgcolor: str = "white"
-    paper_bgcolor: str = "white"
+    paper_bgcolor: str = "white"  # [PLOTLY] figure bg; [MPL] fig.patch color
 
-    # Colors and themes
-    template: str = "plotly_white"  # Plotly template
-    colorway: Optional[List[str]] = None  # Custom color sequence
-
-    # Fonts
+    # -------------------------------------------------------------------------
+    # [BOTH] Fonts
+    # -------------------------------------------------------------------------
     font_family: str = "Arial, sans-serif"
     title_font_size: int = 20
-    titlecolor: str = "black"
+    title_color: str = "black"
     axis_title_font_size: int = 16
     axis_title_color: str = "black"
     tick_font_size: int = 12
+    tick_color: str = "black"
     legend_font_size: int = 12
     annotation_font_size: int = 11
 
-    # Legend
+    # -------------------------------------------------------------------------
+    # [BOTH] Grid and axes
+    # -------------------------------------------------------------------------
+    show_grid: bool = False
+    grid_color: str = "rgba(128, 128, 128, 0.2)"
+    zeroline: bool = False
+    showline: bool = True
+    linecolor: str = "black"
+    linewidth: int = 1
+    mirror: bool = False  # [PLOTLY] axis mirroring; [MPL] top/right spine
+
+    # -------------------------------------------------------------------------
+    # [BOTH] Ticks
+    # -------------------------------------------------------------------------
+    ticks: str = "outside"  # "outside", "inside", "" -> Mpl: tick direction
+    ticklen: int = 5
+    tickwidth: int = 1
+
+    # -------------------------------------------------------------------------
+    # [BOTH] Legend
+    # -------------------------------------------------------------------------
     show_legend: bool = True
     legend_orientation: Literal["v", "h"] = "v"
     legend_x: float = 1.02
-    legend_y: float = 1
-    legend_xanchor: str = "left"
+    legend_y: float = 1.0
+    legend_xanchor: str = "left"  # Plotly anchor names; Mpl maps to loc string
     legend_yanchor: str = "top"
     legend_bgcolor: str = "rgba(255, 255, 255, 0.8)"
     legend_bordercolor: str = "rgba(0, 0, 0, 0.2)"
     legend_borderwidth: int = 1
 
-    # Hover
+    # -------------------------------------------------------------------------
+    # [BOTH] Margins  (l/r/t/b in pixels for Plotly; converted to inches for Mpl)
+    # -------------------------------------------------------------------------
+    margin: Dict[str, int] = field(
+        default_factory=lambda: {"l": 80, "r": 80, "t": 100, "b": 80}
+    )
+
+    # -------------------------------------------------------------------------
+    # [PLOTLY] Template and colorway
+    # -------------------------------------------------------------------------
+    renderer: Literal["SVG", "WebGL"] = "SVG"
+    template: str = "plotly_white"
+    colorway: Optional[List[str]] = None
+
+    # -------------------------------------------------------------------------
+    # [PLOTLY] Hover
+    # -------------------------------------------------------------------------
     hovermode: Literal["x", "y", "closest", "x unified", "y unified"] = "closest"
     hoverlabel_bgcolor: str = "white"
     hoverlabel_bordercolor: str = "black"
     hoverlabel_font_size: int = 12
 
-    # Subplots
-    subplot_vertical_spacing: Optional[float] = None  # Auto-calculated if None
-    subplot_horizontal_spacing: Optional[float] = None  # Auto-calculated if None
+    # -------------------------------------------------------------------------
+    # [PLOTLY] Interaction
+    # -------------------------------------------------------------------------
+    dragmode: Literal["zoom", "pan", "select", "lasso", "orbit", "turntable"] = "zoom"
+    selectdirection: Literal["d", "h", "v", "any"] = "d"
+
+    # -------------------------------------------------------------------------
+    # [PLOTLY] Subplot spacing
+    # -------------------------------------------------------------------------
+    subplot_vertical_spacing: Optional[float] = None
+    subplot_horizontal_spacing: Optional[float] = None
     subplot_title_font_size: int = 14
 
-    # Axes
-    showline: bool = True
-    linecolor: str = "black"
-    linewidth: int = 1
-    mirror: bool = False  # Mirror axis lines
-
-    # Ticks
-    ticks: str = "outside"  # "outside", "inside", ""
-    ticklen: int = 5
-    tickwidth: int = 1
-    tickcolor: str = "black"
-
-    # Interactive features
-    dragmode: Literal["zoom", "pan", "select", "lasso", "orbit", "turntable"] = "zoom"
-    selectdirection: Literal["d", "h", "v", "any"] = (
-        "d"  # d=diagonal, h=horizontal, v=vertical
-    )
-
-    # Export config
-    toImageButtonOptions: Dict[str, any] = field(
+    # -------------------------------------------------------------------------
+    # [PLOTLY] Export button
+    # -------------------------------------------------------------------------
+    toImageButtonOptions: Dict = field(
         default_factory=lambda: {
             "format": "png",
             "width": 1200,
             "height": 800,
-            "scale": 2,  # For higher resolution
+            "scale": 2,
         }
     )
+
+    # -------------------------------------------------------------------------
+    # [MPL] Style preset — maps to a matplotlib style sheet
+    # -------------------------------------------------------------------------
+    mpl_style: Optional[str] = None  # e.g. "seaborn-v0_8-whitegrid", "ggplot"
+
+    # =========================================================================
+    # Helpers for Matplotlib backend
+    # =========================================================================
+
+    @property
+    def figsize(self) -> tuple:
+        """Physical figure size in inches for Matplotlib.
+        This is independent of DPI — DPI only controls output resolution.
+        Example: 8x5.33 inches at dpi=150 -> 1200x800px
+                 8x5.33 inches at dpi=600 -> 4800x3200px (same figure, higher res)
+        """
+        return (self.mpl_fig_width_in, self.mpl_fig_height_in)
+
+    @property
+    def mpl_linestyle(self) -> str:
+        """Map unified line_style string to a Matplotlib linestyle."""
+        mapping = {
+            "solid": "-",
+            "dash": "--",
+            "dot": ":",
+            "dashdot": "-.",
+            # Plotly aliases
+            "longdash": "--",
+            "longdashdot": "-.",
+        }
+        return mapping.get(self.line_style, "-")
+
+    @property
+    def mpl_barrier_linestyle(self) -> str:
+        mapping = {
+            "solid": "-",
+            "dash": "--",
+            "dot": ":",
+            "dashdot": "-.",
+        }
+        return mapping.get(self.barrier_style, "-")
+
+    @property
+    def mpl_tick_direction(self) -> str:
+        """Map Plotly tick position to Matplotlib tick direction."""
+        mapping = {"outside": "out", "inside": "in", "": ""}
+        return mapping.get(self.ticks, "out")
+
+    @property
+    def mpl_legend_loc(self) -> str:
+        """
+        Convert Plotly legend anchor strings to a Matplotlib loc string.
+        This is a best-effort mapping; fine-tuned positioning uses
+        legend_x / legend_y with bbox_to_anchor directly.
+        """
+        x_anchor = self.legend_xanchor  # "left", "center", "right"
+        y_anchor = self.legend_yanchor  # "top", "middle", "bottom"
+        mapping = {
+            ("left", "top"): "upper left",
+            ("left", "middle"): "center left",
+            ("left", "bottom"): "lower left",
+            ("center", "top"): "upper center",
+            ("center", "middle"): "center",
+            ("center", "bottom"): "lower center",
+            ("right", "top"): "upper right",
+            ("right", "middle"): "center right",
+            ("right", "bottom"): "lower right",
+        }
+        return mapping.get((x_anchor, y_anchor), "upper right")
+
+    @property
+    def mpl_font_family(self) -> str:
+        """Extract first font from comma-separated font stack."""
+        return self.font_family.split(",")[0].strip()
+
+    def apply_to_mpl_axes(self, ax, title_text: str = ""):
+        """
+        Apply all relevant style settings to a Matplotlib Axes object.
+        All color strings are converted via to_mpl_color() before being
+        passed to matplotlib so rgba()/rgb() Plotly strings work correctly.
+        """
+        from .color_utils import to_mpl_color
+
+        # Background
+        ax.set_facecolor(to_mpl_color(self.plot_bgcolor))
+        ax.figure.patch.set_facecolor(to_mpl_color(self.paper_bgcolor))
+
+        # Title
+        if title_text:
+            ax.set_title(
+                title_text,
+                fontsize=self.title_font_size,
+                fontfamily=self.mpl_font_family,
+                color=to_mpl_color(self.title_color),
+                pad=10,
+            )
+
+        # Axis label fonts
+        ax.xaxis.label.set_fontsize(self.axis_title_font_size)
+        ax.xaxis.label.set_color(to_mpl_color(self.axis_title_color))
+        ax.yaxis.label.set_fontsize(self.axis_title_font_size)
+        ax.yaxis.label.set_color(to_mpl_color(self.axis_title_color))
+
+        # Tick params
+        ax.tick_params(
+            axis="both",
+            direction=self.mpl_tick_direction,
+            length=self.ticklen,
+            width=self.tickwidth,
+            colors=to_mpl_color(self.tick_color),
+            labelsize=self.tick_font_size,
+        )
+
+        # Grid
+        if self.show_grid:
+            ax.grid(True, color=to_mpl_color(self.grid_color))
+        else:
+            ax.grid(False)
+        ax.set_axisbelow(True)
+
+        # Zero line
+        if self.zeroline:
+            ax.axhline(0, color=to_mpl_color(self.linecolor), linewidth=0.8, zorder=0)
+
+        # Spines
+        for spine in ax.spines.values():
+            spine.set_visible(self.showline)
+            spine.set_color(to_mpl_color(self.linecolor))
+            spine.set_linewidth(self.linewidth)
+
+        # Mirror (top/right spines)
+        ax.spines["top"].set_visible(self.mirror)
+        ax.spines["right"].set_visible(self.mirror)
+
+    # =========================================================================
+    # Helpers for Plotly backend (unchanged from original)
+    # =========================================================================
 
     def get_layout_dict(self) -> Dict:
         """Convert style settings to Plotly layout dictionary."""
@@ -119,7 +293,7 @@ class PlotStyle:
                 "font": {
                     "size": self.title_font_size,
                     "family": self.font_family,
-                    "color": self.titlecolor,
+                    "color": self.title_color,
                 }
             },
             "showlegend": self.show_legend,
@@ -146,7 +320,6 @@ class PlotStyle:
                 "font": {"size": self.legend_font_size},
             }
 
-        # Axes defaults
         axis_defaults = {
             "showgrid": self.show_grid,
             "gridcolor": self.grid_color,
@@ -158,11 +331,8 @@ class PlotStyle:
             "ticks": self.ticks,
             "ticklen": self.ticklen,
             "tickwidth": self.tickwidth,
-            "tickfont": {
-                "size": self.tick_font_size,
-                "color": self.tickcolor,
-            },  # Changed from 'tickfont'
-            "title": {  # Changed from 'titlefont' - now it's a dict with font inside
+            "tickfont": {"size": self.tick_font_size, "color": self.tick_color},
+            "title": {
                 "font": {
                     "color": self.axis_title_color,
                     "size": self.axis_title_font_size,
@@ -176,50 +346,41 @@ class PlotStyle:
 
         return layout
 
+    # =========================================================================
+    # Predefined styles (unchanged, just renamed titlecolor -> title_color)
+    # =========================================================================
+
     @staticmethod
     def _paper_single_column() -> "PlotStyle":
-        """
-        Style optimized for single-column figures in academic papers.
-        - Column width: 3.5 inches (standard single column)
-        - High DPI for print
-        - Minimal colors (works in B&W)
-        - Clean, professional appearance
-        """
         return PlotStyle(
-            # Journal single column width at 300 DPI
-            width=1050,  # 3.5 inches * 300 DPI
-            height=700,  # 2.33 inches * 300 DPI (3:2 ratio)
-            # SVG for performance
+            width=1050,
+            height=700,
+            mpl_fig_width_in=3.5,
+            mpl_fig_height_in=2.33,
+            dpi=300,
             renderer="SVG",
-            # Professional appearance
             template="plotly_white",
-            # Crisp lines for print
             line_width=1.5,
             show_grid=False,
-            # Minimal margins for space efficiency
             margin={"l": 60, "r": 20, "t": 40, "b": 50},
-            # Font settings for readability at small size
             font_family="Arial, sans-serif",
             title_font_size=14,
             axis_title_font_size=12,
             tick_font_size=10,
             legend_font_size=10,
             annotation_font_size=9,
-            # Compact legend
             legend_x=0.02,
             legend_y=0.98,
             legend_xanchor="left",
             legend_yanchor="top",
             legend_bgcolor="rgba(255, 255, 255, 0.9)",
-            # Clean axes
             showline=True,
             linecolor="black",
             linewidth=1,
             ticks="outside",
             ticklen=4,
-            # High resolution export
             toImageButtonOptions={
-                "format": "svg",  # Vector format preferred
+                "format": "svg",
                 "width": 1050,
                 "height": 700,
                 "scale": 3,
@@ -228,48 +389,35 @@ class PlotStyle:
 
     @staticmethod
     def _paper_two_column() -> "PlotStyle":
-        """
-        Style optimized for two-column (full width) figures in academic papers.
-        - Full page width: 7.0 inches (standard two-column span)
-        - High DPI for print
-        - More space for complex visualizations
-        - Clean, professional appearance
-        """
         return PlotStyle(
-            # Journal two-column width at 300 DPI
-            width=2100,  # 7.0 inches * 300 DPI
-            height=1050,  # 3.5 inches * 300 DPI (2:1 ratio)
-            # SVG for performance with larger plots
+            width=2100,
+            height=1050,
+            mpl_fig_width_in=7.0,
+            mpl_fig_height_in=3.5,
+            dpi=300,
             renderer="SVG",
-            # Professional appearance
             template="plotly_white",
-            # Crisp lines for print
             line_width=1.5,
             show_grid=False,
-            # Balanced margins for larger figure
             margin={"l": 80, "r": 40, "t": 60, "b": 60},
-            # Slightly larger fonts for two-column width
             font_family="Arial, sans-serif",
             title_font_size=16,
             axis_title_font_size=14,
             tick_font_size=11,
             legend_font_size=11,
             annotation_font_size=10,
-            # Legend positioning for wider format
             legend_x=0.02,
             legend_y=0.98,
             legend_xanchor="left",
             legend_yanchor="top",
             legend_bgcolor="rgba(255, 255, 255, 0.9)",
-            # Clean axes
             showline=True,
             linecolor="black",
             linewidth=1,
             ticks="outside",
             ticklen=4,
-            # High resolution export
             toImageButtonOptions={
-                "format": "svg",  # Vector format preferred
+                "format": "svg",
                 "width": 2100,
                 "height": 1050,
                 "scale": 3,
@@ -278,46 +426,30 @@ class PlotStyle:
 
     @staticmethod
     def _poster() -> "PlotStyle":
-        """
-        Style optimized for academic posters.
-        - Large dimensions for poster printing
-        - Bold, eye-catching colors
-        - Extra large fonts for readability at distance
-        - High visual impact
-        """
         return PlotStyle(
-            # Large size for poster sections
-            width=2400,  # 8 inches at 300 DPI
-            height=1800,  # 6 inches at 300 DPI
-            # Fast rendering for large plots
+            width=2400,
+            height=1800,
+            dpi=150,
             renderer="SVG",
-            # Bold appearance
             template="plotly_white",
-            # Thick lines for visibility
             line_width=4.0,
             show_grid=False,
-            grid_color="rgba(200, 200, 200, 0.3)",
-            # Generous margins for titles
             margin={"l": 120, "r": 80, "t": 150, "b": 120},
-            # Extra large fonts for poster viewing distance
             font_family="Arial Black, sans-serif",
             title_font_size=48,
             axis_title_font_size=36,
             tick_font_size=24,
             legend_font_size=28,
             annotation_font_size=24,
-            # Prominent legend
             legend_x=0.02,
             legend_y=0.98,
             legend_borderwidth=2,
-            # Bold axes
             showline=True,
             linecolor="black",
             linewidth=3,
             ticks="outside",
             ticklen=10,
             tickwidth=2,
-            # High resolution export
             toImageButtonOptions={
                 "format": "png",
                 "width": 2400,
@@ -328,48 +460,31 @@ class PlotStyle:
 
     @staticmethod
     def _presentation() -> "PlotStyle":
-        """
-        Style optimized for presentations and slides.
-        - 16:9 aspect ratio for modern projectors
-        - High contrast colors
-        - Large fonts for back-of-room visibility
-        - Clean design that projects well
-        """
         return PlotStyle(
-            # 16:9 aspect ratio for slides
             width=1920,
             height=1080,
-            # SVG for smooth transitions
+            dpi=150,
             renderer="SVG",
-            # High contrast
             template="plotly_white",
-            # Visible lines
             line_width=3.0,
             show_grid=False,
-            grid_color="rgba(230, 230, 230, 0.5)",
-            # Balanced margins
             margin={"l": 100, "r": 80, "t": 120, "b": 100},
-            # Large fonts for projection
             font_family="Helvetica, Arial, sans-serif",
             title_font_size=36,
             axis_title_font_size=28,
             tick_font_size=20,
             legend_font_size=22,
             annotation_font_size=18,
-            # Clear legend
             legend_x=0.02,
             legend_y=0.98,
             legend_bgcolor="rgba(255, 255, 255, 0.95)",
             legend_borderwidth=2,
-            # Prominent axes
             showline=True,
             linecolor="black",
             linewidth=2,
-            mirror=True,  # Frame the plot
-            # Simplified interaction for presentations
+            mirror=True,
             dragmode="pan",
             hovermode="x unified",
-            # Export settings
             toImageButtonOptions={
                 "format": "png",
                 "width": 1920,
@@ -380,49 +495,31 @@ class PlotStyle:
 
     @staticmethod
     def _interactive() -> "PlotStyle":
-        """
-        Style optimized for interactive exploration.
-        - Rich hover information
-        - Full interactivity enabled
-        - Detailed grid for value reading
-        - Optimized for screen viewing
-        """
         return PlotStyle(
-            # Standard screen size
             width=1200,
             height=800,
-            # SVG for performance
+            dpi=150,
             renderer="SVG",
-            # Modern appearance
             template="plotly_white",
-            # Standard lines
             line_width=2.0,
             opacity_mode="auto",
-            # Detailed grid for exploration
             show_grid=False,
-            grid_color="rgba(128, 128, 128, 0.2)",
             zeroline=False,
-            # Comfortable margins
             margin={"l": 80, "r": 80, "t": 100, "b": 80},
-            # Readable fonts
             font_family="Arial, sans-serif",
             title_font_size=20,
             axis_title_font_size=16,
             tick_font_size=12,
             legend_font_size=12,
             annotation_font_size=11,
-            # Interactive legend
             legend_x=1.02,
             legend_y=1,
             legend_xanchor="left",
             legend_yanchor="top",
-            # Detailed hover
             hovermode="closest",
             hoverlabel_font_size=14,
-            # Full interactivity
             dragmode="zoom",
             selectdirection="any",
-            # Standard export
             toImageButtonOptions={
                 "format": "png",
                 "width": 1200,
@@ -433,70 +530,36 @@ class PlotStyle:
 
     @staticmethod
     def _dark_interactive() -> "PlotStyle":
-        """
-        Dark theme variant for dark tehemed interactive enviromentes
-        """
         style = PlotStyle._interactive()
-
-        # Dark theme modifications
         style.template = "plotly_dark"
         style.plot_bgcolor = "#111111"
         style.paper_bgcolor = "#0a0a0a"
         style.grid_color = "rgba(255, 255, 255, 0.1)"
         style.linecolor = "white"
-        style.tickcolor = "white"
+        style.tick_color = "white"
         style.legend_bgcolor = "rgba(0, 0, 0, 0.8)"
         style.legend_bordercolor = "rgba(255, 255, 255, 0.3)"
         style.hoverlabel_bgcolor = "#222222"
         style.hoverlabel_bordercolor = "white"
-
         return style
 
     @staticmethod
     def _dark_presentation() -> "PlotStyle":
-        """
-        Dark theme variant for presentations in dimmed rooms.
-        """
         style = PlotStyle._presentation()
-
-        # Dark theme modifications
         style.template = "plotly_dark"
         style.plot_bgcolor = "#111111"
         style.paper_bgcolor = "#0a0a0a"
         style.grid_color = "rgba(255, 255, 255, 0.1)"
         style.linecolor = "white"
-        style.tickcolor = "white"
+        style.tick_color = "white"
         style.legend_bgcolor = "rgba(0, 0, 0, 0.8)"
         style.legend_bordercolor = "rgba(255, 255, 255, 0.3)"
         style.hoverlabel_bgcolor = "#222222"
         style.hoverlabel_bordercolor = "white"
-
         return style
 
     @staticmethod
     def get_style(style_name: str) -> "PlotStyle":
-        """
-        Get a predefined style by name.
-
-        Args:
-            style_name: Name of the style. Available options:
-                - 'paper_single': Single-column paper figure
-                - 'paper_double': Two-column (full width) paper figure
-                - 'poster': Conference poster
-                - 'presentation': Slide presentation
-                - 'presentation_dark': Dark theme presentation
-                - 'interactive': Interactive exploration
-
-        Returns:
-            PlotStyle instance with predefined settings
-
-        Raises:
-            ValueError: If style_name is not recognized
-
-        Example:
-            >>> style = PlotStyles.get_style('paper_single')
-            >>> style.width = 1200  # Can still modify after creation
-        """
         styles = {
             "paper_single": PlotStyle._paper_single_column,
             "paper_double": PlotStyle._paper_two_column,
@@ -506,11 +569,7 @@ class PlotStyle:
             "interactive": PlotStyle._interactive,
             "interactive_dark": PlotStyle._dark_interactive,
         }
-
         if style_name not in styles:
             available = ", ".join(sorted(styles.keys()))
-            raise ValueError(
-                f"Unknown style '{style_name}'. " f"Available styles: {available}"
-            )
-
+            raise ValueError(f"Unknown style '{style_name}'. Available: {available}")
         return styles[style_name]()
