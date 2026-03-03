@@ -17,8 +17,6 @@ from .utils.color_utils import ColorPalette, calculate_opacity
 from .utils.plotly_utils import PlotStyle
 
 from .io_processor import DataProcessor
-from .signal_visualizer import SignalVisualizer
-from .stats_visualizer import StatsVisualizer
 from .stats import StatsCalculator
 
 from .gmm import GMMConfig, PreprocessConfig
@@ -67,11 +65,12 @@ class CurrentView:
         kmer: Optional[List[Union[str, int]]] = None,
         stats: Optional[List[Union[str, Callable]]] = None,
         signal_processing_fn: Optional[callable] = None,
-        stats_distribution_kind: Literal["kde", "histogram"] = "kde",
+        stats_distribution_kind: Literal["kde", "histogram", "both"] = "kde",
         signals_plot_style: Optional[PlotStyle] = None,
         stats_plot_style: Optional[PlotStyle] = None,
         color_palette: Optional[Union[str, ColorPalette]] = None,
         title: Optional[str] = None,
+        backend: Optional[Literal["plotly", "matplotlib"]] = "plotly",
         verbosity: Union[VerbosityLevel, int] = VerbosityLevel.SILENT,
         logger: Optional[logging.Logger] = None,
     ):
@@ -130,12 +129,15 @@ class CurrentView:
         # Set title
         self.title = title
 
+        self.backend = backend
+
         # Lazy-initialized visualizers
         self._signal_viz = None
         self._stats_viz = None
 
         # Store processed conditions
         self._conditions: OrderedDict[str, Condition] = OrderedDict()
+        self._dirty_conditions: set = set()
 
         # Track visualization state
         self._update_signal_viz = True
@@ -339,6 +341,7 @@ class CurrentView:
             condition.style.line_style = line_style
 
         # Mark visualizations as needing update
+        self._dirty_conditions.add(label)
         self._mark_for_update()
 
         self.logger.info(f"Updated visualization parameters for condition '{label}'")
@@ -928,100 +931,123 @@ class CurrentView:
     def _ensure_signal_viz(self):
         """Ensure signal visualizer is created and up to date."""
         if self._signal_viz is None:
-            # First time - create new visualizer
             self.logger.debug("Creating signal visualizer")
 
-            self._signal_viz = SignalVisualizer(
-                K=self.K,
-                window_labels=self.kmer,
-                plot_style=self.signals_plot_style,
-                title=self.title,
-                logger=self.logger,
-            )
+            if self.backend == "matplotlib":
+                from .signals_viz.matplotlib_visualizer import (
+                    MatplotlibSignalVisualizer,
+                )
+
+                self._signal_viz = MatplotlibSignalVisualizer(
+                    K=self.K,
+                    window_labels=self.kmer,
+                    plot_style=self.signals_plot_style,
+                    title=self.title,
+                    logger=self.logger,
+                )
+            else:
+                from .signals_viz.plotly_visualizer import PlotlySignalVisualizer
+
+                self._signal_viz = PlotlySignalVisualizer(
+                    K=self.K,
+                    window_labels=self.kmer,
+                    plot_style=self.signals_plot_style,
+                    title=self.title,
+                    logger=self.logger,
+                )
 
         if self._update_signal_viz:
-            # Update existing visualizer
             self.logger.debug("Updating signal visualizer")
 
-            # Get currently plotted labels
-            current_labels = self._signal_viz.get_plotted_labels()
-            desired_labels = self._conditions.keys()
+            current_labels = set(self._signal_viz.get_plotted_labels())
+            desired_labels = list(self._conditions.keys())
 
-            # Remove conditions that shouldn't be there
-            to_remove = [
-                label for label in current_labels if label not in desired_labels
-            ]
-            for label in to_remove:
-                self.logger.debug(f"Removing condition '{label}' from plot")
-                self._signal_viz.remove_condition(label)
+            # Remove conditions no longer needed
+            for label in list(current_labels):
+                if label not in self._conditions:
+                    self.logger.debug(f"Removing condition '{label}' from plot")
+                    self._signal_viz.remove_condition(label)
 
-            # Add or update conditions
             for label in desired_labels:
-                cond = self._conditions[label]
-                if label not in current_labels:
-                    self.logger.debug(f"Adding condition '{label}' to plot")
-                else:
-                    self.logger.debug(f"Updating condition '{label}' in plot")
-                self._signal_viz.plot_condition(cond)
+                if label in self._dirty_conditions or label not in current_labels:
+                    # Remove first if already plotted (style update case)
+                    if label in current_labels:
+                        self.logger.debug(f"Updating condition '{label}' in plot")
+                        self._signal_viz.remove_condition(label)
+                    else:
+                        self.logger.debug(f"Adding condition '{label}' to plot")
+                    self._signal_viz.plot_condition(self._conditions[label])
 
             # Apply any pending modifications
             for method_name, args, kwargs in self._pending_modifications:
                 if hasattr(self._signal_viz, method_name):
-                    method = getattr(self._signal_viz, method_name)
-                    method(*args, **kwargs)
+                    getattr(self._signal_viz, method_name)(*args, **kwargs)
 
             self._pending_modifications.clear()
             self._update_signal_viz = False
+            self._dirty_conditions.clear()
 
     def _ensure_stats_viz(self):
         """Ensure statistics visualizer is created and up to date."""
         if self._stats_viz is None:
-            # First time - create new visualizer
             self.logger.debug("Creating stats visualizer")
 
-            self._stats_viz = StatsVisualizer(
-                K=self.K,
-                n_stats=self._n_stats,
-                window_labels=self.kmer,
-                stats_names=self._stats_names,
-                distribution_kind=self.stats_distribution_kind,
-                plot_style=self.stats_plot_style,
-                title=self.title,
-                logger=self.logger,
-            )
+            if self.backend == "plotly":
+                from .stats_viz.plotly_visualizer import PlotlyStatsVisualizer
+
+                self._stats_viz = PlotlyStatsVisualizer(
+                    K=self.K,
+                    n_stats=self._n_stats,
+                    window_labels=self.kmer,
+                    stats_names=self._stats_names,
+                    distribution_kind=self.stats_distribution_kind,
+                    plot_style=self.stats_plot_style,
+                    title=self.title,
+                    logger=self.logger,
+                )
+            else:
+                from .stats_viz.matplotlib_visualizer import MatplotlibStatsVisualizer
+
+                self._stats_viz = MatplotlibStatsVisualizer(
+                    K=self.K,
+                    n_stats=self._n_stats,
+                    window_labels=self.kmer,
+                    stats_names=self._stats_names,
+                    distribution_kind=self.stats_distribution_kind,
+                    plot_style=self.stats_plot_style,
+                    title=self.title,
+                    logger=self.logger,
+                )
 
         if self._update_stats_viz:
-            # Update existing visualizer
             self.logger.debug("Updating stats visualizer")
 
-            # Get currently plotted labels
-            current_labels = self._stats_viz.get_plotted_labels()
-            desired_labels = self._conditions.keys()
+            current_labels = set(self._stats_viz.get_plotted_labels())
+            desired_labels = list(self._conditions.keys())
 
-            # Remove conditions that shouldn't be there
-            to_remove = [
-                label for label in current_labels if label not in desired_labels
-            ]
-            for label in to_remove:
-                self.logger.debug(f"Removing condition '{label}' from plot")
-                self._stats_viz.remove_condition(label)
+            # Remove conditions no longer needed
+            for label in list(current_labels):
+                if label not in self._conditions:
+                    self.logger.debug(f"Removing condition '{label}' from plot")
+                    self._stats_viz.remove_condition(label)
 
-            # Add or update conditions
+            # Only add/update conditions that are new or dirty
             for label in desired_labels:
-                cond = self._conditions[label]
-                if label not in current_labels:
-                    self.logger.debug(f"Adding condition '{label}' to plot")
-                else:
-                    self.logger.debug(f"Updating condition '{label}' in plot")
-                self._stats_viz.plot_condition(cond)
+                if label in self._dirty_conditions or label not in current_labels:
+                    if label in current_labels:
+                        self.logger.debug(f"Updating condition '{label}' in plot")
+                        self._stats_viz.remove_condition(label)
+                    else:
+                        self.logger.debug(f"Adding condition '{label}' to plot")
+                    self._stats_viz.plot_condition(self._conditions[label])
 
             # Apply pending modifications
             for method_name, args, kwargs in self._pending_modifications:
                 if hasattr(self._stats_viz, method_name):
-                    method = getattr(self._stats_viz, method_name)
-                    method(*args, **kwargs)
+                    getattr(self._stats_viz, method_name)(*args, **kwargs)
 
             self._update_stats_viz = False
+            self._dirty_conditions.clear()
 
     # Verbosity and logging methods
 
