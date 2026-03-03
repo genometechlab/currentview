@@ -52,7 +52,7 @@ class GMMVisualizer:
         self.style: PlotStyle = style or PlotStyle.get_style("interactive")
         self.x_label = x_label or "stat1"
         self.y_label = y_label or "stat2"
-        self.title = title or "GMM scatter with iso-mass contours"
+        self.title = title
         self.logger = logger or logging.getLogger(__name__)
 
         self.fig: Optional[go.Figure] = None

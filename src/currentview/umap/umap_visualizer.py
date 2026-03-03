@@ -36,7 +36,7 @@ class UMAPVisualizer:
         self.style: PlotStyle = style or PlotStyle.get_style("interactive")
         self.x_label = x_label or "UMAP1"
         self.y_label = y_label or "UMAP2"
-        self.title = title or "UMAP Embeddings"
+        self.title = title
         self.logger = logger or logging.getLogger(__name__)
 
         self.fig: Optional[go.Figure] = None
