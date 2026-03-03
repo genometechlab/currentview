@@ -1,7 +1,60 @@
 from matplotlib.colors import to_rgba
 import re
 from enum import Enum
-from typing import List, Dict
+from typing import List, Dict, Tuple, Union
+
+
+def to_mpl_color(color: str) -> Tuple[float, float, float, float]:
+    """
+    Convert any color string to a matplotlib-compatible (r, g, b, a) tuple
+    with all values in [0, 1].
+
+    Handles:
+      - "rgba(255, 128, 0, 0.5)"   — Plotly style, RGB 0-255, A 0-1
+      - "rgb(255, 128, 0)"         — Plotly style, RGB 0-255
+      - "#RRGGBB" / "#RRGGBBAA"    — hex
+      - "#RGB"                      — short hex
+      - named colors ("red", "grey", "white", ...)
+      - (r, g, b) / (r, g, b, a) tuples that are already 0-1 floats
+    """
+    if isinstance(color, (tuple, list)):
+        r, g, b = color[:3]
+        a = color[3] if len(color) == 4 else 1.0
+        return (float(r), float(g), float(b), float(a))
+
+    if isinstance(color, str):
+        color = color.strip()
+
+        # rgba(r, g, b, a)  — RGB values are 0-255, alpha is 0-1
+        m = re.fullmatch(
+            r"rgba\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,"
+            r"\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*\)",
+            color,
+            re.IGNORECASE,
+        )
+        if m:
+            r, g, b, a = m.groups()
+            return (float(r) / 255, float(g) / 255, float(b) / 255, float(a))
+
+        # rgb(r, g, b)  — RGB values are 0-255
+        m = re.fullmatch(
+            r"rgb\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,"
+            r"\s*(\d+(?:\.\d+)?)\s*\)",
+            color,
+            re.IGNORECASE,
+        )
+        if m:
+            r, g, b = m.groups()
+            return (float(r) / 255, float(g) / 255, float(b) / 255, 1.0)
+
+        # hex — let matplotlib handle it, then normalise to 4-tuple
+        # (also handles named colors via the same path)
+        from matplotlib.colors import to_rgba
+
+        r, g, b, a = to_rgba(color)
+        return (float(r), float(g), float(b), float(a))
+
+    raise ValueError(f"Cannot convert color to matplotlib format: {color!r}")
 
 
 def calculate_opacity(n_reads: int) -> float:
