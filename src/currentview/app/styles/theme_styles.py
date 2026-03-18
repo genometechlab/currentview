@@ -65,6 +65,57 @@ def get_base_styles() -> str:
         outline: none;
     }
 
+    /* ── Dropdown (base — structure only, no colors) ─────────────────── */
+    .modern-dropdown {
+        cursor: pointer !important;
+        border-radius: 10px !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .modern-dropdown .dash-dropdown-grid-container.dash-dropdown-trigger {
+        min-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    .modern-dropdown .dash-dropdown-trigger-icon {
+        margin-left: auto !important;
+        flex-shrink: 0 !important;
+    }
+
+    .modern-dropdown:focus-within {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+        outline: none !important;
+    }
+
+    /* Opened menu — structure only */
+    .dash-dropdown-content {
+        border-radius: 10px !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        z-index: 9999 !important;
+    }
+
+    .dash-dropdown-content .dash-dropdown-grid-container.dash-dropdown-search-container {
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 12px !important;
+        gap: 8px !important;
+    }
+
+    .dash-dropdown-content .dash-dropdown-search {
+        border: none !important;
+        outline: none !important;
+        width: 100% !important;
+        padding: 10px 0 !important;
+        font-size: 0.9375rem !important;
+        background: transparent !important;
+    }
+
+    /* ── Modals ─────────────────────────────────────────────────────────── */
     .modal-header,
     .modal-footer {
         border: none !important;
@@ -125,7 +176,7 @@ def get_light_mode_styles() -> str:
     .small-label   { color: #6b7280 !important; }
     .card-title    { color: #2d3748 !important; }
 
-    /* ── Buttons — keep their brand colors, just refine hover ───────────── */
+    /* ── Buttons ────────────────────────────────────────────────────────── */
     .modern-btn:hover {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
         filter: brightness(0.93) !important;
@@ -140,6 +191,32 @@ def get_light_mode_styles() -> str:
 
     .modern-input::placeholder { color: #94a3b8 !important; }
     .modern-input:disabled     { background: #f8fafc !important; color: #94a3b8 !important; }
+
+    /* ── Dropdown ────────────────────────────────────────────────────────── */
+    .modern-dropdown {
+        background: #ffffff !important;
+        border: 1.5px solid #e2e8f0 !important;
+    }
+
+    .modern-dropdown .dash-dropdown-value        { color: #1e293b !important; }
+    .modern-dropdown .dash-dropdown-value.dash-dropdown-placeholder {
+        color: #94a3b8 !important;  /* light */
+    }
+    .modern-dropdown .dash-dropdown-trigger-icon { color: #94a3b8 !important; }
+
+    .dash-dropdown-content {
+        background: #ffffff !important;
+        border: 1.5px solid #e2e8f0 !important;
+        color: #1e293b !important;
+    }
+
+    .dash-dropdown-content .dash-dropdown-search-container {
+        border-bottom: 1.5px solid #e2e8f0 !important;
+    }
+
+    .dash-dropdown-content .dash-dropdown-search           { color: #1e293b !important; }
+    .dash-dropdown-content .dash-dropdown-search::placeholder { color: #94a3b8 !important; }
+    .dash-dropdown-content .dash-dropdown-search-icon      { color: #94a3b8 !important; }
 
     /* ── Form controls ──────────────────────────────────────────────────── */
     .form-control, .form-select {
@@ -180,15 +257,15 @@ def get_light_mode_styles() -> str:
     }
 
     /* ── Tabs ───────────────────────────────────────────────────────────── */
-    .nav-tabs .nav-link         { color: #64748b !important; background: transparent !important; border: none !important; }
-    .nav-pills .nav-link        { color: #64748b !important; }
-    .nav-pills .nav-link.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: #ffffff !important; }
+    .nav-tabs .nav-link          { color: #64748b !important; background: transparent !important; border: none !important; }
+    .nav-pills .nav-link         { color: #64748b !important; }
+    .nav-pills .nav-link.active  { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: #ffffff !important; }
     .nav-pills .nav-link.disabled,
     .nav-tabs  .nav-link.disabled { color: #cbd5e1 !important; opacity: 0.5 !important; cursor: not-allowed !important; }
 
     /* ── Misc ───────────────────────────────────────────────────────────── */
-    .form-text   { color: #64748b !important; }
-    .btn-link    { color: #6366f1 !important; text-decoration: none !important; }
+    .form-text      { color: #64748b !important; }
+    .btn-link       { color: #6366f1 !important; text-decoration: none !important; }
     .btn-link:hover { color: #4f46e5 !important; }
 
     .alert-danger  { background: #fef2f2 !important; border: 1px solid #fca5a5 !important; color: #dc2626 !important; }
@@ -256,9 +333,7 @@ def get_dark_mode_styles() -> str:
     .small-label   { color: #a1a1aa !important; }
     .card-title    { color: #f4f4f5 !important; }
 
-    /* ── Buttons — outline style, keep accent colors as border/text ──────
-       We don't override background on .modern-btn globally so colored
-       buttons keep their identity. Only secondary gets the dark treatment. */
+    /* ── Buttons ────────────────────────────────────────────────────────── */
     .modern-btn:hover {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
         filter: brightness(1.1) !important;
@@ -330,7 +405,6 @@ def get_dark_mode_styles() -> str:
         color: #d4d4d8 !important;
     }
 
-    /* icons inherit button color */
     .modern-btn i.bi { color: inherit !important; }
 
     /* ── Inputs ─────────────────────────────────────────────────────────── */
@@ -348,6 +422,38 @@ def get_dark_mode_styles() -> str:
 
     .modern-input::placeholder { color: #71717a !important; }
     .modern-input:disabled     { background: #18181b !important; color: #52525b !important; }
+
+    /* ── Dropdown ────────────────────────────────────────────────────────── */
+    .modern-dropdown {
+        background: #27272a !important;
+        border: 1px solid #3f3f46 !important;
+    }
+
+    .modern-dropdown .dash-dropdown-value        { color: #e4e4e7 !important; }
+    .modern-dropdown .dash-dropdown-value.dash-dropdown-placeholder {
+        color: #71717a !important;  /* dark */
+    }
+    .modern-dropdown .dash-dropdown-trigger-icon { color: #71717a !important; }
+
+    .dash-dropdown-content {
+        background: #27272a !important;
+        border: 1px solid #3f3f46 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+        color: #e4e4e7 !important;
+    }
+
+    .dash-dropdown-content .dash-dropdown-search-container {
+        border-bottom: 1px solid #3f3f46 !important;
+        background: #27272a !important;
+    }
+
+    .dash-dropdown-content .dash-options-list-option {
+        color: #e4e4e7 !important;
+    }
+
+    .dash-dropdown-content .dash-dropdown-search              { color: #e4e4e7 !important; }
+    .dash-dropdown-content .dash-dropdown-search::placeholder { color: #71717a !important; }
+    .dash-dropdown-content .dash-dropdown-search-icon         { color: #71717a !important; }
 
     /* ── Form controls ──────────────────────────────────────────────────── */
     .form-control, .form-select {
@@ -395,15 +501,15 @@ def get_dark_mode_styles() -> str:
     }
 
     /* ── Tabs ───────────────────────────────────────────────────────────── */
-    .nav-tabs .nav-link         { color: #a1a1aa !important; background: transparent !important; border: none !important; }
-    .nav-pills .nav-link        { color: #a1a1aa !important; }
-    .nav-pills .nav-link.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: #ffffff !important; }
+    .nav-tabs .nav-link          { color: #a1a1aa !important; background: transparent !important; border: none !important; }
+    .nav-pills .nav-link         { color: #a1a1aa !important; }
+    .nav-pills .nav-link.active  { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: #ffffff !important; }
     .nav-pills .nav-link.disabled,
     .nav-tabs  .nav-link.disabled { color: #3f3f46 !important; opacity: 0.5 !important; cursor: not-allowed !important; }
 
     /* ── Misc ───────────────────────────────────────────────────────────── */
-    .form-text   { color: #71717a !important; }
-    .btn-link    { color: #818cf8 !important; text-decoration: none !important; }
+    .form-text      { color: #71717a !important; }
+    .btn-link       { color: #818cf8 !important; text-decoration: none !important; }
     .btn-link:hover { color: #a5b4fc !important; }
 
     .alert-danger  { background: #27272a !important; border: 1px solid #ef4444 !important; color: #f87171 !important; }
@@ -444,8 +550,8 @@ def get_theme_clientside_callback() -> str:
         const moonIcon = document.getElementById('moon-icon');
         const isDark   = theme === 'dark';
 
-        if (sunIcon)  sunIcon.className  = isDark ? 'bi bi-sun'        : 'bi bi-sun-fill';
-        if (moonIcon) moonIcon.className = isDark ? 'bi bi-moon-fill'  : 'bi bi-moon';
+        if (sunIcon)  sunIcon.className  = isDark ? 'bi bi-sun'       : 'bi bi-sun-fill';
+        if (moonIcon) moonIcon.className = isDark ? 'bi bi-moon-fill' : 'bi bi-moon';
 
         const style = document.createElement('style');
         style.id = 'dash-theme-styles';

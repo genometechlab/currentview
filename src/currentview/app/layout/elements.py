@@ -302,28 +302,22 @@ def create_dropdown(
     multi: bool = False,
     placeholder: str = "Select...",
     className: str = "",
-    style: Optional[Dict] = None,
+    size: Optional[str] = "md",
     **kwargs,
-) -> html.Div:
-    """Create a modern dcc.Dropdown component with consistent styling."""
-    default_wrapper_style = {
-        "borderRadius": BORDER_RADIUS,
-        "transition": TRANSITION,
-    }
+) -> dcc.Dropdown:
+    """Create a dropdown with consistent modern styling via CSS classes."""
 
-    merged_style = {**default_wrapper_style, **(style or {})}
+    # Size classes for different heights / font sizes
+    size_class = f"dropdown-{size}"  # e.g., "dropdown-sm", "dropdown-md", "dropdown-lg"
 
-    return html.Div(
-        dcc.Dropdown(
-            id=id,
-            options=options,
-            value=value,
-            multi=multi,
-            placeholder=placeholder,
-            className=f"modern-dropdown {className}".strip(),
-            **kwargs,
-        ),
-        style=merged_style,
+    return dcc.Dropdown(
+        id=id,
+        options=options,
+        value=value,
+        multi=multi,
+        placeholder=placeholder,
+        className=f"modern-dropdown {size_class} {className}".strip(),
+        **kwargs,
     )
 
 

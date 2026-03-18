@@ -47,7 +47,7 @@ class PreprocessConfig:
     enable_downsample: bool = False
     max_samples: Optional[int] = None
     downsample_strategy: Literal["random"] = "random"
-    random_state: Optional[int] = None
+    ds_random_state: Optional[int] = None
 
     # Outlier removal
     enable_outliers: bool = False
@@ -232,8 +232,8 @@ class GMMHandler:
             and n0 > self.pp.max_samples
         ):
             rng = np.random.default_rng(
-                self.pp.random_state
-                if self.pp.random_state is not None
+                self.pp.ds_random_state
+                if self.pp.ds_random_state is not None
                 else self.config.random_state
             )
             idx = rng.choice(n0, size=self.pp.max_samples, replace=False)

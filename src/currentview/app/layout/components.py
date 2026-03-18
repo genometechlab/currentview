@@ -597,6 +597,7 @@ from .elements import (
     create_label,
     create_select,
     create_button_group,
+    create_dropdown,
     COLOR_TEXT_MUTED,
 )
 
@@ -616,7 +617,13 @@ def create_condition_parameters() -> html.Div:
                     dbc.Col(
                         [
                             create_label("Contig", required=True),
-                            create_input(id="contig", placeholder="e.g., chr1, chrX"),
+                            # create_input(id="contig", placeholder="e.g., chr1, chrX"),
+                            create_dropdown(
+                                id="contig",
+                                placeholder="e.g., chr1, chrX",
+                                options=[],
+                                disabled=True,
+                            ),
                         ],
                         width=3,
                     ),

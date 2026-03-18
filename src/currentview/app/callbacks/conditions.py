@@ -54,6 +54,22 @@ def register_condition_callbacks():
 
     @callback(
         [
+            Output("contig", "options"),
+            Output("contig", "disabled"),
+        ],
+        Input("files-store", "data"),
+    )
+    def populate_contig(files):
+        bam_file = files.get("bam")
+        if bam_file is not None:
+            import pysam
+
+            references = pysam.AlignmentFile(bam_file).references
+            return [{"label": v, "value": v} for v in references], False
+        return [], True
+
+    @callback(
+        [
             Output("conditions", "children"),
             Output("add-condition-alert", "children", allow_duplicate=True),
             Output("add-condition-alert", "is_open", allow_duplicate=True),
