@@ -15,7 +15,6 @@ from .constants import (
     TRANSITION,
 )
 
-# ── Shared token map (injected into CSS via .format) ─────────────────────────
 _T = {
     "radius": BORDER_RADIUS,
     "radius_lg": BORDER_RADIUS_LG,
@@ -29,6 +28,7 @@ _T = {
     "warning": COLOR_WARNING,
     "info": COLOR_INFO,
     "gradient": GRADIENT_PRIMARY,
+    "ctrl_h_dd": "41.5px",
     "ctrl_h": FORM_CONTROL_HEIGHT,
     "transition": TRANSITION,
     "accent": "#6366f1",
@@ -82,20 +82,27 @@ def get_base_styles() -> str:
         outline: none;
     }}
 
-    /* ── Dropdown ───────────────────────────────────────────────────── */
+    /* ── Dropdown (Dash 4) ──────────────────────────────────────────── */
     .modern-dropdown {{
         cursor: pointer !important;
         border-radius: {radius} !important;
         transition: {transition} !important;
     }}
     .modern-dropdown .dash-dropdown-grid-container.dash-dropdown-trigger {{
-        min-height: {ctrl_h} !important;
+        min-height: {ctrl_h_dd} !important;
         display: flex !important;
         align-items: center !important;
         padding: 0 12px !important;
         box-sizing: border-box !important;
     }}
-    .modern-dropdown .dash-dropdown-trigger-icon {{ margin-left: auto !important; flex-shrink: 0 !important; }}
+    /* clear (×) sits left of the arrow, both pushed to the right */
+    .modern-dropdown .dash-dropdown-grid-container.dash-dropdown-trigger {{
+        display: flex !important;
+        align-items: center !important;
+    }}
+    .modern-dropdown .dash-dropdown-clear-icon  {{ order: 2 !important; flex-shrink: 0 !important; margin-left: auto !important; }}
+    .modern-dropdown .dash-dropdown-trigger-icon {{ order: 3 !important; flex-shrink: 0 !important; margin-left: 4px !important; }}
+    .modern-dropdown .dash-dropdown-value       {{ order: 1 !important; flex: 1 !important; min-width: 0 !important; }}
     .modern-dropdown:focus-within {{
         border-color: {accent} !important;
         box-shadow: 0 0 0 3px {accent_ring} !important;
@@ -117,6 +124,53 @@ def get_base_styles() -> str:
         border: none !important;
         outline: none !important;
         width: 100% !important;
+        padding: 10px 0 !important;
+        font-size: 0.9375rem !important;
+        background: transparent !important;
+    }}
+
+    /* ── Dropdown (Dash 3 / react-select) ───────────────────────────── */
+    /* Strip border/bg from the outer wrapper — Select-control is the real frame */
+    .modern-dropdown:has(.Select-control) {{
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }}
+    .modern-dropdown .Select-control {{
+        min-height: {ctrl_h_dd} !important;
+        border-radius: {radius} !important;
+        display: flex !important;
+        align-items: center !important;
+        cursor: pointer !important;
+        transition: {transition} !important;
+        box-shadow: none !important;
+    }}
+    /* kill react-select's default focus glow */
+    .modern-dropdown.is-focused .Select-control,
+    .modern-dropdown.is-focused:not(.is-open) .Select-control {{
+        box-shadow: none !important;
+        border-color: inherit !important;
+    }}
+    .modern-dropdown.is-open .Select-control,
+    .modern-dropdown.is-focused.is-open .Select-control {{
+        border-color: {accent} !important;
+        box-shadow: 0 0 0 3px {accent_ring} !important;
+        outline: none !important;
+    }}
+    .modern-dropdown .Select-arrow-zone {{ order: 3 !important; flex-shrink: 0 !important; margin-left: 4px !important; }}
+    .modern-dropdown .Select-clear-zone {{ order: 2 !important; flex-shrink: 0 !important; margin-left: auto !important; }}
+    .modern-dropdown .Select-multi-value-wrapper,
+    .modern-dropdown .Select-value       {{ order: 1 !important; flex: 1 !important; min-width: 0 !important; }}
+    .modern-dropdown .Select-menu-outer {{
+        border-radius: {radius} !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
+        z-index: 9999 !important;
+    }}
+    .modern-dropdown .Select-input > input {{
+        border: none !important;
+        outline: none !important;
         padding: 10px 0 !important;
         font-size: 0.9375rem !important;
         background: transparent !important;
@@ -207,7 +261,7 @@ def get_light_mode_styles() -> str:
         border: 1.5px solid {border} !important;
     }}
 
-    /* ── Dropdown ───────────────────────────────────────────────────── */
+    /* ── Dropdown (Dash 4) ──────────────────────────────────────────── */
     .modern-dropdown {{
         background: {bg_input} !important;
         border: 1.5px solid {border} !important;
@@ -225,6 +279,45 @@ def get_light_mode_styles() -> str:
     .dash-dropdown-content .dash-dropdown-search                     {{ color: {text} !important; }}
     .dash-dropdown-content .dash-dropdown-search::placeholder        {{ color: #94a3b8 !important; }}
     .dash-dropdown-content .dash-dropdown-search-icon                {{ color: #94a3b8 !important; }}
+
+    /* ── Dropdown (Dash 3 / react-select) ───────────────────────────── */
+    .modern-dropdown .Select-control {{
+        background: {bg_input} !important;
+        border: 1.5px solid {border} !important;
+        color: {text} !important;
+    }}
+    .modern-dropdown .Select-value-label                             {{ color: {text} !important; }}
+    .modern-dropdown .Select-placeholder                             {{ color: #94a3b8 !important; }}
+    .modern-dropdown .Select-arrow                                   {{ border-top-color: #94a3b8 !important; }}
+    .modern-dropdown.is-open .Select-arrow                          {{ border-bottom-color: #94a3b8 !important; }}
+
+    .modern-dropdown .Select-menu-outer {{
+        background: {bg_input} !important;
+        border: 1.5px solid {border} !important;
+        color: {text} !important;
+    }}
+    .modern-dropdown .Select-option                                  {{ background: {bg_input} !important; color: {text} !important; }}
+    .modern-dropdown .Select-option.is-focused                      {{ background: {bg_secondary} !important; }}
+    .modern-dropdown .Select-option.is-selected                     {{ background: {accent} !important; color: #fff !important; }}
+    .modern-dropdown .Select-input > input                          {{ color: {text} !important; }}
+    .modern-dropdown .Select-input > input::placeholder             {{ color: #94a3b8 !important; }}
+    .modern-dropdown .VirtualizedSelectFocusedOption                {{ background: {bg_secondary} !important; }}
+    .modern-dropdown .VirtualizedSelectSelectedOption               {{ background: {accent} !important; color: #fff !important; }}
+
+    /* ── Dropdown disabled (Dash 4) ─────────────────────────────────── */
+    .modern-dropdown[aria-disabled="true"],
+    .modern-dropdown.dash-dropdown--disabled {{
+        opacity: 0.45 !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }}
+    /* ── Dropdown disabled (Dash 3) ─────────────────────────────────── */
+    .modern-dropdown.is-disabled,
+    .modern-dropdown.is-disabled .Select-control {{
+        opacity: 0.45 !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }}
 
     /* ── Switch ─────────────────────────────────────────────────────── */
     .form-switch .form-check-input:checked {{
@@ -268,7 +361,6 @@ def get_light_mode_styles() -> str:
 
 
 def get_dark_mode_styles() -> str:
-    # Dark-only palette (zinc)
     d = {
         **_T,
         "page_bg": "#09090b",
@@ -361,7 +453,7 @@ def get_dark_mode_styles() -> str:
     .input-group-text {{ background: {border_mid} !important; color: {text_muted} !important; border: 1px solid {border_mid} !important; }}
     input[type="color"] {{ background: {input_bg} !important; border: 1px solid {border_mid} !important; }}
 
-    /* ── Dropdown ───────────────────────────────────────────────────── */
+    /* ── Dropdown (Dash 4) ──────────────────────────────────────────── */
     .modern-dropdown {{ background: {input_bg} !important; border: 1px solid {border_mid} !important; }}
     .modern-dropdown .dash-dropdown-value                            {{ color: {text} !important; }}
     .modern-dropdown .dash-dropdown-value.dash-dropdown-placeholder {{ color: {text_dim} !important; }}
@@ -378,6 +470,31 @@ def get_dark_mode_styles() -> str:
     .dash-dropdown-content .dash-dropdown-search                    {{ color: {text} !important; }}
     .dash-dropdown-content .dash-dropdown-search::placeholder       {{ color: {text_dim} !important; }}
     .dash-dropdown-content .dash-dropdown-search-icon               {{ color: {text_dim} !important; }}
+
+    /* ── Dropdown (Dash 3 / react-select) ───────────────────────────── */
+    .modern-dropdown .Select-control {{
+        background: {input_bg} !important;
+        border: 1px solid {border_mid} !important;
+        color: {text} !important;
+    }}
+    .modern-dropdown .Select-value-label                            {{ color: {text} !important; }}
+    .modern-dropdown .Select-placeholder                            {{ color: {text_dim} !important; }}
+    .modern-dropdown .Select-arrow                                  {{ border-top-color: {text_dim} !important; }}
+    .modern-dropdown.is-open .Select-arrow                         {{ border-bottom-color: {text_dim} !important; }}
+
+    .modern-dropdown .Select-menu-outer {{
+        background: {input_bg} !important;
+        border: 1px solid {border_mid} !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,.4) !important;
+        color: {text} !important;
+    }}
+    .modern-dropdown .Select-option                                 {{ background: {input_bg} !important; color: {text} !important; }}
+    .modern-dropdown .Select-option.is-focused                     {{ background: {border_mid} !important; }}
+    .modern-dropdown .Select-option.is-selected                    {{ background: {accent} !important; color: #fff !important; }}
+    .modern-dropdown .Select-input > input                         {{ color: {text} !important; background: transparent !important; }}
+    .modern-dropdown .Select-input > input::placeholder            {{ color: {text_dim} !important; }}
+    .modern-dropdown .VirtualizedSelectFocusedOption               {{ background: {border_mid} !important; }}
+    .modern-dropdown .VirtualizedSelectSelectedOption              {{ background: {accent} !important; color: #fff !important; }}
 
     /* ── Switch ─────────────────────────────────────────────────────── */
     .form-switch .form-check-input         {{ background-color: {border_mid} !important; border-color: {border_hi} !important; }}
