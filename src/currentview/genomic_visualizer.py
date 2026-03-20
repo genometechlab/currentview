@@ -928,6 +928,14 @@ class CurrentView:
         self.logger.debug(f"Set new signals plot style - will recreate visualizer")
         return self
 
+    def set_distribution_kind(
+        self, kind: Literal["kde", "histogram", "both"]
+    ) -> "CurrentView":
+        self.stats_distribution_kind = kind
+        self._stats_viz = None  # force full recreate
+        self._update_stats_viz = True
+        return self
+
     def _ensure_signal_viz(self):
         """Ensure signal visualizer is created and up to date."""
         if self._signal_viz is None:

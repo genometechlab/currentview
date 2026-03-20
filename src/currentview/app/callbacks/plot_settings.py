@@ -99,7 +99,11 @@ def register_plot_settings_callbacks():
 
     def _make_apply_callback(target: str):
         label = "Signals" if target == "signals" else "Statistics"
-        p = target  # prefix
+        p = target
+
+        extra_states = (
+            [State("stats-distribution-kind", "value")] if target == "stats" else []
+        )
 
         @callback(
             Output("alert", "children", allow_duplicate=True),
@@ -129,6 +133,7 @@ def register_plot_settings_callbacks():
             State(f"{p}-barrier-opacity", "value"),
             State(f"{p}-barrier-color", "value"),
             State("theme-store", "data"),
+            *extra_states,
             prevent_initial_call=True,
         )
         def apply_style(
@@ -156,6 +161,7 @@ def register_plot_settings_callbacks():
             barrier_opacity,
             barrier_color,
             app_theme,
+            distribution_kind=None,
         ):
             if not n_clicks:
                 raise PreventUpdate
@@ -190,6 +196,8 @@ def register_plot_settings_callbacks():
                     barrier_color,
                 )
                 getattr(viz, _APPLY_METHOD[target])(style)
+                if distribution_kind is not None:
+                    viz.set_distribution_kind(distribution_kind)
                 return f"{label} plot style updated", True, trigger + 1
             except Exception as e:
                 return f"Error applying style: {e}", True, no_update
