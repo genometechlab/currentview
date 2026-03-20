@@ -53,7 +53,7 @@ def register_ui_callbacks():
         if has_conditions and has_stats:
             return False, False  # Enable tabs
         else:
-            return True, True  # Disable tabs
+            return False, False  # True, True  # Disable tabs
 
     @callback(
         [

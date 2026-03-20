@@ -13,7 +13,7 @@ from .elements import (
     create_label,
 )
 
-from .constants import *
+from ..styles.constants import *
 
 # Shared style for InputGroupText units ("px", "%") — right-side cap
 _UNIT_TEXT_STYLE = {

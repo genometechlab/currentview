@@ -12,15 +12,14 @@ from .components import (
 )
 from .plot_style_settings import create_plot_style_settings
 from .modals import create_input_modal, create_export_modal
-from ..config import (
-    DEFAULT_BAM_PATH,
-    DEFAULT_POD5_PATH,
-    EXPORT_FORMATS,
-)
+from ..config import DEFAULT_BAM_PATH, DEFAULT_POD5_PATH, EXPORT_FORMATS
+from ..styles.constants import BORDER_RADIUS_LG, TRANSITION
 
 
-def create_stores():
-    """Create all application data stores."""
+# ── Stores ────────────────────────────────────────────────────────────────────
+
+
+def create_stores() -> list:
     return [
         dcc.Store(id="session-id", data=str(uuid.uuid4())),
         dcc.Store(id="stats-store", data=[]),
@@ -30,11 +29,14 @@ def create_stores():
         dcc.Store(id="theme-store", data="light"),
         dcc.Store(id="molecule-type-store", data="rna"),
         dcc.Store(id="matched-query-base", data=None),
+        dcc.Store(id="umap-stats-store", data=[]),
     ]
 
 
-def create_modals():
-    """Create all file browser and export modals."""
+# ── Modals ────────────────────────────────────────────────────────────────────
+
+
+def create_modals() -> list:
     return [
         create_input_modal(
             "bam-modal",
@@ -61,8 +63,10 @@ def create_modals():
     ]
 
 
-def create_settings_panel():
-    """Create the settings offcanvas panel."""
+# ── Settings panel ────────────────────────────────────────────────────────────
+
+
+def create_settings_panel() -> dbc.Offcanvas:
     return dbc.Offcanvas(
         [
             html.H4("Plot Settings", className="mb-4", style={"fontWeight": "600"}),
@@ -89,16 +93,14 @@ def create_settings_panel():
         is_open=False,
         placement="start",
         backdrop=True,
-        style={
-            "width": "500px",
-            "background": "rgba(255, 255, 255, 0.95)",
-            "backdropFilter": "blur(20px)",
-        },
+        style={"width": "500px"},  # colors handled by .offcanvas in theme CSS
     )
 
 
-def create_main_content():
-    """Create the main application content (hidden until initialized)."""
+# ── Main content ──────────────────────────────────────────────────────────────
+
+
+def create_main_content() -> html.Div:
     return html.Div(
         [
             create_add_condition_card(),
@@ -111,34 +113,31 @@ def create_main_content():
     )
 
 
+# ── Root layout ───────────────────────────────────────────────────────────────
+
+
 def create_layout() -> html.Div:
-    """Create the main application layout."""
     return html.Div(
         [
             create_top_bar(),
-            html.Div(style={"height": "72px"}),  # Spacer for fixed header
+            html.Div(style={"height": "72px"}),  # spacer for fixed header
             create_settings_panel(),
             dbc.Container(
                 [
-                    # Application stores
                     *create_stores(),
-                    # Hidden div for theme styles
                     html.Div(id="theme-styles", style={"display": "none"}),
-                    # Modals
                     *create_modals(),
-                    # Initialization card
                     create_initialization_card(),
-                    # Main content (hidden initially)
                     create_main_content(),
-                    # Global alert
                     dbc.Alert(
                         id="alert",
                         is_open=False,
                         duration=4000,
                         style={
-                            "borderRadius": "12px",
+                            "borderRadius": BORDER_RADIUS_LG,
                             "border": "none",
-                            "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1)",
+                            "boxShadow": "0 4px 6px rgba(0,0,0,0.1)",
+                            "transition": TRANSITION,
                         },
                     ),
                 ],
@@ -147,9 +146,5 @@ def create_layout() -> html.Div:
             ),
         ],
         id="theme-container",
-        style={
-            "minHeight": "100vh",
-            "background": "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-            "backgroundAttachment": "fixed",
-        },
+        style={"minHeight": "100vh"},  # background set by #theme-container in theme CSS
     )

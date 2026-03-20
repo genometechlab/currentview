@@ -1,32 +1,43 @@
-import dash_bootstrap_components as dbc
-from dash import dcc, html
 from pathlib import Path
 from typing import Optional, List
+
+import dash_bootstrap_components as dbc
+from dash import dcc, html
+
 from .elements import create_input, create_button, create_dropdown
+from ..styles.constants import (
+    BORDER_RADIUS,
+    BORDER_RADIUS_SM,
+    COLOR_BORDER,
+    TRANSITION,
+    RADIUS_LEFT,
+    RADIUS_RIGHT,
+    RADIUS_NONE,
+)
+
+
+# ── Private helpers ───────────────────────────────────────────────────────────
 
 
 def _create_browser_navigation(modal_id: str, default: str) -> dbc.InputGroup:
-    """Create the path navigation bar for file browser modals."""
     return dbc.InputGroup(
         [
             create_input(
                 id=f"{modal_id}-path",
                 value=str(Path(default)),
-                style={"borderRadius": "10px 0 0 10px"},
+                style={"borderRadius": RADIUS_LEFT},
             ),
             create_button(
                 "Go",
                 id=f"{modal_id}-go",
-                size="md",
                 color="primary",
-                style={"borderRadius": "0 0 0 0"},
+                style={"borderRadius": RADIUS_NONE},
             ),
             create_button(
                 "↑",
                 id=f"{modal_id}-up",
-                size="md",
                 color="primary",
-                style={"borderRadius": "0 10px 10px 0"},
+                style={"borderRadius": RADIUS_RIGHT},
             ),
         ],
         size="sm",
@@ -35,18 +46,29 @@ def _create_browser_navigation(modal_id: str, default: str) -> dbc.InputGroup:
 
 
 def _create_file_list(modal_id: str) -> html.Div:
-    """Create the scrollable file/directory list area."""
     return html.Div(
         id=f"{modal_id}-list",
         style={
             "height": "400px",
             "overflowY": "auto",
             "padding": "0.5rem",
-            "borderRadius": "8px",
-            "border": "1px solid #e5e7eb",
-            "transition": "all 0.2s ease",
+            "borderRadius": BORDER_RADIUS_SM,
+            "border": f"1px solid {COLOR_BORDER}",
+            "transition": TRANSITION,
         },
     )
+
+
+# ── Placeholder map ───────────────────────────────────────────────────────────
+
+_PLACEHOLDER = {
+    "file": "No file selected",
+    "dir": "No directory selected",
+    "both": "No file or directory selected",
+}
+
+
+# ── Public components ─────────────────────────────────────────────────────────
 
 
 def create_input_modal(
@@ -56,26 +78,15 @@ def create_input_modal(
     mode: str = "file",  # "file" | "dir" | "both"
     default: Optional[str] = None,
 ) -> dbc.Modal:
-    """Create a file/directory selection modal.
+    """File/directory selection modal.
 
     Args:
-        modal_id:       Unique identifier for the modal
-        title:          Modal title
-        file_extension: File extension to filter (e.g., '.bam'). None shows all files.
-        mode:           "file" — select files only
-                        "dir"  — select directories only
-                        "both" — select files or directories
-        default:        Default directory path to open
-
-    Returns:
-        dbc.Modal component
+        modal_id:       Unique identifier for the modal.
+        title:          Modal title.
+        file_extension: Extension to filter (e.g. '.bam'). None shows all files.
+        mode:           'file' | 'dir' | 'both'
+        default:        Default directory path to open.
     """
-    placeholders = {
-        "file": "No file selected",
-        "dir": "No directory selected",
-        "both": "No file or directory selected",
-    }
-
     return dbc.Modal(
         [
             dbc.ModalHeader(dbc.ModalTitle(title)),
@@ -93,7 +104,7 @@ def create_input_modal(
                 [
                     create_input(
                         id=f"{modal_id}-selected",
-                        placeholder=placeholders.get(mode, "No file selected"),
+                        placeholder=_PLACEHOLDER.get(mode, "No file selected"),
                         disabled=True,
                     ),
                     create_button("Cancel", id=f"{modal_id}-cancel", color="danger"),
@@ -115,19 +126,15 @@ def create_export_modal(
     mode: str = "file",  # "file" | "dir"
     default: Optional[str] = None,
 ) -> dbc.Modal:
-    """Create a file export/save modal with format selection.
+    """File export/save modal with format selection.
 
     Args:
-        modal_id:           Unique identifier for the modal
-        title:              Modal title
-        file_extensions:    List of allowed file extensions
-        default_extension:  Default file extension (e.g., '.html')
-        mode:               "file" — save as file
-                            "dir"  — select output directory
-        default:            Default directory path to open
-
-    Returns:
-        dbc.Modal component
+        modal_id:           Unique identifier for the modal.
+        title:              Modal title.
+        file_extensions:    List of allowed file extensions.
+        default_extension:  Default file extension (e.g. '.html').
+        mode:               'file' | 'dir'
+        default:            Default directory path to open.
     """
     return dbc.Modal(
         [

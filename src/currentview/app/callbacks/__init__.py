@@ -1,4 +1,4 @@
-from .file_browser import register_file_browser_callbacks
+from .file_browser import register_file_callbacks
 from .initialization import register_initialization_callbacks, get_visualizer
 from .conditions import register_condition_callbacks
 from .visualization import register_visualization_callbacks
@@ -6,7 +6,7 @@ from .visualization_add import register_visualization_add_callbacks
 from .plot_settings import register_plot_settings_callbacks
 
 __all__ = [
-    "register_file_browser_callbacks",
+    "register_file_callbacks",
     "register_initialization_callbacks",
     "register_condition_callbacks",
     "register_visualization_callbacks",

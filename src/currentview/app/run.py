@@ -6,10 +6,7 @@ import argparse
 import os
 
 from .layout.main_layout import create_layout
-from .callbacks.file_browser import (
-    register_file_browser_callbacks,
-    register_file_saver_callbacks,
-)
+from .callbacks.file_browser import register_file_callbacks
 from .callbacks.initialization import register_initialization_callbacks
 from .callbacks.conditions import register_condition_callbacks
 from .callbacks.visualization import register_visualization_callbacks
@@ -55,8 +52,7 @@ def create_app() -> dash.Dash:
     app.layout = create_layout()
 
     # Register callbacks
-    register_file_browser_callbacks()
-    register_file_saver_callbacks()
+    register_file_callbacks()
     register_initialization_callbacks()
     register_condition_callbacks()
     register_visualization_callbacks()

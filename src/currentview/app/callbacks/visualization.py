@@ -1,213 +1,174 @@
-from dash import Input, Output, State, callback, dcc, html, ctx, no_update
-from dash.exceptions import PreventUpdate
-import dash_bootstrap_components as dbc
+from pathlib import Path
 
-from .initialization import get_visualizer
+import dash_bootstrap_components as dbc
+from dash import Input, Output, State, callback, dcc, html, no_update
+from dash.exceptions import PreventUpdate
+
 from ..config import DEFAULT_PLOT_HEIGHT
+from .initialization import get_visualizer
+
+
+# ── Alert helpers ─────────────────────────────────────────────────────────────
+
+
+def _info_alert(msg: str) -> dbc.Alert:
+    return dbc.Alert(msg, color="info", className="text-center")
+
+
+def _warn_alert(msg: str) -> dbc.Alert:
+    return dbc.Alert(msg, color="warning", className="text-center")
+
+
+def _error_alert(msg: str) -> dbc.Alert:
+    return dbc.Alert(msg, color="danger", className="text-center")
+
+
+def _sync_error_alert(error_msg: str) -> dbc.Alert:
+    return dbc.Alert(
+        [
+            html.H5("Synchronization Error", className="alert-heading"),
+            html.P("The plot data is out of sync with the conditions."),
+            html.Hr(),
+            html.P("Try these solutions:", className="mb-1"),
+            html.Ul(
+                [
+                    html.Li("Click 'Clear Cache' then 'Refresh Plot'"),
+                    html.Li("Remove and re-add the problematic condition"),
+                    html.Li("Reinitialize the visualizer if the problem persists"),
+                ]
+            ),
+            html.P(
+                f"Technical details: {error_msg}", className="mb-0 small text-muted"
+            ),
+        ],
+        color="danger",
+    )
+
+
+# ── Tab dispatch maps ─────────────────────────────────────────────────────────
+
+# Tabs that produce a plot — maps tab_id → visualizer method name
+_PLOT_TABS = {
+    "signals": "get_signals_fig",
+    "stats": "get_stats_fig",
+}
+
+# Tabs that show instructions instead of a plot
+_INSTRUCTION_TABS = {
+    "gmm": "Configure GMM parameters above and click 'Run GMM' to generate plot",
+    "umap": "Configure UMAP parameters above and click 'Run UMAP' to generate plot",
+}
+
+
+# ── Callbacks ─────────────────────────────────────────────────────────────────
 
 
 def register_visualization_callbacks():
-    """Register all visualization related callbacks."""
 
     @callback(
         Output("plot-container", "children"),
-        [
-            Input("generate", "n_clicks"),
-            Input("plot-trigger", "data"),
-            Input("tabs", "active_tab"),
-        ],
+        Input("generate", "n_clicks"),
+        Input("plot-trigger", "data"),
+        Input("tabs", "active_tab"),
         State("session-id", "data"),
         prevent_initial_call=True,
     )
     def generate_plot(n_clicks, trigger, active_tab, session_id):
-        """Generate plot based on various triggers."""
         viz = get_visualizer(session_id)
         if not viz:
-            return dbc.Alert(
-                "Please initialize visualizer first",
-                color="warning",
-                className="text-center",
-            )
-
-        # Check if there are any conditions
+            return _warn_alert("Please initialize the visualizer first")
         if viz.n_conditions == 0:
-            return dbc.Alert(
-                "Please add at least one condition to visualize",
-                color="info",
-                className="text-center",
-            )
+            return _info_alert("Please add at least one condition to visualize")
 
+        # Instruction-only tabs (GMM, UMAP)
+        if active_tab in _INSTRUCTION_TABS:
+            return _info_alert(_INSTRUCTION_TABS[active_tab])
+
+        # Unknown tab
+        if active_tab not in _PLOT_TABS:
+            return _error_alert(f"Unknown tab: {active_tab}")
+
+        # Generate plot
+        plot_fn = getattr(viz, _PLOT_TABS[active_tab])
         try:
-            # Generate appropriate plot based on active tab
-            if active_tab == "signals":
-                fig = viz.get_signals_fig()
-            elif active_tab == "stats":
-                fig = viz.get_stats_fig()
-            elif active_tab == "gmm":
-                # Show instructions when switching to GMM tab
-                return dbc.Alert(
-                    "Configure GMM parameters above and click 'Run GMM' to generate plot",
-                    color="info",
-                    className="text-center",
-                )
-            elif active_tab == "umap":
-                # Show instructions when switching to UMAP tab
-                return dbc.Alert(
-                    "Configure UMAP parameters above and click 'Run UMAP' to generate plot",
-                    color="info",
-                    className="text-center",
-                )
-            else:
-                return dbc.Alert(
-                    "Invalid tab selected",
-                    color="danger",
-                    className="text-center",
-                )
-
-            # Return the graph component wrapped in loading (for signals/stats)
-            return dcc.Loading(
-                dcc.Graph(id="plot", figure=fig, style={"height": DEFAULT_PLOT_HEIGHT})
-            )
-
+            fig = plot_fn()
         except ValueError as e:
-            # Handle specific ValueError which might be the "not in list" error
             error_msg = str(e)
-            if "is not in list" in error_msg:
-                # Try to recover by clearing cache and regenerating
-                try:
-                    if hasattr(viz, "_signal_viz"):
-                        delattr(viz, "_signal_viz")
-                    if hasattr(viz, "_stats_viz"):
-                        delattr(viz, "_stats_viz")
-
-                    # Try again after clearing cache
-                    if active_tab == "signals":
-                        viz._ensure_signal_viz()
-                        fig = viz._signal_viz.fig
-                    else:
-                        viz._ensure_stats_viz()
-                        fig = viz._stats_viz.fig
-
-                    return dcc.Loading(
-                        dcc.Graph(
-                            id="plot", figure=fig, style={"height": DEFAULT_PLOT_HEIGHT}
-                        )
-                    )
-                except Exception:
-                    # If recovery fails, show error message
-                    return dbc.Alert(
-                        [
-                            html.H5("Synchronization Error", className="alert-heading"),
-                            html.P("The plot data is out of sync with the conditions."),
-                            html.Hr(),
-                            html.P("Try these solutions:", className="mb-1"),
-                            html.Ul(
-                                [
-                                    html.Li("Click 'Clear Cache' then 'Refresh Plot'"),
-                                    html.Li(
-                                        "Remove and re-add the problematic condition"
-                                    ),
-                                    html.Li(
-                                        "Reinitialize the visualizer if the problem persists"
-                                    ),
-                                ]
-                            ),
-                            html.P(
-                                f"Technical details: {error_msg}",
-                                className="mb-0 small text-muted",
-                            ),
-                        ],
-                        color="danger",
-                    )
-            else:
-                return dbc.Alert(
-                    f"Error generating plot: {error_msg}",
-                    color="danger",
-                    className="text-center",
-                )
+            if "is not in list" not in error_msg:
+                return _error_alert(f"Error generating plot: {error_msg}")
+            # Sync error — clear cache and retry once
+            try:
+                viz.clear_cache()
+                fig = plot_fn()
+            except Exception:
+                return _sync_error_alert(error_msg)
         except Exception as e:
-            return dbc.Alert(
-                f"Error generating plot: {str(e)}",
-                color="danger",
-                className="text-center",
-            )
+            return _error_alert(f"Error generating plot: {e}")
+
+        return dcc.Graph(id="plot", figure=fig, style={"height": DEFAULT_PLOT_HEIGHT})
 
     @callback(
-        [
-            Output("alert", "children", allow_duplicate=True),
-            Output("alert", "is_open", allow_duplicate=True),
-            Output("plot-trigger", "data", allow_duplicate=True),
-        ],
+        Output("alert", "children", allow_duplicate=True),
+        Output("alert", "is_open", allow_duplicate=True),
+        Output("plot-trigger", "data", allow_duplicate=True),
         Input("clear-cache", "n_clicks"),
-        [State("session-id", "data"), State("plot-trigger", "data")],
+        State("session-id", "data"),
+        State("plot-trigger", "data"),
         prevent_initial_call=True,
     )
     def clear_cache(n_clicks, session_id, trigger):
-        """Clear cached visualizations and trigger plot refresh."""
         if not n_clicks:
             raise PreventUpdate
 
         viz = get_visualizer(session_id)
         if not viz:
-            return "No visualizer to clear", True, no_update
+            return "No visualizer found", True, no_update
 
-        # Clear all cached visualizations
-        cleared = []
-        if hasattr(viz, "_signal_viz") and viz._signal_viz is not None:
-            viz._signal_viz = None
-            cleared.append("signals")
-        if hasattr(viz, "_stats_viz") and viz._stats_viz is not None:
-            viz._stats_viz = None
-            cleared.append("stats")
-        viz._mark_for_update()
+        cleared = viz.clear_cache()  # expected to return list of cleared cache names
 
         if cleared:
-            # Trigger plot update after clearing
             return f"Cleared cache for: {', '.join(cleared)}", True, trigger + 1
-        else:
-            return "No cache to clear", True, no_update
+        return "No cache to clear", True, no_update
 
     @callback(
-        [
-            Output("alert", "children", allow_duplicate=True),
-            Output("alert", "is_open", allow_duplicate=True),
-        ],
-        [Input("export-modal-save", "n_clicks")],
-        [
-            State("session-id", "data"),
-            State("tabs", "active_tab"),
-            State("export-modal-input-path", "value"),
-            State("export-modal-format", "value"),
-        ],
+        Output("alert", "children", allow_duplicate=True),
+        Output("alert", "is_open", allow_duplicate=True),
+        Input("export-modal-save", "n_clicks"),
+        State("session-id", "data"),
+        State("tabs", "active_tab"),
+        State("export-modal-input-path", "value"),
+        State("export-modal-format", "value"),
         prevent_initial_call=True,
     )
-    def export_plot(n_clicks, session_id, active_tab, created, format):
-        """Export the plot as an HTML file"""
+    def export_plot(n_clicks, session_id, active_tab, path_str, fmt):
         if not n_clicks:
             raise PreventUpdate
 
         viz = get_visualizer(session_id)
         if not viz:
-            return "No visualizer to clear", True
-
-        # Check if there are any conditions
+            return "No visualizer found", True
         if viz.n_conditions == 0:
             return f"No {active_tab} plot is currently available", True
 
-        from pathlib import Path
+        path = Path(path_str).resolve()
+        # Normalise both sides so ".html" == ".html" regardless of case/dot presence
+        if path.suffix.lower() != f".{fmt.lstrip('.').lower()}":
+            return f"File extension must be {fmt}", True
 
-        path = created
-        path = Path(path).resolve()
-        if not path.suffix == format:
-            return f"File extension must be {format}", True
+        fmt = fmt.lstrip(".").lower()
 
-        format = format.lstrip(".").lower()
+        _EXPORT = {
+            "signals": (viz.save_signals, "Signals"),
+            "stats": (viz.save_stats, "Statistics"),
+        }
 
-        if active_tab == "signals":
-            viz.save_signals(path=path, format=format)
-            return f"Signals plot exported to {path}", True
-        elif active_tab == "stats":
-            viz.save_stats(path=path, format=format)
-            return f"Statistics plot exported to {path}", True
-        else:
-            return f"Invalid plot to export", True
+        if active_tab not in _EXPORT:
+            return f"Cannot export '{active_tab}' tab", True
+
+        save_fn, label = _EXPORT[active_tab]
+        try:
+            save_fn(path=path, format=fmt)
+        except Exception as e:
+            return f"Export failed: {e}", True
+
+        return f"{label} plot exported to {path}", True
