@@ -1,3 +1,4 @@
+import pysam
 from dash import Input, Output, State, callback, ctx, ALL, html, no_update
 from dash.exceptions import PreventUpdate
 
@@ -5,102 +6,130 @@ from ..layout.components import create_condition_card
 from .initialization import get_visualizer
 
 
-def _validate_inputs(files, contig, pos):
-    """Validate required inputs for adding a condition."""
-    error_messages = []
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
+
+def _validate_inputs(files: dict, contig, pos) -> list[str]:
+    errors = []
     if not files.get("bam"):
-        error_messages.append("Please select a BAM file")
+        errors.append("Please select a BAM file")
     if not files.get("pod5"):
-        error_messages.append("Please select a POD5 directory")
+        errors.append("Please select a POD5 directory")
     if not contig:
-        error_messages.append("Please select a valid contig")
-
+        errors.append("Please select a valid contig")
     if not pos:
-        error_messages.append("Please select a target position")
-    elif not str(pos).isdigit() or int(pos) <= 0:
-        error_messages.append("Position must be a positive integer")
+        errors.append("Please select a target position")
+    else:
+        try:
+            if int(pos) <= 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            errors.append("Position must be a positive integer")
+    return errors
 
-    return error_messages
+
+def _alert_error(msg, conditions, files, metadata):
+    """Return tuple for a danger alert without changing conditions."""
+    return (
+        conditions,
+        msg,
+        True,
+        "danger",
+        files,
+        files.get("bam"),
+        files.get("pod5"),
+        metadata,
+        no_update,
+    )
+
+
+def _build_error_content(messages: list[str]) -> list:
+    content = ["Please fill all of the required fields:"]
+    for msg in messages:
+        content.extend([html.Br(), f"• {msg}"])
+    return content
+
+
+def _rebuild_condition_cards(metadata: dict) -> list:
+    return [
+        create_condition_card(
+            label=label,
+            color=s["color"],
+            line_style=s["line_style"],
+            line_width=s["line_width"],
+            opacity=s["opacity"],
+        )
+        for label, s in metadata.items()
+    ]
+
+
+def _get_triggered_label() -> str | None:
+    """Return the 'index' from ctx.triggered_id if it's a pattern-match dict."""
+    tid = ctx.triggered_id
+    if not tid or not isinstance(tid, dict):
+        return None
+    return tid.get("index") or None
+
+
+# ── Callbacks ─────────────────────────────────────────────────────────────────
 
 
 def register_condition_callbacks():
-    """Register all condition management callbacks."""
 
     @callback(
-        [Output("gmm-inputs", "style"), Output("umap-inputs", "style")],
+        Output("gmm-inputs", "style"),
+        Output("umap-inputs", "style"),
         Input("tabs", "active_tab"),
     )
     def toggle_input_bars(active_tab):
-        base_style = {
-            "marginBottom": "1rem",
-            "padding": "1rem",
-            "background": "#f8f9fa",
-            "borderRadius": "0.25rem",
-        }
-
-        gmm_style = (
-            {**base_style, "display": "block"}
-            if active_tab == "gmm"
-            else {"display": "none"}
+        show = {"display": "block"}
+        hide = {"display": "none"}
+        return (
+            show if active_tab == "gmm" else hide,
+            show if active_tab == "umap" else hide,
         )
-        umap_style = (
-            {**base_style, "display": "block"}
-            if active_tab == "umap"
-            else {"display": "none"}
-        )
-
-        return gmm_style, umap_style
 
     @callback(
-        [
-            Output("contig", "options"),
-            Output("contig", "disabled"),
-        ],
+        Output("contig", "options"),
+        Output("contig", "disabled"),
         Input("files-store", "data"),
     )
     def populate_contig(files):
         bam_file = files.get("bam")
-        if bam_file is not None:
-            import pysam
-
-            references = pysam.AlignmentFile(bam_file).references
-            return [{"label": v, "value": v} for v in references], False
-        return [], True
+        if not bam_file:
+            return [], True
+        with pysam.AlignmentFile(bam_file) as af:
+            refs = [{"label": r, "value": r} for r in af.references]
+        return refs, False
 
     @callback(
-        [
-            Output("conditions", "children"),
-            Output("add-condition-alert", "children", allow_duplicate=True),
-            Output("add-condition-alert", "is_open", allow_duplicate=True),
-            Output("add-condition-alert", "color", allow_duplicate=True),
-            Output("files-store", "data", allow_duplicate=True),
-            Output("bam-display", "value", allow_duplicate=True),
-            Output("pod5-display", "value", allow_duplicate=True),
-            Output("conditions-metadata", "data", allow_duplicate=True),
-            Output("plot-trigger", "data", allow_duplicate=True),
-            # TODO:Remove Output("conditions-available", "data", allow_duplicate=True),
-        ],
+        Output("conditions", "children"),
+        Output("add-condition-alert", "children", allow_duplicate=True),
+        Output("add-condition-alert", "is_open", allow_duplicate=True),
+        Output("add-condition-alert", "color", allow_duplicate=True),
+        Output("files-store", "data", allow_duplicate=True),
+        Output("bam-display", "value", allow_duplicate=True),
+        Output("pod5-display", "value", allow_duplicate=True),
+        Output("conditions-metadata", "data", allow_duplicate=True),
+        Output("plot-trigger", "data", allow_duplicate=True),
         Input("add-condition-button", "n_clicks"),
-        [
-            State("files-store", "data"),
-            State("contig", "value"),
-            State("position", "value"),
-            State("molecule-type-store", "data"),
-            State("matched-query-base", "data"),
-            State("max-reads", "value"),
-            State("condition-label", "value"),
-            State("exclude-indels", "value"),
-            State("exclude-non-primaries", "value"),
-            State("condition-color", "value"),
-            State("line-style", "value"),
-            State("line-width", "value"),
-            State("opacity", "value"),
-            State("session-id", "data"),
-            State("conditions", "children"),
-            State("conditions-metadata", "data"),
-            State("plot-trigger", "data"),
-        ],
+        State("files-store", "data"),
+        State("contig", "value"),
+        State("position", "value"),
+        State("molecule-type-store", "data"),
+        State("matched-query-base", "data"),
+        State("max-reads", "value"),
+        State("condition-label", "value"),
+        State("exclude-indels", "value"),
+        State("exclude-non-primaries", "value"),
+        State("condition-color", "value"),
+        State("line-style", "value"),
+        State("line-width", "value"),
+        State("opacity", "value"),
+        State("session-id", "data"),
+        State("conditions", "children"),
+        State("conditions-metadata", "data"),
+        State("plot-trigger", "data"),
         prevent_initial_call=True,
     )
     def add_condition(
@@ -123,49 +152,23 @@ def register_condition_callbacks():
         metadata,
         trigger,
     ):
-        """Add a new condition."""
-        error_messages = _validate_inputs(files, contig, pos)
-
-        if error_messages:
-            # Create alert content with line breaks
-            alert_content = ["Please fill all of the required fields:"]
-            for msg in error_messages:
-                alert_content.extend([html.Br(), f"• {msg}"])
-
-            return (
-                current_conditions,
-                alert_content,
-                True,
-                "danger",
-                files,
-                files.get("bam"),
-                files.get("pod5"),
-                metadata,
-                no_update,
+        errors = _validate_inputs(files, contig, pos)
+        if errors:
+            return _alert_error(
+                _build_error_content(errors), current_conditions, files, metadata
             )
 
-        # Get visualizer instance
         viz = get_visualizer(session_id)
         if not viz:
-            return (
+            return _alert_error(
+                "Please initialize the visualizer first",
                 current_conditions,
-                "Please initialize visualizer first",
-                True,
-                "warning",
                 files,
-                files.get("pod5"),
                 metadata,
-                no_update,
             )
 
-        # Generate label if not provided
         label = label or f"{contig}:{pos}"
 
-        # Handle matched_query_base
-        if not matched_query_base:
-            matched_query_base = None
-
-        # Add condition to visualizer
         try:
             viz.add_condition(
                 bam_path=str(files["bam"]),
@@ -173,7 +176,7 @@ def register_condition_callbacks():
                 contig=contig,
                 target_position=int(pos),
                 molecule_type=molecule_type,
-                matched_query_base=matched_query_base,
+                matched_query_base=matched_query_base or None,
                 exclude_reads_with_indels=exclude_indels,
                 ignore_non_primaries=exclude_non_primaries,
                 max_reads=max_reads,
@@ -184,22 +187,18 @@ def register_condition_callbacks():
                 alpha=opacity / 100,
             )
         except Exception as e:
-            # Create alert content with line breaks
-            alert_content = str(e)
+            return _alert_error(str(e), current_conditions, files, metadata)
 
-            return (
+        # Guard: verify the condition was actually stored (e.g. no reads found)
+        if label not in viz.get_condition_names():
+            return _alert_error(
+                f"No reads found for '{label}' at {contig}:{pos}. "
+                "Check that the BAM and POD5 files match and the position exists.",
                 current_conditions,
-                alert_content,
-                True,
-                "danger",
                 files,
-                files.get("bam"),
-                files.get("pod5"),
                 metadata,
-                no_update,
             )
 
-        # Store condition metadata
         metadata[label] = {
             "color": color,
             "line_style": line_style,
@@ -207,26 +206,19 @@ def register_condition_callbacks():
             "opacity": opacity,
         }
 
-        # Create new condition card
-        new_condition = create_condition_card(
-            label=label,
-            color=color,
-            line_style=line_style,
-            line_width=line_width,
-            opacity=opacity,
-        )
+        conditions = (current_conditions or []) + [
+            create_condition_card(
+                label=label,
+                color=color,
+                line_style=line_style,
+                line_width=line_width,
+                opacity=opacity,
+            )
+        ]
 
-        # Update conditions list
-        if current_conditions is None:
-            conditions = [new_condition]
-        else:
-            conditions = current_conditions + [new_condition]
-
-        # Consume stored files
         files.pop("bam")
         files.pop("pod5")
 
-        # Clear file selections for next condition and trigger plot update
         return (
             conditions,
             f"Added: {label}",
@@ -240,80 +232,48 @@ def register_condition_callbacks():
         )
 
     @callback(
-        [
-            Output("conditions", "children", allow_duplicate=True),
-            Output("conditions-metadata", "data", allow_duplicate=True),
-            Output("plot-trigger", "data", allow_duplicate=True),
-        ],
+        Output("conditions", "children", allow_duplicate=True),
+        Output("conditions-metadata", "data", allow_duplicate=True),
+        Output("plot-trigger", "data", allow_duplicate=True),
         Input({"type": "remove-btn", "index": ALL}, "n_clicks"),
-        [
-            State({"type": "remove-btn", "index": ALL}, "id"),
-            State("session-id", "data"),
-            State("conditions-metadata", "data"),
-            State("plot-trigger", "data"),
-        ],
+        State({"type": "remove-btn", "index": ALL}, "id"),
+        State("session-id", "data"),
+        State("conditions-metadata", "data"),
+        State("plot-trigger", "data"),
         prevent_initial_call=True,
     )
     def remove_condition(clicks, ids, session_id, metadata, trigger):
-        """Remove a condition."""
         if not any(clicks):
             raise PreventUpdate
 
-        # Use ctx.triggered_id to find which button was actually clicked
-        from dash import ctx
-
-        triggered_id = ctx.triggered_id
-        if not triggered_id or not isinstance(triggered_id, dict):
+        label = _get_triggered_label()
+        if not label:
             raise PreventUpdate
 
-        label_to_remove = triggered_id.get("index")
-        if not label_to_remove:
-            raise PreventUpdate
-
-        # Get visualizer and remove condition
         viz = get_visualizer(session_id)
         if viz:
-            viz.remove_condition(label_to_remove)
+            viz.remove_condition(label)
 
-        # Remove from metadata
-        if label_to_remove in metadata:
-            del metadata[label_to_remove]
+        metadata.pop(label, None)
 
-        # Rebuild conditions list from remaining metadata
-        conditions = []
-        for label, style_data in metadata.items():
-            conditions.append(
-                create_condition_card(
-                    label=label,
-                    color=style_data["color"],
-                    line_style=style_data["line_style"],
-                    line_width=style_data["line_width"],
-                    opacity=style_data["opacity"],
-                )
-            )
-
-        return conditions, metadata, trigger + 1
+        return _rebuild_condition_cards(metadata), metadata, trigger + 1
 
     @callback(
-        [
-            Output("conditions", "children", allow_duplicate=True),
-            Output("alert", "children", allow_duplicate=True),
-            Output("alert", "is_open", allow_duplicate=True),
-            Output("conditions-metadata", "data", allow_duplicate=True),
-            Output("plot-trigger", "data", allow_duplicate=True),
-        ],
+        Output("conditions", "children", allow_duplicate=True),
+        Output("alert", "children", allow_duplicate=True),
+        Output("alert", "is_open", allow_duplicate=True),
+        Output("conditions-metadata", "data", allow_duplicate=True),
+        Output("plot-trigger", "data", allow_duplicate=True),
         Input({"type": "update-btn", "index": ALL}, "n_clicks"),
-        [
-            State({"type": "update-btn", "index": ALL}, "id"),
-            State({"type": "color-edit", "index": ALL}, "value"),
-            State({"type": "line-style-edit", "index": ALL}, "value"),
-            State({"type": "line-width-edit", "index": ALL}, "value"),
-            State({"type": "opacity-edit", "index": ALL}, "value"),
-            State({"type": "color-edit", "index": ALL}, "id"),
-            State("session-id", "data"),
-            State("conditions-metadata", "data"),
-            State("plot-trigger", "data"),
-        ],
+        State({"type": "update-btn", "index": ALL}, "id"),
+        State({"type": "color-edit", "index": ALL}, "value"),
+        State({"type": "line-style-edit", "index": ALL}, "value"),
+        State({"type": "line-width-edit", "index": ALL}, "value"),
+        State({"type": "opacity-edit", "index": ALL}, "value"),
+        State({"type": "color-edit", "index": ALL}, "id"),
+        State("session-id", "data"),
+        State("conditions-metadata", "data"),
+        State("plot-trigger", "data"),
         prevent_initial_call=True,
     )
     def update_condition_style(
@@ -328,82 +288,51 @@ def register_condition_callbacks():
         metadata,
         trigger,
     ):
-        """Update condition visualization style."""
         if not any(clicks):
             raise PreventUpdate
 
-        # Find which button was ACTUALLY clicked using ctx.triggered_id
-        from dash import ctx
-
-        triggered_id = ctx.triggered_id
-        if not triggered_id or not isinstance(triggered_id, dict):
+        label = _get_triggered_label()
+        if not label:
             raise PreventUpdate
 
-        clicked_label = triggered_id.get("index")
-        if not clicked_label:
-            raise PreventUpdate
-
-        # Get visualizer
         viz = get_visualizer(session_id)
         if not viz:
-            return "Visualizer not initialized", True, metadata, trigger
+            return no_update, "Visualizer not initialized", True, metadata, trigger
 
-        # Find the index of the clicked label in the color_ids array
-        correct_idx = None
-        for i, id_dict in enumerate(color_ids):
-            if id_dict["index"] == clicked_label:
-                correct_idx = i
-                break
-
-        if correct_idx is None:
+        idx = next((i for i, d in enumerate(color_ids) if d["index"] == label), None)
+        if idx is None:
             return (
-                f"Could not find inputs for condition: {clicked_label}",
+                no_update,
+                f"Could not find inputs for: {label}",
                 True,
                 metadata,
                 trigger,
             )
 
-        # Update metadata with the correct values
-        metadata[clicked_label] = {
-            "color": colors[correct_idx],
-            "line_style": line_styles[correct_idx],
-            "line_width": line_widths[correct_idx],
-            "opacity": opacities[correct_idx],
+        new_style = {
+            "color": colors[idx],
+            "line_style": line_styles[idx],
+            "line_width": line_widths[idx],
+            "opacity": opacities[idx],
         }
 
-        # Update the condition's visualization parameters
         try:
-            # Check if visualizer has the update method
-            if hasattr(viz, "update_condition"):
-                viz.update_condition(
-                    label=clicked_label,
-                    color=colors[correct_idx],
-                    line_style=line_styles[correct_idx],
-                    line_width=line_widths[correct_idx],
-                    alpha=opacities[correct_idx] / 100,
-                )
-            else:
-                # If the method doesn't exist, we need to update the condition another way
-                # Get all conditions and update the specific one
-                conditions = getattr(viz, "conditions", {})
-                if clicked_label in conditions:
-                    condition = conditions[clicked_label]
-                    # Update the style attributes if they exist
-                    if hasattr(condition.style, "color"):
-                        condition.style.color = colors[correct_idx]
-                    if hasattr(condition.style, "line_style"):
-                        condition.style.line_style = line_styles[correct_idx]
-                    if hasattr(condition.style, "line_width"):
-                        condition.style.line_width = line_widths[correct_idx]
-                    if hasattr(condition.style, "alpha"):
-                        condition.style.alpha = opacities[correct_idx] / 100
-
-            return (
-                no_update,
-                f"Updated style for: {clicked_label}",
-                True,
-                metadata,
-                trigger + 1,
+            viz.update_condition(
+                label=label,
+                color=new_style["color"],
+                line_style=new_style["line_style"],
+                line_width=new_style["line_width"],
+                alpha=new_style["opacity"] / 100,
             )
         except Exception as e:
-            return no_update, f"Error updating style: {str(e)}", True, metadata, trigger
+            return no_update, f"Error updating style: {e}", True, metadata, trigger
+
+        metadata[label] = new_style
+
+        return (
+            _rebuild_condition_cards(metadata),
+            f"Updated style for: {label}",
+            True,
+            metadata,
+            trigger + 1,
+        )
