@@ -1049,6 +1049,17 @@ class CurrentView:
             self._update_stats_viz = False
             self._dirty_conditions.clear()
 
+    def clear_cache(self) -> list[str]:
+        cleared = []
+        if self._signal_viz is not None:
+            self._signal_viz = None
+            cleared.append("signals")
+        if self._stats_viz is not None:
+            self._stats_viz = None
+            cleared.append("stats")
+        self._mark_for_update()
+        return cleared
+
     # Verbosity and logging methods
 
     def set_verbosity(self, level: Union[VerbosityLevel, int]):
