@@ -542,6 +542,8 @@ On the subsequent page, the interface is organized into three panels:
 
 ## License
 
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Citation
 
