@@ -30,6 +30,7 @@ A Python package for visualizing nanopore sequencing signals at specific referen
         - [show(), show\_signals(), and show\_stats()](#show-show_signals-and-show_stats)
         - [save(), save\_signals(), and save\_stats()](#save-save_signals-and-save_stats)
       - [Other Methods](#other-methods)
+        - [UMAP dimensionality reduction](#umap-dimensionality-reduction)
         - [GMM Methods](#gmm-methods)
     - [Styling and Customization](#styling-and-customization)
       - [Examples](#examples)
@@ -274,6 +275,22 @@ cv.set_signals_style(new_style)
 cv.set_stats_style(new_style)
 ```
 
+##### UMAP dimensionality reduction
+
+```python
+umap_handler = cv.fit_umap(
+    stats=['median', 'std'],  # Alist of stats to extract feature for umap
+    offset_window,  # Optional: span of signal, should be a tuple (stat_window_index, end_window_index), inclusive
+    n_neighbors=10, 
+    min_dist=0.1
+)
+# plot UMAP scatters
+umap_viz = umap_handler.visualize(
+    style, #Plotstyle Object
+)
+```
+
+
 ##### GMM Methods
 
 Fit and visualize Gaussian Mixture Models:
@@ -283,7 +300,7 @@ Fit and visualize Gaussian Mixture Models:
 gmm_results = cv.fit_gmms(
     stat1='mean',
     stat2='std',
-    K=5,  # Optional: span of signal, must be equal or smaller that K value of GenomicPositionVizualizer
+    offset_window,  # Optional: span of signal, should be a tuple (stat_window_index, end_window_index), inclusive
     gmm_config=GMMConfig(...),
     preprocess_config=PreprocessConfig(...)
 )
@@ -294,7 +311,7 @@ gmm_viz = gmm_handler.visualize()
 gmm_viz = cv.plot_gmms(
     stat1='mean',
     stat2='std',
-    K=5,
+    offset_window,  # Optional: span of signal, should be a tuple (stat_window_index, end_window_index), inclusive
     gmm_style=PlotStyle(...),
     gmm_config=GMMConfig(...),
     preprocess_config=PreprocessConfig(...)
