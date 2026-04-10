@@ -549,5 +549,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you use this tool in your research, please cite:
 ```
-# Will be updated once published.
+Pooria Daneshvar Kakhaki, Neda Ghohabi Esfahani, Stuart Akeson, Miten Jain, CurrentView: A tool for visualization and comparison of nanopore ionic current signals, Bioinformatics, 2026;, btag161, https://doi.org/10.1093/bioinformatics/btag161
 ```
