@@ -30,6 +30,7 @@ A Python package for visualizing nanopore sequencing signals at specific referen
         - [show(), show\_signals(), and show\_stats()](#show-show_signals-and-show_stats)
         - [save(), save\_signals(), and save\_stats()](#save-save_signals-and-save_stats)
       - [Other Methods](#other-methods)
+        - [The offsets\_window argument](#the-offsets_window-argument)
         - [UMAP dimensionality reduction](#umap-dimensionality-reduction)
         - [GMM Methods](#gmm-methods)
     - [Styling and Customization](#styling-and-customization)
@@ -47,8 +48,11 @@ A Python package for visualizing nanopore sequencing signals at specific referen
 ```bash
 git clone https://github.com/genometechlab/currentview.git
 cd currentview
-pip install -e .
+pip install .          # or: pip install -e .   for a development install
 ```
+
+Optional extra: `pip install ".[speed]"` adds `numba`, which JIT-compiles the
+built-in statistics functions. CurrentView falls back to plain NumPy without it.
 
 ### Dependencies
 - `numpy>=1.20.0`
@@ -118,10 +122,12 @@ CurrentView(
     kmer: Optional[List[Union[str, int]]] = None,
     stats: Optional[List[Union[str, Callable]]] = None,
     signal_processing_fn: Optional[callable] = None,
+    stats_distribution_kind: Literal["kde", "histogram", "both"] = "kde",
     signals_plot_style: Optional[PlotStyle] = None,
     stats_plot_style: Optional[PlotStyle] = None,
     color_palette: Optional[Union[str, ColorPalette]] = None,
     title: Optional[str] = None,
+    backend: Literal["plotly", "matplotlib"] = "plotly",
     verbosity: VerbosityLevel = VerbosityLevel.SILENT,
     logger: Optional[logging.Logger] = None
 )
@@ -130,12 +136,14 @@ CurrentView(
 **Parameters:**
 - `K`: Window size (will be made odd if even). Default: 9
 - `kmer`: Optional custom k-mer labels for x-axis. Should be an iterable with size `K`
-- `stats`: List of statistics to include. Supports `'mean'`, `'median'`, `'std'`, `'variance'`, `'min'`, `'max'`, `'skewness'`, `'kurtosis'`, and user-defined callables
+- `stats`: List of statistics to include. Supports `'mean'`, `'median'`, `'std'`, `'variance'`, `'min'`, `'max'`, `'duration'`, `'skewness'`, `'kurtosis'`, and user-defined callables
 - `signal_processing_fn`: Optional callable for custom signal processing
+- `stats_distribution_kind`: How stats distributions are drawn — `'kde'`, `'histogram'`, or `'both'`
 - `signals_plot_style`: PlotStyle object for signal visualization customization
 - `stats_plot_style`: PlotStyle object for stats visualization customization
 - `color_palette`: Color palette name (string) or ColorPalette instance
 - `title`: Plot title
+- `backend`: `'plotly'` for interactive figures, `'matplotlib'` for lightweight static output
 - `verbosity`: Logging level (0-4 or VerbosityLevel enum):
   - 0 = SILENT: No output
   - 1 = ERROR: Only errors
@@ -174,9 +182,12 @@ cv.add_condition(
 - `bam_path`: Path to BAM alignment file (required)
 - `pod5_path`: Path to POD5 signal file (required)
 - `contig`: Chromosome/contig name, e.g., "chr1" (required)
-- `target_position`: 1-based reference position (required)
+- `target_position`: **0-based** reference position (required). This matches the
+  coordinates `pysam` and the BAM format use internally. If you are reading
+  positions off a 1-based source such as IGV, a VCF, or a GFF, subtract 1.
 - `molecule_type`: Type of molecule, "RNA" or "DNA" (default: "RNA")
 - `matched_query_base`: Expected base at target position for validation (default: None)
+- `ignore_non_primaries`: Skip secondary and supplementary alignments (default: True)
 - `read_ids`: Specific read IDs to include (default: None - all aligned reads)
 - `max_reads`: Maximum number of reads to process (default: None - no limit)
 - `exclude_reads_with_indels`: Skip reads with insertions/deletions (default: False)
@@ -275,66 +286,91 @@ cv.set_signals_style(new_style)
 cv.set_stats_style(new_style)
 ```
 
+##### The `offsets_window` argument
+
+Both `fit_gmms()` and `fit_umap()` take an `offsets_window` tuple that selects
+which bases their per-read statistics are computed over. Offsets are **signed and
+inclusive, relative to the target base**:
+
+| `offsets_window` | Meaning (K=9) |
+| ---------------- | ------------- |
+| *omitted*        | **the full K-base window** — the default for both methods |
+| `(-4, 4)`        | the whole 9-base window (same as the default at K=9) |
+| `(0, 0)`         | the target base only |
+| `(-1, 1)`        | the target base plus one on each side |
+| `(-4, -1)`       | the four bases immediately upstream of the target |
+
+Offsets must satisfy `start <= end` and lie within `[-(K-1)/2, (K-1)/2]`.
+
 ##### UMAP dimensionality reduction
 
 ```python
 umap_handler = cv.fit_umap(
-    stats=['median', 'std'],  # Alist of stats to extract feature for umap
-    offset_window,  # Optional: span of signal, should be a tuple (stat_window_index, end_window_index), inclusive
-    n_neighbors=10, 
-    min_dist=0.1
+    stats=['median', 'std'],   # stats used as features at each position
+    offsets_window=(-4, 4),    # optional; defaults to the full K-base window
+    n_neighbors=10,
+    min_dist=0.1,
 )
+
 # plot UMAP scatters
-umap_viz = umap_handler.visualize(
-    style, #Plotstyle Object
-)
+umap_viz = umap_handler.visualize(style=PlotStyle(...))
+umap_viz.save("umap.png")
 ```
 
+The statistics requested here are computed on demand, so they do not have to
+match the `stats` given to the `CurrentView` constructor.
 
 ##### GMM Methods
 
 Fit and visualize Gaussian Mixture Models:
 
 ```python
-# Fit GMMs and get results
-gmm_results = cv.fit_gmms(
+from currentview import GMMConfig, PreprocessConfig, PlotStyle
+
+# Fit GMMs and get the handler back
+gmm_handler = cv.fit_gmms(
     stat1='mean',
     stat2='std',
-    offset_window,  # Optional: span of signal, should be a tuple (stat_window_index, end_window_index), inclusive
-    gmm_config=GMMConfig(...),
-    preprocess_config=PreprocessConfig(...)
+    offsets_window=(0, 0),   # optional; defaults to the full K-base window
+    gmm_config=GMMConfig(n_components='auto'),
+    preprocess_config=PreprocessConfig(enable_standardize=True),
 )
 
-# Fit and plot GMMs
+# Plot from the handler
 gmm_viz = gmm_handler.visualize()
-# or
+
+# ...or fit and plot in one call
 gmm_viz = cv.plot_gmms(
     stat1='mean',
     stat2='std',
-    offset_window,  # Optional: span of signal, should be a tuple (stat_window_index, end_window_index), inclusive
-    gmm_style=PlotStyle(...),
-    gmm_config=GMMConfig(...),
-    preprocess_config=PreprocessConfig(...)
+    offsets_window=(-4, 4),
+    gmm_style=PlotStyle(),
+    gmm_config=GMMConfig(),
+    preprocess_config=PreprocessConfig(),
 )
 
-# Kolmogorov–Smirnov test
+# Kolmogorov–Smirnov test (per-feature marginals, Bonferroni corrected)
 ks_result = gmm_handler.ks_test(
-    label_p='label_p', # Label of the first condition
-    label_p='label_q', # Label of the second condition
+    label_p='Control',      # label of the first condition
+    label_q='Treatment',    # label of the second condition
     correction='bonferroni',
     mode='auto',
     drop_nonfinite=True,
-    verbose=True)
+    verbose=True,
+)
 
-# Jensen-shannon divergence
+# Jensen–Shannon divergence between the two fitted GMMs
 js_result = gmm_handler.js_divergence(
-    label_p='label_p', # Label of the first condition
-    label_p='label_q', # Label of the second condition
+    label_p='Control',
+    label_q='Treatment',
     n_samples=20000,
     base=2,
-    randon_sate=None, # controls the sampling seed
-    verbose=True)
+    random_state=None,      # set an int for reproducible sampling
+    verbose=True,
+)
 ```
+
+`stat1` and `stat2` must be two different statistics.
 
 ### Styling and Customization
 
@@ -518,20 +554,26 @@ Processing BAM and POD5 files can be computationally expensive. For better perfo
 
 1. **No reads found at position**:
    - Verify correct contig name (e.g., "chr1" vs "1")
-   - Check position is correct (1-based in this API)
-   - Increase verbosity to see detailed logs
+   - Check the position is correct and **0-based** — subtract 1 from a coordinate
+     read off IGV, a VCF, or a GFF
+   - Increase verbosity to see detailed logs; CurrentView reports how many reads
+     it skipped and why (missing basecaller tags, base mismatch, indels in window)
 
-2. **Memory issues with large files**:
+2. **Every read is skipped with a "missing basecaller tags" warning**:
+   - CurrentView needs the move table to map signal to bases. The BAM must carry
+     the `mv`, `ns` and `ts` tags, e.g. from Dorado run with `--emit-moves`.
+
+3. **Memory issues with large files**:
    - Use `max_reads` parameter
    - Filter reads by specific read IDs
 
-3. **Overlapping signals hard to see**:
+4. **Overlapping signals hard to see**:
    - Adjust alpha transparency
    - Reduce number of reads
    - Use different colors
    - Increase figure size
 
-4. **Label "already exists" error**:
+5. **Label "already exists" error**:
    - Each condition needs a unique label
    - Use `remove_condition()` first, or specify a unique label
   
