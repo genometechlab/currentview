@@ -69,9 +69,11 @@ def _build_plot_style(
     barrier_style,
     barrier_opacity,
     barrier_color,
+    renderer="SVG",
 ) -> PlotStyle:
     tokens = _THEME_TOKENS.get(theme_mode, _THEME_TOKENS["light"])
     return PlotStyle(
+        renderer=renderer,
         width=width,
         height=height,
         line_width=line_width,
@@ -172,6 +174,11 @@ def register_plot_settings_callbacks():
 
             theme_mode = app_theme if template_mode == "auto" else template_mode
 
+            # Carry over the renderer chosen at initialization; rebuilding the
+            # style from the settings panel alone would silently drop WebGL.
+            current = getattr(viz, f"{target}_plot_style", None)
+            renderer = getattr(current, "renderer", "SVG")
+
             try:
                 style = _build_plot_style(
                     theme_mode,
@@ -194,6 +201,7 @@ def register_plot_settings_callbacks():
                     barrier_style,
                     barrier_opacity,
                     barrier_color,
+                    renderer=renderer,
                 )
                 getattr(viz, _APPLY_METHOD[target])(style)
                 if distribution_kind is not None:

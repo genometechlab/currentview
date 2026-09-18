@@ -6,8 +6,18 @@ from typing import Optional, Any, Dict
 
 
 def validate_window_size(value: Optional[int]) -> bool:
-    """Validate that window size is odd."""
-    return value is None or value % 2 == 0
+    """Return True when the window size is *invalid*.
+
+    Named for its use as a Dash ``invalid`` property. A valid window is a
+    positive odd integer.
+    """
+    if value is None:
+        return True
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        return True
+    return value < 1 or value % 2 == 0
 
 
 def validate_json_string(

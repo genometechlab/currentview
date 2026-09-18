@@ -42,18 +42,17 @@ def register_ui_callbacks():
         ],
     )
     def toggle_analysis_tabs(conditions_metadata, stored_stats):
-        """Enable or disable analysis tabs based on whether conditions and stats are available."""
-        # Check if we have at least one condition
-        has_conditions = len(conditions_metadata) > 0 if conditions_metadata else False
+        """Enable the GMM/UMAP tabs only once they can actually produce a plot.
 
-        # Check if we have at least one stat
-        has_stats = len(stored_stats) > 0 if stored_stats else False
+        Both analyses need at least one condition to draw and at least one
+        statistic to use as a feature, so the tabs stay disabled until both
+        exist rather than letting the user click through to an error.
+        """
+        has_conditions = bool(conditions_metadata)
+        has_stats = bool(stored_stats)
 
-        # Both conditions AND stats must be available to enable tabs
-        if has_conditions and has_stats:
-            return False, False  # Enable tabs
-        else:
-            return False, False  # True, True  # Disable tabs
+        disabled = not (has_conditions and has_stats)
+        return disabled, disabled
 
     @callback(
         [

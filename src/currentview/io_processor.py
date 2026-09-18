@@ -1,17 +1,13 @@
 import logging
 import numpy as np
-import matplotlib.pyplot as plt
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union, Literal, Any
-from dataclasses import dataclass
-from collections import OrderedDict, defaultdict
+from typing import Dict, List, Optional, Set, Union
+from collections import defaultdict
 
 from .readers import AlignmentExtractor
 from .readers import SignalExtractor
 from .utils.data_classes import ReadAlignment
 from .utils.path_utils import validate_files
-from .utils.plotly_utils import PlotStyle
-from .utils.color_utils import ColorScheme
 
 
 class DataProcessor:
@@ -58,8 +54,8 @@ class DataProcessor:
         ignore_non_primaries: bool = True,
         read_ids: Optional[Union[Set[str], List[str]]] = None,
         max_reads: Optional[int] = None,
-        require_perfect_match: bool = False,
-    ) -> List[ReadAlignment]:
+        exclude_reads_with_indels: bool = False,
+    ) -> Optional[List[ReadAlignment]]:
         """
         Process reads from BAM/POD5 files and prepare for visualization.
 
@@ -88,7 +84,7 @@ class DataProcessor:
         # Log extraction parameters
         self.logger.debug(
             f"Extraction parameters: "
-            f"require_perfect_match={require_perfect_match}, "
+            f"exclude_reads_with_indels={exclude_reads_with_indels}, "
             f"max_reads={max_reads}, "
             f"read_ids={'provided' if read_ids else 'None'}"
         )
@@ -101,7 +97,7 @@ class DataProcessor:
             is_reversed,
             matched_query_base,
             ignore_non_primaries,
-            require_perfect_match,
+            exclude_reads_with_indels,
             read_ids,
             max_reads,
         )

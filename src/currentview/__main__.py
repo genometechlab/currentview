@@ -1,14 +1,12 @@
-# yourpkg/cli/main.py
 from __future__ import annotations
 
 import argparse
-import sys
 from typing import List, Optional
 
 from .cli import manual, from_tsv
 
 
-def main() -> argparse.ArgumentParser:
+def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="currentview",
         description="CurrentView command-line interface",
@@ -26,9 +24,10 @@ def main() -> argparse.ArgumentParser:
     manual.register_subparser(subparsers)
     from_tsv.register_subparser(subparsers)
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     return args.func(args)
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

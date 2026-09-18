@@ -6,20 +6,26 @@ from typing import (
     Optional,
     Union,
     Tuple,
-    Literal,
-    Sequence,
     TYPE_CHECKING,
 )
 from dataclasses import dataclass, field
 
 import numpy as np
 
-from ..stats import StatsCalculator, StatisticsFuncs
+from ..stats import StatsCalculator
 from ..utils.data_classes import Condition, ConditionStyle
+from ..utils.preprocess import PreprocessConfig
 
 if TYPE_CHECKING:
     from .umap_visualizer import UMAPVisualizer
     from ..utils.plotly_utils import PlotStyle
+
+__all__ = [
+    "UMAPConfig",
+    "PreprocessConfig",
+    "ConditionUMAP",
+    "UMAPHandler",
+]
 
 
 # ----------------------------
@@ -35,27 +41,7 @@ class UMAPConfig:
     verbose: bool = False
 
 
-@dataclass
-class PreprocessConfig:
-    # Downsampling
-    enable_downsample: bool = False
-    max_samples: Optional[int] = None
-    downsample_strategy: Literal["random"] = "random"
-    random_state: Optional[int] = None
-
-    # Outlier removal
-    enable_outliers: bool = False
-    outlier_method: Literal["zscore", "mad", "iqr"] = "zscore"
-    z_thresh: float = 3.0  # for zscore
-    mad_thresh: float = 3.5  # for MAD (≈ 3σ equivalent when scaled)
-    iqr_k: float = 1.5  # for IQR fences
-    drop_if_any_axis: bool = True  # drop row if any axis flagged (else both)
-
-    # Standardization
-    enable_standardize: bool = False
-    standardize_center: bool = True
-    standardize_scale: Literal["std", "mad"] = "std"
-    eps: float = 1e-9  # numerical floor
+# PreprocessConfig is shared with the GMM handler; see utils.preprocess.
 
 
 # ----------------------------
@@ -96,11 +82,15 @@ class UMAPHandler:
     ):
         self.logger = logger or logging.getLogger(__name__)
 
-        self.stats_calculator = StatsCalculator(statistics=stats)
+        self.stats_calculator = StatsCalculator(statistics=stats, logger=self.logger)
         self._stats_names = self.stats_calculator.stats_names
         self._n_stats = len(self._stats_names)
 
-        self.offsets_window = offsets_window
+        if offsets_window[0] > offsets_window[1]:
+            raise ValueError(
+                f"offsets_window start must be <= end, got {offsets_window}"
+            )
+        self.offsets_window = tuple(offsets_window)
         self._num_positions = self.offsets_window[1] - self.offsets_window[0] + 1
 
         self.config = umap_config or UMAPConfig()
@@ -166,8 +156,10 @@ class UMAPHandler:
             )
 
         if not processed_data:
-            self.logger.error("No valid data found across all conditions")
-            return
+            raise ValueError(
+                "No usable data across any condition after preprocessing; "
+                "cannot fit UMAP. Check the offsets window and outlier settings."
+            )
 
         # Step 2: Combine all data
         combined_data = np.vstack(processed_data)
@@ -179,10 +171,10 @@ class UMAPHandler:
         # Step 3: Fit UMAP on combined data
         n_neighbors = min(self.config.n_neighbors, combined_data.shape[0] - 1)
         if n_neighbors < 2:
-            self.logger.error(
-                f"Not enough samples ({combined_data.shape[0]}) to fit UMAP (need at least 2)"
+            raise ValueError(
+                f"Not enough samples ({combined_data.shape[0]}) to fit UMAP; "
+                f"at least 3 are required."
             )
-            return
 
         reducer = umap.UMAP(
             n_components=self.config.n_components,
@@ -249,19 +241,28 @@ class UMAPHandler:
         """
         Compute per-read stats for a condition across multiple positions.
         Returns (n_reads, n_stats * n_positions) array.
-        """
-        condition_stats = condition.stats
-        feat_mat = np.zeros((self._num_positions, condition.n_reads, self._n_stats))
 
-        positions_range = (
-            condition.target_position + self.offsets_window[0],
-            condition.target_position + self.offsets_window[1] + 1,
+        Statistics are computed here rather than read off ``condition.stats`` so
+        that the UMAP feature set is independent of whichever statistics the
+        parent CurrentView was constructed with.
+        """
+        positions = list(
+            range(
+                condition.target_position + self.offsets_window[0],
+                condition.target_position + self.offsets_window[1] + 1,
+            )
+        )
+        stats_by_position = self.stats_calculator.calculate_stats_at_positions(
+            condition.reads, positions
         )
 
-        for pos_idx, pos in enumerate(range(*positions_range)):
+        feat_mat = np.zeros((self._num_positions, condition.n_reads, self._n_stats))
+
+        for pos_idx, pos in enumerate(positions):
+            pos_stats = stats_by_position[pos]
             pos_feat_map = np.zeros((condition.n_reads, self._n_stats))
             for stat_idx, stat_name in enumerate(self._stats_names):
-                pos_feat_map[:, stat_idx] = condition_stats[pos][stat_name]
+                pos_feat_map[:, stat_idx] = pos_stats[stat_name]
             feat_mat[pos_idx] = pos_feat_map
 
         # Permute and reshape to get (n_reads, n_stats * n_positions)

@@ -1,12 +1,10 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List
 
 from .base_visualizer import BaseStatsVisualizer
-from ..utils.plotly_utils import PlotStyle
 from ..utils.color_utils import to_mpl_color
 
 
@@ -197,7 +195,7 @@ class MatplotlibStatsVisualizer(BaseStatsVisualizer):
         hex_color = "#{:02x}{:02x}{:02x}".format(
             int(r * 255), int(g * 255), int(b * 255)
         )
-        y_jitter = np.random.normal(0, 0.02, values.size)
+        y_jitter = self._jitter_rng.normal(0, 0.02, values.size)
         sc = ax.scatter(
             values, y_jitter, color=hex_color, s=30, alpha=opacity * 0.6, zorder=3
         )
@@ -267,13 +265,24 @@ class MatplotlibStatsVisualizer(BaseStatsVisualizer):
         plt.show()
         return self.fig
 
-    def save(self, path, format=None, dpi=None, **kwargs):
+    def save(self, path, format=None, scale=None, dpi=None, **kwargs):
+        """
+        Save the figure.
+
+        `scale` exists for signature parity with the Plotly backend, where it
+        multiplies the raster pixel size. Matplotlib has no direct equivalent, so
+        it is applied as a multiplier on the output DPI.
+        """
         path = Path(path)
         fmt = format or path.suffix.lstrip(".").lower() or "png"
+        out_dpi = dpi or self.style.dpi
+        if scale:
+            out_dpi = int(out_dpi * scale)
+
         self.fig.savefig(
             str(path),
             format=fmt,
-            dpi=dpi or self.style.dpi,
+            dpi=out_dpi,
             facecolor=to_mpl_color(self.style.paper_bgcolor),
             bbox_inches="tight",
             **kwargs,

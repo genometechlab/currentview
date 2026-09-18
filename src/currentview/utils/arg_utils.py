@@ -1,4 +1,4 @@
-from dataclasses import fields, is_dataclass
+from dataclasses import fields
 
 
 def _split_and_normalize_configs(

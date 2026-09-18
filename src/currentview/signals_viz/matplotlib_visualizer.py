@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
@@ -8,8 +7,6 @@ from typing import Dict, List, Optional, Union
 
 from .base_visualizer import BaseSignalVisualizer
 from ..utils.data_classes import Condition
-from ..utils.plotly_utils import PlotStyle
-from ..utils.color_utils import get_contrasting_color
 
 
 class MatplotlibSignalVisualizer(BaseSignalVisualizer):
@@ -103,15 +100,13 @@ class MatplotlibSignalVisualizer(BaseSignalVisualizer):
         col = condition.style.color
         alp = condition.style.alpha
         lw = condition.style.line_width or self.style.line_width
-        ls = condition.style.line_style or self.style.line_style
-        mpl_ls = self.style.mpl_linestyle  # uses style's line_style field
 
-        # Override with condition-specific line style if set
+        # Default to the figure style's line style, overridden per condition
+        mpl_ls = self.style.mpl_linestyle
         if condition.style.line_style:
             from ..utils.plotly_utils import PlotStyle as _PS
 
-            _tmp = _PS(line_style=condition.style.line_style)
-            mpl_ls = _tmp.mpl_linestyle
+            mpl_ls = _PS(line_style=condition.style.line_style).mpl_linestyle
 
         lines_for_condition = []
 
@@ -278,16 +273,30 @@ class MatplotlibSignalVisualizer(BaseSignalVisualizer):
         self,
         path: Union[str, Path],
         format: Optional[str] = None,
+        scale: Optional[float] = None,
         dpi: Optional[int] = None,
         **kwargs,
     ):
+        """
+        Save the figure.
+
+        `scale` exists for signature parity with the Plotly backend, where it
+        multiplies the raster pixel size. Matplotlib has no direct equivalent, so
+        it is applied as a multiplier on the output DPI.
+        """
+        from ..utils.color_utils import to_mpl_color
+
         path = Path(path)
         fmt = format or path.suffix.lstrip(".").lower() or "png"
+        out_dpi = dpi or self.style.dpi
+        if scale:
+            out_dpi = int(out_dpi * scale)
+
         self.fig.savefig(
             str(path),
             format=fmt,
-            dpi=dpi or self.style.dpi,
-            facecolor=self.style.paper_bgcolor,
+            dpi=out_dpi,
+            facecolor=to_mpl_color(self.style.paper_bgcolor),
             bbox_inches="tight",
             **kwargs,
         )

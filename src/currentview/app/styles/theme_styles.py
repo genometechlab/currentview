@@ -176,8 +176,27 @@ def get_base_styles() -> str:
         background: transparent !important;
     }}
 
+    /* ── Native select ──────────────────────────────────────────────── */
+    /* .modern-select geometry (height, padding, radius, font size) is applied
+       per instance as inline style by create_select(), so that callers can vary
+       it — e.g. square inner corners inside an InputGroup. Do not set those
+       properties here with !important: a stylesheet !important beats an inline
+       style, which would flatten every select in the app to one shape.
+       NOTE: this CSS is embedded in a JS template literal, so it must never
+       contain a backtick, a backslash, or a dollar-brace sequence. */
+    select.modern-select {{ cursor: pointer !important; }}
+    select.modern-select:focus {{
+        border-color: {accent} !important;
+        box-shadow: 0 0 0 3px {accent_ring} !important;
+        outline: none !important;
+    }}
+
     /* ── Modals ─────────────────────────────────────────────────────── */
     .modal-header, .modal-footer {{ border: none !important; }}
+    /* Let dropdown menus opened near the bottom of a modal escape its box
+       instead of being clipped (which silently hides the last options). */
+    .modal-content, .modal-footer {{ overflow: visible !important; }}
+    .modal-body {{ overflow: visible !important; }}
 
     /* ── Switch ─────────────────────────────────────────────────────── */
     .form-switch {{ padding-left: 0 !important; margin-bottom: 0 !important; }}

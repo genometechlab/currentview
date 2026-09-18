@@ -1,25 +1,32 @@
 import logging
-import numpy as np
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union, Literal, Any, Callable
-from dataclasses import dataclass, field
+from typing import (
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    Literal,
+    Any,
+    Callable,
+    TYPE_CHECKING,
+)
 from enum import IntEnum
 from collections import OrderedDict
 
-from currentview.gmm.gmm_handler import GMMHandler
-from currentview.umap.umap_handler import UMAPConfig
-from currentview.umap.umap_visualizer import UMAPVisualizer
-
-from .utils.path_utils import validate_files
 from .utils.arg_utils import _split_and_normalize_configs
-from .utils.data_classes import ReadAlignment, Condition, ConditionStyle
+from .utils.data_classes import Condition, ConditionStyle
 from .utils.color_utils import ColorPalette, calculate_opacity
 from .utils.plotly_utils import PlotStyle
+from .utils.preprocess import PreprocessConfig
 
 from .io_processor import DataProcessor
 from .stats import StatsCalculator
 
-from .gmm import GMMConfig, PreprocessConfig
+if TYPE_CHECKING:
+    from .gmm import GMMConfig, GMMHandler
+    from .umap import UMAPConfig, UMAPHandler
 
 
 class VerbosityLevel(IntEnum):
@@ -137,14 +144,22 @@ class CurrentView:
 
         # Store processed conditions
         self._conditions: OrderedDict[str, Condition] = OrderedDict()
-        self._dirty_conditions: set = set()
+
+        # Conditions whose style changed, tracked per visualizer so that
+        # rendering one plot does not clear the other's pending work.
+        self._dirty_signal_conditions: Set[str] = set()
+        self._dirty_stats_conditions: Set[str] = set()
 
         # Track visualization state
         self._update_signal_viz = True
         self._update_stats_viz = True
 
-        # Track modifications to apply to visualizers
-        self._pending_modifications = []
+        # Ordered log of figure modifications (highlights, annotations, limits).
+        # Each visualizer records how much of the log it has already applied, so
+        # the log can be replayed in full whenever a visualizer is recreated.
+        self._modifications: List[Tuple[str, tuple, dict]] = []
+        self._signal_mods_applied = 0
+        self._stats_mods_applied = 0
 
         self.logger.debug(
             f"Initialized CurrentView: K={self.K}, "
@@ -208,26 +223,12 @@ class CurrentView:
         if label in self._conditions:
             raise KeyError(
                 f"Condition '{label}' already exists. "
-                f"Please use a unique label or remove the existing condition first."
+                "Please use a unique label or remove the existing condition first."
             )
 
         # Assign color if not specified
         if color is None:
-            if label in self._label_to_color_idx:
-                color_idx = self._label_to_color_idx[label]
-                return self.color_palette.colors[color_idx]
-
-            if not self._free_color_idxs:
-                self.logger.warning(
-                    "All colors in the palette are used. Reusing colors."
-                )
-                color_idx = len(self._label_to_color_idx) % len(
-                    self.color_palette.colors
-                )
-            else:
-                color_idx = self._free_color_idxs.pop(0)
-            self._label_to_color_idx[label] = color_idx
-            color = self.color_palette.colors[color_idx]
+            color = self._assign_color(label)
 
         # Use style defaults
         line_style = line_style or self.signals_plot_style.line_style
@@ -278,7 +279,7 @@ class CurrentView:
                 f"Successfully added condition '{processed_data['label']}' "
                 f"with {len(processed_data['reads'])} reads"
             )
-            self.logger.info(f"====================================================")
+            self.logger.info("====================================================")
 
         return self
 
@@ -341,7 +342,8 @@ class CurrentView:
             condition.style.line_style = line_style
 
         # Mark visualizations as needing update
-        self._dirty_conditions.add(label)
+        self._dirty_signal_conditions.add(label)
+        self._dirty_stats_conditions.add(label)
         self._mark_for_update()
 
         self.logger.info(f"Updated visualization parameters for condition '{label}'")
@@ -392,7 +394,7 @@ class CurrentView:
             RuntimeError: If no conditions have been added or stats not enabled
         """
         if not self._stats_enabled:
-            self.logger.warning(f"No stats provided to the visualizer")
+            self.logger.warning("No stats provided to the visualizer")
             return
         if not self._conditions:
             raise RuntimeError("No conditions to display. Use add_condition() first.")
@@ -521,14 +523,9 @@ class CurrentView:
             f"Highlighting position {window_idx} with color={color}, opacity={alpha}"
         )
 
-        # Apply immediately if viz exists, otherwise queue
-        if self._signal_viz and not self._update_signal_viz:
-            self._signal_viz.highlight_position(window_idx, color=color, alpha=alpha)
-        else:
-            self._pending_modifications.append(
-                ("highlight_position", (window_idx,), {"color": color, "alpha": alpha})
-            )
-
+        self._record_modification(
+            "highlight_position", (window_idx,), {"color": color, "alpha": alpha}
+        )
         return self
 
     def highlight_center(self, **kwargs) -> "CurrentView":
@@ -536,11 +533,7 @@ class CurrentView:
         return self.highlight_position(None, **kwargs)
 
     def clear_highlights(self) -> "CurrentView":
-        # Apply immediately if viz exists, otherwise queue
-        if self._signal_viz and not self._update_signal_viz:
-            self._signal_viz.clear_highlights()
-        else:
-            self._pending_modifications.append(("clear_highlights", (), {}))
+        self._record_modification("clear_highlights", (), {})
         return self
 
     def add_annotation(
@@ -570,42 +563,22 @@ class CurrentView:
 
         self.logger.debug(f"Adding annotation '{text}' at position {window_idx}")
 
-        if self._signal_viz and not self._update_signal_viz:
-            self._signal_viz.add_annotation(
-                window_idx, text, y_position=y_position, **kwargs
-            )
-        else:
-            self._pending_modifications.append(
-                (
-                    "add_annotation",
-                    (window_idx, text),
-                    {"y_position": y_position, **kwargs},
-                )
-            )
+        self._record_modification(
+            "add_annotation",
+            (window_idx, text),
+            {"y_position": y_position, **kwargs},
+        )
         return self
 
     def clear_annotations(self) -> "CurrentView":
-        if self._signal_viz and not self._update_signal_viz:
-            self._signal_viz.clear_annotations()
-        else:
-            self._pending_modifications.append(("clear_annotations", (), {}))
+        self._record_modification("clear_annotations", (), {})
         return self
 
     def set_title(self, title: str) -> "CurrentView":
         """Set plot title."""
         self.logger.debug(f"Setting title: {title}")
         self.title = title
-
-        # Update signal viz
-        if self._signal_viz:
-            self._signal_viz.set_title(title)
-        else:
-            self._pending_modifications.append(("set_title", (title,), {}))
-
-        # Update stats viz
-        if self._stats_viz:
-            self._stats_viz.set_title(title)
-
+        self._record_modification("set_title", (title,), {})
         return self
 
     def set_ylim(
@@ -613,14 +586,7 @@ class CurrentView:
     ) -> "CurrentView":
         """Set y-axis limits for signal plot."""
         self.logger.debug(f"Setting y-axis limits: bottom={bottom}, top={top}")
-
-        if self._signal_viz and not self._update_signal_viz:
-            self._signal_viz.set_ylim(bottom, top)
-        else:
-            self._pending_modifications.append(
-                ("set_ylim", (), {"bottom": bottom, "top": top})
-            )
-
+        self._record_modification("set_ylim", (), {"bottom": bottom, "top": top})
         return self
 
     def get_summary(self) -> Dict[str, Any]:
@@ -699,6 +665,12 @@ class CurrentView:
 
         # Clear data
         self._conditions.clear()
+        self._dirty_signal_conditions.clear()
+        self._dirty_stats_conditions.clear()
+
+        # Release every palette slot so labels reused after clear() get a color
+        self._label_to_color_idx.clear()
+        self._free_color_idxs = list(range(len(self.color_palette.colors)))
 
         # Clear visualizer if it exists
         if self._signal_viz:
@@ -712,7 +684,9 @@ class CurrentView:
         # Mark as dirty
         self._update_signal_viz = True
         self._update_stats_viz = True
-        self._pending_modifications.clear()
+        self._modifications.clear()
+        self._signal_mods_applied = 0
+        self._stats_mods_applied = 0
 
         return self
 
@@ -739,6 +713,8 @@ class CurrentView:
 
         # Remove from data
         del self._conditions[label]
+        self._dirty_signal_conditions.discard(label)
+        self._dirty_stats_conditions.discard(label)
 
         # Remove from visualizer if it exists
         if self._signal_viz and self._signal_viz.has_condition(label):
@@ -803,17 +779,17 @@ class CurrentView:
         self.logger.info(f"Condition '{label}'")
 
         aligned_reads = self.processor.process_reads(
-            bam_path,
-            pod5_path,
-            label,
-            contig,
-            target_position,
-            is_reversed,
-            matched_query_base,
-            ignore_non_primaries,
-            read_ids,
-            max_reads,
-            exclude_reads_with_indels,
+            bam_path=bam_path,
+            pod5_path=pod5_path,
+            label=label,
+            contig=contig,
+            target_position=target_position,
+            is_reversed=is_reversed,
+            matched_query_base=matched_query_base,
+            ignore_non_primaries=ignore_non_primaries,
+            read_ids=read_ids,
+            max_reads=max_reads,
+            exclude_reads_with_indels=exclude_reads_with_indels,
         )
 
         if not aligned_reads:
@@ -873,6 +849,51 @@ class CurrentView:
             f"{condition.n_reads} reads"
         )
 
+    def _record_modification(self, method_name: str, args: tuple, kwargs: dict):
+        """
+        Append a figure modification to the replay log and apply it immediately to
+        any visualizer that is already up to date.
+
+        The log is the single source of truth: every visualizer replays whatever
+        part of it it has not applied yet, so signals and stats figures can never
+        drift apart and a recreated visualizer rebuilds its full state.
+        """
+        self._modifications.append((method_name, args, kwargs))
+
+        if self._signal_viz is not None and not self._update_signal_viz:
+            self._apply_modifications(self._signal_viz, "signal")
+        if self._stats_viz is not None and not self._update_stats_viz:
+            self._apply_modifications(self._stats_viz, "stats")
+
+    def _apply_modifications(self, visualizer, which: Literal["signal", "stats"]):
+        """Replay the not-yet-applied tail of the modification log onto a visualizer."""
+        applied = (
+            self._signal_mods_applied if which == "signal" else self._stats_mods_applied
+        )
+        for method_name, args, kwargs in self._modifications[applied:]:
+            method = getattr(visualizer, method_name, None)
+            if method is not None:
+                method(*args, **kwargs)
+
+        if which == "signal":
+            self._signal_mods_applied = len(self._modifications)
+        else:
+            self._stats_mods_applied = len(self._modifications)
+
+    def _assign_color(self, label: str) -> str:
+        """Pick a palette color for a label, reusing the one it already holds."""
+        if label in self._label_to_color_idx:
+            return self.color_palette.colors[self._label_to_color_idx[label]]
+
+        if not self._free_color_idxs:
+            self.logger.warning("All colors in the palette are used. Reusing colors.")
+            color_idx = len(self._label_to_color_idx) % len(self.color_palette.colors)
+        else:
+            color_idx = self._free_color_idxs.pop(0)
+
+        self._label_to_color_idx[label] = color_idx
+        return self.color_palette.colors[color_idx]
+
     def _mark_for_update(self):
         """Mark visualizations as needing update."""
         self._update_signal_viz = True
@@ -900,7 +921,7 @@ class CurrentView:
         self._signal_viz = None
         self._update_signal_viz = True
 
-        self.logger.debug(f"Set new signals plot style - will recreate visualizer")
+        self.logger.debug("Set new signals plot style - will recreate visualizer")
         return self
 
     def set_stats_style(self, style: Union[PlotStyle, str]) -> "CurrentView":
@@ -925,7 +946,7 @@ class CurrentView:
         self._stats_viz = None
         self._update_stats_viz = True
 
-        self.logger.debug(f"Set new signals plot style - will recreate visualizer")
+        self.logger.debug("Set new signals plot style - will recreate visualizer")
         return self
 
     def set_distribution_kind(
@@ -940,6 +961,8 @@ class CurrentView:
         """Ensure signal visualizer is created and up to date."""
         if self._signal_viz is None:
             self.logger.debug("Creating signal visualizer")
+            # A fresh figure has none of the recorded modifications applied yet.
+            self._signal_mods_applied = 0
 
             if self.backend == "matplotlib":
                 from .signals_viz.matplotlib_visualizer import (
@@ -977,7 +1000,7 @@ class CurrentView:
                     self._signal_viz.remove_condition(label)
 
             for label in desired_labels:
-                if label in self._dirty_conditions or label not in current_labels:
+                if label in self._dirty_signal_conditions or label not in current_labels:
                     # Remove first if already plotted (style update case)
                     if label in current_labels:
                         self.logger.debug(f"Updating condition '{label}' in plot")
@@ -986,19 +1009,24 @@ class CurrentView:
                         self.logger.debug(f"Adding condition '{label}' to plot")
                     self._signal_viz.plot_condition(self._conditions[label])
 
-            # Apply any pending modifications
-            for method_name, args, kwargs in self._pending_modifications:
-                if hasattr(self._signal_viz, method_name):
-                    getattr(self._signal_viz, method_name)(*args, **kwargs)
-
-            self._pending_modifications.clear()
             self._update_signal_viz = False
-            self._dirty_conditions.clear()
+            self._dirty_signal_conditions.clear()
+
+        # Replay any modifications this figure has not seen yet
+        self._apply_modifications(self._signal_viz, "signal")
 
     def _ensure_stats_viz(self):
         """Ensure statistics visualizer is created and up to date."""
+        if not self._stats_enabled:
+            raise RuntimeError(
+                "Statistics are not enabled. Construct CurrentView with e.g. "
+                "CurrentView(stats=['mean', 'std']) to use the stats figure."
+            )
+
         if self._stats_viz is None:
             self.logger.debug("Creating stats visualizer")
+            # A fresh figure has none of the recorded modifications applied yet.
+            self._stats_mods_applied = 0
 
             if self.backend == "plotly":
                 from .stats_viz.plotly_visualizer import PlotlyStatsVisualizer
@@ -1041,7 +1069,7 @@ class CurrentView:
 
             # Only add/update conditions that are new or dirty
             for label in desired_labels:
-                if label in self._dirty_conditions or label not in current_labels:
+                if label in self._dirty_stats_conditions or label not in current_labels:
                     if label in current_labels:
                         self.logger.debug(f"Updating condition '{label}' in plot")
                         self._stats_viz.remove_condition(label)
@@ -1049,13 +1077,11 @@ class CurrentView:
                         self.logger.debug(f"Adding condition '{label}' to plot")
                     self._stats_viz.plot_condition(self._conditions[label])
 
-            # Apply pending modifications
-            for method_name, args, kwargs in self._pending_modifications:
-                if hasattr(self._stats_viz, method_name):
-                    getattr(self._stats_viz, method_name)(*args, **kwargs)
-
             self._update_stats_viz = False
-            self._dirty_conditions.clear()
+            self._dirty_stats_conditions.clear()
+
+        # Replay any modifications this figure has not seen yet
+        self._apply_modifications(self._stats_viz, "stats")
 
     def clear_cache(self) -> list[str]:
         cleared = []
@@ -1122,6 +1148,35 @@ class CurrentView:
         logger.propagate = False
         return logger
 
+    def _normalize_offsets_window(
+        self,
+        offsets_window: Optional[Tuple[int, int]] = None,
+    ) -> Tuple[int, int]:
+        """
+        Validate a (start_offset, end_offset) pair given relative to the target base.
+
+        Offsets are signed and inclusive: (0, 0) is the target base alone and
+        (-half_window, half_window) spans the whole K-base window.
+
+        Defaults to the full K-base window, so an unqualified call analyses
+        every base the visualizer was configured to show.
+        """
+        if offsets_window is None:
+            return (-self.half_window, self.half_window)
+
+        start, end = int(offsets_window[0]), int(offsets_window[1])
+
+        if start > end:
+            raise ValueError(
+                f"offsets_window start must be <= end, got {offsets_window}"
+            )
+        if start < -self.half_window or end > self.half_window:
+            raise ValueError(
+                f"offsets_window {offsets_window} out of range for K={self.K}; "
+                f"offsets must lie within [{-self.half_window}, {self.half_window}]"
+            )
+        return (start, end)
+
     def _get_gmm_handler(
         self,
         stat1: str,
@@ -1134,19 +1189,11 @@ class CurrentView:
     ):
         from .gmm import GMMHandler, GMMConfig, PreprocessConfig
 
-        if offsets_window is not None:
-            if (
-                offsets_window[0] < -self.half_window
-                or offsets_window[1] > self.half_window
-            ):
-                raise ValueError(
-                    f"offsets_window {offsets_window} out of range for K={self.K}"
-                )
-        if offsets_window is None:
-            offsets_window = (self.K // 2, self.K // 2)
+        # Defaults to the full K-base window.
+        offsets_window = self._normalize_offsets_window(offsets_window)
 
         if len(self._conditions) == 0:
-            raise SystemError(f"No conditions are added yet.")
+            raise RuntimeError("No conditions are added yet. Use add_condition() first.")
 
         cfg, pp_cfg = _split_and_normalize_configs(
             gmm_config,
@@ -1177,7 +1224,17 @@ class CurrentView:
         gmm_config: Optional["GMMConfig | dict"] = None,
         preprocess_config: Optional["PreprocessConfig | dict"] = None,
         **gmm_kwargs,
-    ):
+    ) -> "GMMHandler":
+        """
+        Fit a per-condition GMM over two per-read statistics.
+
+        Args:
+            stat1, stat2: Names of the two statistics forming the 2D feature space
+            offsets_window: Signed, inclusive offsets relative to the target base.
+                            Defaults to the full K-base window, i.e.
+                            (-(K-1)//2, (K-1)//2). Use (0, 0) for the target base
+                            alone.
+        """
         handler = self._get_gmm_handler(
             stat1,
             stat2,
@@ -1226,19 +1283,11 @@ class CurrentView:
     ):
         from .umap import UMAPHandler, UMAPConfig, PreprocessConfig
 
-        if offsets_window is not None:
-            if (
-                offsets_window[0] < -self.half_window
-                or offsets_window[1] > self.half_window
-            ):
-                raise ValueError(
-                    f"offsets_window {offsets_window} out of range for K={self.K}"
-                )
-        if offsets_window is None:
-            offsets_window = (self.K // 2, self.K // 2)
+        # Defaults to the full K-base window.
+        offsets_window = self._normalize_offsets_window(offsets_window)
 
         if len(self._conditions) == 0:
-            raise SystemError(f"No conditions are added yet.")
+            raise RuntimeError("No conditions are added yet. Use add_condition() first.")
 
         cfg, pp_cfg = _split_and_normalize_configs(
             umap_config,
@@ -1264,10 +1313,19 @@ class CurrentView:
         stats: List[str],
         offsets_window: Tuple[int, int] = None,
         *,
-        umap_config: Optional[UMAPConfig | dict] = None,
-        preprocess_config: Optional[PreprocessConfig | dict] = None,
+        umap_config: Optional["UMAPConfig | dict"] = None,
+        preprocess_config: Optional["PreprocessConfig | dict"] = None,
         **umap_kwargs,
-    ):
+    ) -> "UMAPHandler":
+        """
+        Fit a shared UMAP embedding over per-read statistics.
+
+        Args:
+            stats: Statistics to use as features at each position
+            offsets_window: Signed, inclusive offsets relative to the target base.
+                            Defaults to the full K-base window, i.e.
+                            (-(K-1)//2, (K-1)//2).
+        """
         handler = self._get_umap_handler(
             stats,
             offsets_window,

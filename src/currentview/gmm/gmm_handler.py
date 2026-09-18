@@ -15,13 +15,21 @@ from dataclasses import dataclass, field
 import numpy as np
 from sklearn.mixture import GaussianMixture
 
-from ..stats import StatsCalculator, StatisticsFuncs
+from ..stats import StatsCalculator
 from ..utils.data_classes import Condition, ConditionStyle
+from ..utils.preprocess import PreprocessConfig
 
 if TYPE_CHECKING:
     from .gmm_visualizer import GMMVisualizer
     from .gmm_tests import KSTestResult, JSTestResult
     from ..utils.plotly_utils import PlotStyle
+
+__all__ = [
+    "GMMConfig",
+    "PreprocessConfig",
+    "ConditionGMM",
+    "GMMHandler",
+]
 
 
 # ----------------------------
@@ -41,27 +49,7 @@ class GMMConfig:
     n_init: int = 3
 
 
-@dataclass
-class PreprocessConfig:
-    # Downsampling
-    enable_downsample: bool = False
-    max_samples: Optional[int] = None
-    downsample_strategy: Literal["random"] = "random"
-    ds_random_state: Optional[int] = None
-
-    # Outlier removal
-    enable_outliers: bool = False
-    outlier_method: Literal["zscore", "mad", "iqr"] = "zscore"
-    z_thresh: float = 3.0  # for zscore
-    mad_thresh: float = 3.5  # for MAD (≈ 3σ equivalent when scaled)
-    iqr_k: float = 1.5  # for IQR fences
-    drop_if_any_axis: bool = True  # drop row if any axis flagged (else both)
-
-    # Standardization
-    enable_standardize: bool = False
-    standardize_center: bool = True
-    standardize_scale: Literal["std", "mad"] = "std"
-    eps: float = 1e-9  # numerical floor
+# PreprocessConfig is shared with the UMAP handler; see utils.preprocess.
 
 
 # ----------------------------
@@ -104,13 +92,26 @@ class GMMHandler:
     ):
         self.stat1 = stat1
         self.stat2 = stat2
-        self.offsets_window = offsets_window
+        if offsets_window[0] > offsets_window[1]:
+            raise ValueError(
+                f"offsets_window start must be <= end, got {offsets_window}"
+            )
+        self.offsets_window = tuple(offsets_window)
         self.config = gmm_config or GMMConfig()
         self.pp = preprocess_config or PreprocessConfig()
 
         self.logger = logger or logging.getLogger(__name__)
 
-        self.stats_calculator = StatsCalculator(statistics=[self.stat1, self.stat2])
+        self.stats_calculator = StatsCalculator(
+            statistics=[self.stat1, self.stat2], logger=self.logger
+        )
+        # StatsCalculator de-duplicates, so two identical stats would collapse to a
+        # single column and leave the GMM one-dimensional.
+        if len(self.stats_calculator.stats_names) != 2:
+            raise ValueError(
+                f"stat1 and stat2 must be two different statistics; "
+                f"got {stat1!r} and {stat2!r}"
+            )
         self.stat1_name, self.stat2_name = self.stats_calculator.stats_names
 
         self.conditions_gmms_: Dict[str, ConditionGMM] = {}
@@ -213,6 +214,19 @@ class GMMHandler:
             raise ValueError("Stats must be 1D arrays.")
 
         X = np.column_stack([s1, s2]) if s1.size > 0 else np.empty((0, 2), float)
+
+        # Reads with no usable signal over the span yield NaN. GaussianMixture
+        # rejects non-finite input, so drop those rows here.
+        if X.size:
+            finite_rows = np.isfinite(X).all(axis=1)
+            n_dropped = int((~finite_rows).sum())
+            if n_dropped:
+                self.logger.info(
+                    f"'{condition.label}': dropped {n_dropped}/{len(X)} reads with "
+                    f"no usable signal over offsets {self.offsets_window}"
+                )
+            X = X[finite_rows]
+
         self.logger.debug(
             f"Fetched raw data for '{condition.label}': shape={X.shape}, "
             f"stats=({self.stat1_name}, {self.stat2_name})"
@@ -232,8 +246,8 @@ class GMMHandler:
             and n0 > self.pp.max_samples
         ):
             rng = np.random.default_rng(
-                self.pp.ds_random_state
-                if self.pp.ds_random_state is not None
+                self.pp.random_state
+                if self.pp.random_state is not None
                 else self.config.random_state
             )
             idx = rng.choice(n0, size=self.pp.max_samples, replace=False)

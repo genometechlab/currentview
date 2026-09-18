@@ -1,5 +1,7 @@
-def validate_files(path):
-    """Validate that input files exist."""
-    if not path.exists():
-        return False
-    return True
+from pathlib import Path
+from typing import Union
+
+
+def validate_files(path: Union[str, Path]) -> bool:
+    """Return True if the given path exists."""
+    return Path(path).exists()

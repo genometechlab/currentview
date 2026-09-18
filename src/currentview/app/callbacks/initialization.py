@@ -1,21 +1,87 @@
+import time
+from collections import OrderedDict
+from dataclasses import fields
+from threading import Lock
+
 from dash import Input, Output, State, callback, ctx, html, no_update, ALL
-from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 from currentview import CurrentView, PlotStyle
 from ..utils import validate_window_size, validate_json_string, validate_kmer_labels
-from ..utils.processing_factory import process_signal
+from ..utils.processing_factory import (
+    process_signal,
+    DEFAULT_BESSEL_ORDER,
+    DEFAULT_BESSEL_CUTOFF,
+    DEFAULT_GAUSSIAN_SIGMA,
+)
 
 
-# NOTE: Module-level dict — sessions are not shared across workers.
-# If deploying with multiple gunicorn workers, replace with a server-side
-# cache (e.g. Redis, Flask-Caching) keyed by session_id.
-visualizers: dict[str, CurrentView] = {}
+# Each CurrentView holds every read's raw signal, so an unbounded store would
+# leak a full dataset per browser tab. Cap the number of live sessions and
+# expire idle ones.
+#
+# NOTE: this is per-process — sessions are not shared across workers. If
+# deploying with multiple gunicorn workers, replace with a server-side cache
+# (e.g. Redis, Flask-Caching) keyed by session_id.
+MAX_SESSIONS = 8
+SESSION_TTL_SECONDS = 2 * 60 * 60  # 2 hours idle
+
+_visualizers: "OrderedDict[str, CurrentView]" = OrderedDict()
+_last_seen: dict[str, float] = {}
+# Last GMM/UMAP figure rendered per session, so those tabs can be exported.
+# Figures are cheap next to a CurrentView, and expire with their session.
+_analysis_figures: dict[str, dict] = {}
+_lock = Lock()
+
+
+def _forget_locked(session_id: str) -> None:
+    _visualizers.pop(session_id, None)
+    _last_seen.pop(session_id, None)
+    _analysis_figures.pop(session_id, None)
+
+
+def _evict_locked() -> None:
+    """Drop expired sessions, then the least recently used ones over the cap."""
+    now = time.monotonic()
+
+    for sid in [s for s, t in _last_seen.items() if now - t > SESSION_TTL_SECONDS]:
+        _forget_locked(sid)
+
+    while len(_visualizers) > MAX_SESSIONS:
+        sid, _ = _visualizers.popitem(last=False)
+        _last_seen.pop(sid, None)
+        _analysis_figures.pop(sid, None)
+
+
+def set_analysis_figure(session_id: str, tab: str, fig) -> None:
+    """Remember the most recent GMM/UMAP figure for a session."""
+    with _lock:
+        _analysis_figures.setdefault(session_id, {})[tab] = fig
+
+
+def get_analysis_figure(session_id: str, tab: str):
+    """Return the most recent GMM/UMAP figure for a session, if any."""
+    with _lock:
+        return _analysis_figures.get(session_id, {}).get(tab)
+
+
+def set_visualizer(session_id: str, viz: CurrentView) -> None:
+    """Register the visualizer for a session, evicting stale ones."""
+    with _lock:
+        _visualizers[session_id] = viz
+        _visualizers.move_to_end(session_id)
+        _last_seen[session_id] = time.monotonic()
+        _evict_locked()
 
 
 def get_visualizer(session_id: str) -> CurrentView | None:
-    """Get the visualizer instance for a session."""
-    return visualizers.get(session_id)
+    """Get the visualizer instance for a session, refreshing its idle timer."""
+    with _lock:
+        viz = _visualizers.get(session_id)
+        if viz is not None:
+            _visualizers.move_to_end(session_id)
+            _last_seen[session_id] = time.monotonic()
+        return viz
 
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
@@ -168,11 +234,18 @@ def register_initialization_callbacks():
         if title:
             params["title"] = title
 
+        style_overrides = {}
         if custom_style:
             is_valid, style_data, error_msg = validate_json_string(custom_style)
             if not is_valid:
                 return _init_error(error_msg)
-            # style_data is passed as overrides into PlotStyle below
+            if style_data is not None:
+                if not isinstance(style_data, dict):
+                    return _init_error(
+                        "Custom plot style must be a JSON object, "
+                        'e.g. {"line_width": 1.5}'
+                    )
+                style_overrides = style_data
 
         # Build plot style from style options
         base = "interactive_dark" if "dark" in style_opts else "interactive"
@@ -181,19 +254,29 @@ def register_initialization_callbacks():
         plot_style.show_legend = "legend" in style_opts
         plot_style.renderer = "WebGL" if "webgl" in style_opts else "SVG"
 
+        # Apply the user's JSON overrides last so they win over the checkboxes
+        unknown = [f for f in style_overrides if not hasattr(plot_style, f)]
+        if unknown:
+            valid = ", ".join(sorted(f.name for f in fields(PlotStyle)))
+            return _init_error(
+                f"Unknown plot style field(s): {', '.join(unknown)}. Valid: {valid}"
+            )
+        for field_name, value in style_overrides.items():
+            setattr(plot_style, field_name, value)
+
         params["signals_plot_style"] = plot_style
         params["stats_plot_style"] = plot_style
 
         params["signal_processing_fn"] = lambda signal: process_signal(
             signal,
             normalization_method=normalization,
-            filter_method=filtering_option,
-            bessel_order=bessel_order,
-            bessel_cutoff=bessel_cutoff,
-            gaussian_sigma=gaussian_sigma,
+            filtering_method=filtering_option,
+            bessel_order=bessel_order or DEFAULT_BESSEL_ORDER,
+            bessel_cutoff=bessel_cutoff or DEFAULT_BESSEL_CUTOFF,
+            gaussian_sigma=gaussian_sigma or DEFAULT_GAUSSIAN_SIGMA,
         )
 
-        visualizers[session_id] = CurrentView(**params)
+        set_visualizer(session_id, CurrentView(**params))
 
         msg = f"Initialized with K={k}"
         if stats:

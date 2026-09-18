@@ -5,7 +5,19 @@ from dash import Input, Output, State, callback, dcc, html, no_update
 from dash.exceptions import PreventUpdate
 
 from ..config import DEFAULT_PLOT_HEIGHT
-from .initialization import get_visualizer
+from .initialization import get_visualizer, get_analysis_figure
+
+# Tabs whose figure is produced by an analysis run rather than by the
+# visualizer, so exporting them writes the stored figure directly.
+_ANALYSIS_TABS = {"gmm": "GMM", "umap": "UMAP"}
+
+
+def _write_figure(fig, path, fmt: str) -> None:
+    """Write a Plotly figure to disk in the requested format."""
+    if fmt == "html":
+        fig.write_html(str(path))
+    else:
+        fig.write_image(str(path), format=fmt)
 
 
 # ── Alert helpers ─────────────────────────────────────────────────────────────
@@ -162,12 +174,18 @@ def register_visualization_callbacks():
             "stats": (viz.save_stats, "Statistics"),
         }
 
-        if active_tab not in _EXPORT:
-            return f"Cannot export '{active_tab}' tab", True
-
-        save_fn, label = _EXPORT[active_tab]
         try:
-            save_fn(path=path, format=fmt)
+            if active_tab in _EXPORT:
+                save_fn, label = _EXPORT[active_tab]
+                save_fn(path=path, format=fmt)
+            elif active_tab in _ANALYSIS_TABS:
+                label = _ANALYSIS_TABS[active_tab]
+                fig = get_analysis_figure(session_id, active_tab)
+                if fig is None:
+                    return f"Run {label} first — there is no plot to export", True
+                _write_figure(fig, path, fmt)
+            else:
+                return f"Cannot export '{active_tab}' tab", True
         except Exception as e:
             return f"Export failed: {e}", True
 

@@ -35,8 +35,12 @@ class BaseStatsVisualizer(ABC):
         plot_style: Optional[PlotStyle] = None,
         title: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
+        jitter_seed: int = 0,
     ):
         self.logger = logger or logging.getLogger(__name__)
+        # Dedicated RNG so the fallback scatter's jitter is reproducible and does
+        # not depend on (or disturb) global NumPy random state.
+        self._jitter_rng = np.random.default_rng(jitter_seed)
         self.K = K
         self.n_stats = n_stats
         self.window_labels = window_labels

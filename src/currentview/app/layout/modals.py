@@ -4,9 +4,8 @@ from typing import Optional, List
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from .elements import create_input, create_button, create_dropdown
+from .elements import create_input, create_button, create_select
 from ..styles.constants import (
-    BORDER_RADIUS,
     BORDER_RADIUS_SM,
     COLOR_BORDER,
     TRANSITION,
@@ -162,11 +161,18 @@ def create_export_modal(
                                 width=9,
                             ),
                             dbc.Col(
-                                create_dropdown(
+                                # Native <select> rather than dcc.Dropdown: this
+                                # sits in the modal footer, where a JS-rendered
+                                # popup menu gets clipped by the modal bounds and
+                                # the last format (PDF) becomes unreachable. The
+                                # browser draws a native option list above all
+                                # page content, so every format stays selectable.
+                                # create_select gives it the same styling as
+                                # every other select in the app.
+                                create_select(
                                     id=f"{modal_id}-format",
                                     options=file_extensions,
                                     value=default_extension,
-                                    clearable=False,
                                 ),
                                 width=3,
                             ),

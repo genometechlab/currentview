@@ -1,8 +1,7 @@
-from dash import Input, Output, State, callback, dcc, html, ctx, ALL, no_update
-from dash.exceptions import PreventUpdate
+from dash import Input, Output, State, callback, dcc, html, ctx, ALL
 import dash_bootstrap_components as dbc
 
-from .initialization import get_visualizer
+from .initialization import get_visualizer, set_analysis_figure
 from ..config import DEFAULT_PLOT_HEIGHT
 
 
@@ -116,6 +115,7 @@ def register_visualization_add_callbacks():
                 covariance_type=covariance_type,
             )
             fig = gmm_handler.visualize().get_fig()
+            set_analysis_figure(session_id, "gmm", fig)
             return dcc.Graph(
                 id="plot", figure=fig, style={"height": DEFAULT_PLOT_HEIGHT}
             )
@@ -195,6 +195,7 @@ def register_visualization_add_callbacks():
                 min_dist=float(min_dist),
             )
             fig = umap_handler.visualize().get_fig()
+            set_analysis_figure(session_id, "umap", fig)
             return dcc.Graph(
                 id="plot", figure=fig, style={"height": DEFAULT_PLOT_HEIGHT}
             )

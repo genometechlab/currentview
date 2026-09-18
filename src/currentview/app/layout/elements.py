@@ -20,7 +20,6 @@ from ..styles.constants import (
     COLOR_DANGER,
     COLOR_WARNING,
     COLOR_INFO,
-    SHADOW_SM,
     SHADOW_COLOR_PRIMARY,
     SHADOW_COLOR_SUCCESS,
     SHADOW_COLOR_DANGER,

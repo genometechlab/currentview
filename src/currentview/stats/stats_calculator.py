@@ -1,9 +1,7 @@
 import numpy as np
-from typing import List, Union, Callable, Dict, Optional, Tuple
-from collections import defaultdict
+from typing import List, Union, Callable, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
-import warnings
 import logging
 
 from .stats_funcs import StatisticsFuncs
@@ -54,30 +52,52 @@ class StatsCalculator:
 
     def calculate_multi_position_stats(
         self, condition: Condition, start_offset: int, end_offset: int
-    ):
-        stats_dict = {self._get_stat_name(stat): [] for stat in self.statistics}
+    ) -> Dict[str, np.ndarray]:
+        """
+        Calculate statistics over a contiguous span of positions, one value per read.
+
+        Offsets are signed and inclusive, relative to the condition's target
+        position: (0, 0) is the target base alone.
+
+        Returns:
+            Dict mapping stat_name -> array of values (one per read; NaN where the
+            read has no usable signal over the span).
+        """
+        stats_dict: Dict[str, List[float]] = {
+            self._get_stat_name(stat): [] for stat in self.statistics
+        }
 
         target_position = condition.target_position
         for read in condition.reads:
             bases_signal = read.get_span_signal(
                 target_position + start_offset, target_position + end_offset
             )
+
             for stat, compiled_func in zip(self.statistics, self._compiled_stats):
                 stat_name = self._get_stat_name(stat)
-                try:
-                    value = compiled_func(bases_signal)
-                    # Ensure scalar
-                    if isinstance(value, np.ndarray):
-                        value = float(value)
-                except Exception as e:
-                    if self.logger.isEnabledFor(logging.DEBUG):
-                        self.logger.debug(f"Failed to calculate {stat_name}: {e}")
+                stats_dict[stat_name].append(
+                    self._safe_apply(compiled_func, bases_signal, stat_name)
+                )
 
-                stats_dict[stat_name].append(value)
+        return {k: np.array(v, dtype=np.float32) for k, v in stats_dict.items()}
 
-        stats_dict = {k: np.array(v, dtype=np.float32) for k, v in stats_dict.items()}
+    def _safe_apply(
+        self, func: Callable, signal: Optional[np.ndarray], stat_name: str
+    ) -> float:
+        """Apply a statistic to a signal, returning NaN if it is missing or fails."""
+        if signal is None or len(signal) == 0:
+            return float(np.nan)
+        try:
+            value = func(signal)
+        except Exception as e:
+            if self.logger.isEnabledFor(logging.DEBUG):
+                self.logger.debug(f"Failed to calculate {stat_name}: {e}")
+            return float(np.nan)
 
-        return stats_dict
+        # Ensure scalar
+        if isinstance(value, np.ndarray):
+            value = float(value)
+        return value
 
     def calculate_per_position_stats(
         self, aligned_reads: List[ReadAlignment], target_position: int, K: int
@@ -100,7 +120,21 @@ class StatsCalculator:
         positions = list(
             range(target_position - half_window, target_position + half_window + 1)
         )
+        return self.calculate_stats_at_positions(aligned_reads, positions)
 
+    def calculate_stats_at_positions(
+        self, aligned_reads: List[ReadAlignment], positions: List[int]
+    ) -> Dict[int, Dict[str, np.ndarray]]:
+        """
+        Calculate statistics for each read at each of an explicit list of positions.
+
+        Args:
+            aligned_reads: List of aligned reads
+            positions: Reference positions to evaluate
+
+        Returns:
+            Dict mapping position -> stat_name -> array of values (one per read)
+        """
         n_reads = len(aligned_reads)
         n_positions = len(positions)
 
@@ -108,7 +142,7 @@ class StatsCalculator:
             f"Calculating stats for {n_reads} reads across {n_positions} positions"
         )
 
-        stats_by_position = {}
+        stats_by_position: Dict[int, Dict[str, np.ndarray]] = {}
         # Use parallel processing for positions if worthwhile
         if n_positions < 3 or n_reads < 10:
             # Small dataset - sequential is faster
@@ -163,63 +197,42 @@ class StatsCalculator:
             Dict[stat_name, array of values] where each value is from one read
         """
         # Initialize result dict
-        stats_dict = {self._get_stat_name(stat): [] for stat in self.statistics}
+        stats_dict: Dict[str, np.ndarray] = {
+            self._get_stat_name(stat): [] for stat in self.statistics
+        }
 
-        # Collect signals from reads at this position
-        valid_signals = []
+        # Collect signals from reads at this position. Reads without signal here
+        # contribute None so that every stat array stays aligned with `reads`.
+        signals: List[Optional[np.ndarray]] = []
+        n_covered = 0
 
         for read in reads:
             pos_base = read.get_base_at_ref_pos(pos)
 
             if pos_base is not None and pos_base.has_signal:
-                signal = read.get_base_signal(base=pos_base)
-
-                # Handle reversed reads
-                if read.is_reversed:
-                    signal = signal[::-1]
-
-                valid_signals.append(signal)
-
+                # get_base_signal already returns the signal in 5'->3' read order,
+                # including the flip for reverse-stranded reads.
+                signals.append(read.get_base_signal(base=pos_base))
+                n_covered += 1
             else:
-                valid_signals.append(
-                    [
-                        np.nan,
-                    ]
-                )
+                signals.append(None)
 
         # Calculate statistics for each signal
-        if valid_signals:
-            # Use pre-compiled functions for efficiency
-            for stat, compiled_func in zip(self.statistics, self._compiled_stats):
-                stat_name = self._get_stat_name(stat)
-
-                # Calculate statistic for each signal
-                values = []
-                for signal in valid_signals:
-                    try:
-                        value = compiled_func(signal)
-                        # Ensure scalar
-                        if isinstance(value, np.ndarray):
-                            value = float(value)
-                        values.append(value)
-                    except Exception as e:
-                        if self.logger.isEnabledFor(logging.DEBUG):
-                            self.logger.debug(f"Failed to calculate {stat_name}: {e}")
-                        values.append(np.nan)
-
-                stats_dict[stat_name] = np.array(values, dtype=np.float32)
-        else:
-            # No valid signals - return empty arrays
-            for stat_name in stats_dict:
-                stats_dict[stat_name] = np.array([], dtype=np.float32)
+        for stat, compiled_func in zip(self.statistics, self._compiled_stats):
+            stat_name = self._get_stat_name(stat)
+            stats_dict[stat_name] = np.array(
+                [self._safe_apply(compiled_func, sig, stat_name) for sig in signals],
+                dtype=np.float32,
+            )
 
         # Log coverage warning if needed
-        coverage = len(valid_signals) / len(reads) if reads else 0
-        if coverage < 0.5 and len(reads) > 0:
-            self.logger.warning(
-                f"Low coverage at position {pos}: {len(valid_signals)}/{len(reads)} "
-                f"reads ({coverage*100:.1f}%) have signal"
-            )
+        if reads:
+            coverage = n_covered / len(reads)
+            if coverage < 0.5:
+                self.logger.warning(
+                    f"Low coverage at position {pos}: {n_covered}/{len(reads)} "
+                    f"reads ({coverage*100:.1f}%) have signal"
+                )
 
         return stats_dict
 
@@ -251,19 +264,9 @@ class StatsCalculator:
 
         for stat in statistics:
             if isinstance(stat, str):
-                # Convert string to enum
-                try:
-                    stat_enum = StatisticsFuncs.coerce(stat.lower())
-                    parsed.append(stat_enum)
-                except ValueError:
-                    try:
-                        stat_enum = StatisticsFuncs.coerce(stat.upper())
-                        parsed.append(stat_enum)
-                    except KeyError:
-                        raise ValueError(
-                            f"Unknown statistic: '{stat}'. "
-                            f"Valid options are: {[s.value for s in StatisticsFuncs]}"
-                        )
+                # coerce() already normalizes case and raises a ValueError that
+                # lists the valid names, so let it propagate.
+                parsed.append(StatisticsFuncs.coerce(stat))
             elif isinstance(stat, StatisticsFuncs):
                 parsed.append(stat)
             elif callable(stat):

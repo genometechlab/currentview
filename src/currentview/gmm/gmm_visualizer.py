@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple, Union
 
@@ -124,7 +123,6 @@ class GMMVisualizer:
         if not records:
             raise ValueError("No records provided to plot_gmms()")
 
-        records = [r for r in records]
         self._warn_if_all_invalid(records)
 
         # Build shared grid over *valid* records
@@ -276,8 +274,8 @@ class GMMVisualizer:
                 "All records have empty data or missing models; nothing to visualize."
             )
         if invalid:
-            print(
-                f"[GMMVisualizer] Warning: Skipping records without data/model: {invalid}"
+            self.logger.warning(
+                f"Skipping records without data/model: {invalid}"
             )
 
     def _build_shared_grid(

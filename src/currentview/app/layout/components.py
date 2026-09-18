@@ -1,6 +1,6 @@
 import dash_bootstrap_components as dbc
 from dash import dcc, html
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 
 from ..config import (
     WINDOW_SIZE_MIN,
@@ -35,12 +35,10 @@ from ..styles.constants import (
     COLOR_TEXT_MUTED,
     FORM_CONTROL_HEIGHT,
     FORM_CONTROL_HEIGHT_SM,
-    TRANSITION,
     TAB_STYLE,
     ACTIVE_TAB_STYLE,
     RADIUS_LEFT,
     RADIUS_RIGHT,
-    RADIUS_NONE,
     GRADIENT_PRIMARY,
 )
 

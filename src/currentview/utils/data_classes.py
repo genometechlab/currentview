@@ -1,9 +1,7 @@
 import numpy as np
-import pysam
-from typing import Dict, List, Optional, Set, Tuple, Union, Any
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-from uuid import UUID
 from pathlib import Path
 from collections import defaultdict
 from functools import cached_property

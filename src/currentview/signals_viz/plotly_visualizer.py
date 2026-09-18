@@ -1,12 +1,10 @@
 import numpy as np
 import plotly.graph_objects as go
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 from .base_visualizer import BaseSignalVisualizer
 from ..utils.data_classes import Condition
-from ..utils.plotly_utils import PlotStyle
-from ..utils.color_utils import get_contrasting_color
 
 
 class PlotlySignalVisualizer(BaseSignalVisualizer):
@@ -19,6 +17,11 @@ class PlotlySignalVisualizer(BaseSignalVisualizer):
     def _create_figure(self):
         self.fig = go.Figure()
         self._plot_func = go.Scattergl if self.style.renderer == "WebGL" else go.Scatter
+        # Scattergl has no `cliponaxis` property and raises on it, so only send
+        # it to the SVG Scatter trace.
+        self._trace_kwargs = (
+            {} if self._plot_func is go.Scattergl else {"cliponaxis": False}
+        )
 
         layout = self.style.get_layout_dict()
 
@@ -117,7 +120,7 @@ class PlotlySignalVisualizer(BaseSignalVisualizer):
                 self._plot_func(
                     x=mx,
                     y=my,
-                    cliponaxis=False,
+                    **self._trace_kwargs,
                     mode="lines",
                     name=condition.label,
                     legendgroup=condition.label,
@@ -134,7 +137,7 @@ class PlotlySignalVisualizer(BaseSignalVisualizer):
                     self._plot_func(
                         x=ix,
                         y=iy,
-                        cliponaxis=False,
+                        **self._trace_kwargs,
                         mode="lines",
                         name=condition.label,
                         legendgroup=condition.label,
@@ -151,7 +154,7 @@ class PlotlySignalVisualizer(BaseSignalVisualizer):
                 self._plot_func(
                     x=[np.nan],
                     y=[np.nan],
-                    cliponaxis=False,
+                    **self._trace_kwargs,
                     mode="lines",
                     name=condition.label,
                     legendgroup=condition.label,
@@ -164,9 +167,13 @@ class PlotlySignalVisualizer(BaseSignalVisualizer):
             )
 
     def _do_remove_condition_traces(self, label: str):
-        self.fig.data = tuple(
-            tr for tr in self.fig.data if getattr(tr, "meta", {}).get("cond") != label
-        )
+        def belongs_to(trace) -> bool:
+            # Plotly leaves `meta` as None on traces that never set it, so guard
+            # against None rather than relying on getattr's default.
+            meta = getattr(trace, "meta", None) or {}
+            return isinstance(meta, dict) and meta.get("cond") == label
+
+        self.fig.data = tuple(tr for tr in self.fig.data if not belongs_to(tr))
 
     def _recompute_ylim_from_figure(self):
         for tr in self.fig.data:

@@ -1,5 +1,18 @@
+"""Signal normalization and filtering applied to each read before plotting.
+
+Every entry point below takes explicit keyword-only options rather than a loose
+``**kwargs`` bag. A misspelled option therefore raises ``TypeError`` instead of
+being silently swallowed and leaving the signal unprocessed.
+"""
+
 import numpy as np
+from scipy.ndimage import gaussian_filter1d
 from scipy.signal import bessel, filtfilt
+
+# Shared defaults, so the UI, the filter helpers and the dispatcher cannot drift.
+DEFAULT_BESSEL_ORDER = 4
+DEFAULT_BESSEL_CUTOFF = 0.1
+DEFAULT_GAUSSIAN_SIGMA = 1.0
 
 
 def zscore_signal_normalization(signal):
@@ -19,7 +32,9 @@ def zscore_signal_normalization(signal):
     return (signal - mean) / std
 
 
-def bessel_filter_smoothing(signal, order=4, cutoff=0.1):
+def bessel_filter_smoothing(
+    signal, order=DEFAULT_BESSEL_ORDER, cutoff=DEFAULT_BESSEL_CUTOFF
+):
     """
     Apply a Bessel filter to smooth the input signal.
 
@@ -32,11 +47,17 @@ def bessel_filter_smoothing(signal, order=4, cutoff=0.1):
     np.ndarray: The smoothed signal.
     """
     b, a = bessel(order, cutoff, btype="low", analog=False)
-    smoothed_signal = filtfilt(b, a, signal)
-    return smoothed_signal
+
+    # filtfilt pads the signal by 3 * max(len(a), len(b)); shorter reads would
+    # raise. Those are too short to be worth filtering, so pass them through.
+    padlen = 3 * max(len(a), len(b))
+    if len(signal) <= padlen:
+        return signal
+
+    return filtfilt(b, a, signal)
 
 
-def gaussian_filter_smoothing(signal, sigma=1):
+def gaussian_filter_smoothing(signal, sigma=DEFAULT_GAUSSIAN_SIGMA):
     """
     Apply a Gaussian filter to smooth the input signal.
 
@@ -47,10 +68,7 @@ def gaussian_filter_smoothing(signal, sigma=1):
     Returns:
     np.ndarray: The smoothed signal.
     """
-    from scipy.ndimage import gaussian_filter1d
-
-    smoothed_signal = gaussian_filter1d(signal, sigma=sigma)
-    return smoothed_signal
+    return gaussian_filter1d(signal, sigma=sigma)
 
 
 def min_max_normalization(signal):
@@ -91,38 +109,58 @@ def normalize_signal(signal, method="none"):
         raise ValueError(f"Unknown normalization method: {method}")
 
 
-def filter_signal(signal, method="none", **kwargs):
+def filter_signal(
+    signal,
+    method="none",
+    *,
+    bessel_order=DEFAULT_BESSEL_ORDER,
+    bessel_cutoff=DEFAULT_BESSEL_CUTOFF,
+    gaussian_sigma=DEFAULT_GAUSSIAN_SIGMA,
+):
     """
     Filter the input signal using the specified method.
 
     Parameters:
     signal (np.ndarray): The input signal array.
-    method (str): The filtering method to apply. Options are "none" and "bessel".
-    kwargs: Additional keyword arguments for the filtering method.
+    method (str): "none", "bessel" or "gaussian".
+    bessel_order (int): Bessel filter order.
+    bessel_cutoff (float): Bessel cutoff as a fraction of the Nyquist frequency.
+    gaussian_sigma (float): Standard deviation of the Gaussian kernel.
 
     Returns:
     np.ndarray: The filtered signal.
     """
-    if method == "bessel":
-        cutoff = kwargs.get("bessel_cutoff", 0.2)
-        order = kwargs.get("bessel_order", 4)
-        return bessel_filter_smoothing(signal, order=order, cutoff=cutoff)
-    elif method == "gaussian":
-        sigma = kwargs.get("sigma", 1)
-        return gaussian_filter_smoothing(signal, sigma=sigma)
-    elif method == "none":
+    if method in (None, "none"):
         return signal
-    else:
-        raise ValueError(f"Unknown filtering method: {method}")
+    if method == "bessel":
+        return bessel_filter_smoothing(
+            signal, order=bessel_order, cutoff=bessel_cutoff
+        )
+    if method == "gaussian":
+        return gaussian_filter_smoothing(signal, sigma=gaussian_sigma)
+    raise ValueError(f"Unknown filtering method: {method}")
 
 
 def process_signal(
-    signal, normalization_method="none", filtering_method="none", **filter_kwargs
+    signal,
+    normalization_method="none",
+    filtering_method="none",
+    *,
+    bessel_order=DEFAULT_BESSEL_ORDER,
+    bessel_cutoff=DEFAULT_BESSEL_CUTOFF,
+    gaussian_sigma=DEFAULT_GAUSSIAN_SIGMA,
 ):
     """
-    Process the input signal by applying first filtering and then normalization.
+    Process the input signal by applying filtering first, then normalization.
 
+    Options are keyword-only and explicit: passing an unrecognised name raises
+    TypeError rather than silently skipping the step.
     """
-    filtered_signal = filter_signal(signal, method=filtering_method, **filter_kwargs)
-    normalized_signal = normalize_signal(filtered_signal, method=normalization_method)
-    return normalized_signal
+    filtered = filter_signal(
+        signal,
+        method=filtering_method,
+        bessel_order=bessel_order,
+        bessel_cutoff=bessel_cutoff,
+        gaussian_sigma=gaussian_sigma,
+    )
+    return normalize_signal(filtered, method=normalization_method)

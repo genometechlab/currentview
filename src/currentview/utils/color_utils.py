@@ -1,7 +1,7 @@
 from matplotlib.colors import to_rgba
 import re
 from enum import Enum
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple
 
 
 def to_mpl_color(color: str) -> Tuple[float, float, float, float]:
@@ -49,8 +49,6 @@ def to_mpl_color(color: str) -> Tuple[float, float, float, float]:
 
         # hex — let matplotlib handle it, then normalise to 4-tuple
         # (also handles named colors via the same path)
-        from matplotlib.colors import to_rgba
-
         r, g, b, a = to_rgba(color)
         return (float(r), float(g), float(b), float(a))
 

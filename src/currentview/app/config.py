@@ -1,7 +1,11 @@
-# Default paths
-DEFAULT_BAM_PATH = "/data/tRNA_model_training/Data/bam_files/06_07_25_RNA4"
-DEFAULT_POD5_PATH = "/data/tRNA/yeast/06_07_25_RNA4_ecolscerIVTpooltRNA/06_07_25_RNA4_ecolscerIVTpooltRNA/20250617_1515_P2S-00721-A_PAW01223_5b5d2793/"
-DEFAULT_DATA_PATH = "/data/tRNA"
+import os
+from pathlib import Path
+
+# Default directory the file pickers open in. Defaults to the directory the app
+# was launched from, and can be pointed elsewhere with CURRENTVIEW_DATA_DIR.
+DEFAULT_DATA_PATH = os.environ.get("CURRENTVIEW_DATA_DIR") or str(Path.cwd())
+DEFAULT_BAM_PATH = DEFAULT_DATA_PATH
+DEFAULT_POD5_PATH = DEFAULT_DATA_PATH
 
 # UI Constants
 WINDOW_SIZE_MIN = 3
@@ -64,7 +68,8 @@ EXPORT_FORMATS = [
 ]
 
 # Plot settings
-DEFAULT_PLOT_HEIGHT = "800"
+# Must carry a CSS unit — a bare "800" is invalid CSS and silently ignored.
+DEFAULT_PLOT_HEIGHT = "800px"
 DEFAULT_COLOR = "#3498db"
 DEFAULT_LINE_WIDTH = 1.0
 DEFAULT_OPACITY = 10

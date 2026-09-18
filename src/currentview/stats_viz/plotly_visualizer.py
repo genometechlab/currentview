@@ -1,12 +1,8 @@
-import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pathlib import Path
-from typing import List, Optional, Union
 
 from .base_visualizer import BaseStatsVisualizer
-from ..utils.data_classes import Condition
-from ..utils.plotly_utils import PlotStyle
 from ..utils.color_utils import to_rgba_str
 
 
@@ -19,6 +15,11 @@ class PlotlyStatsVisualizer(BaseStatsVisualizer):
 
     def _create_figure(self):
         self._plot_func = go.Scattergl if self.style.renderer == "WebGL" else go.Scatter
+        # Scattergl has no `cliponaxis` property and raises on it, so only send
+        # it to the SVG Scatter trace.
+        self._trace_kwargs = (
+            {} if self._plot_func is go.Scattergl else {"cliponaxis": False}
+        )
 
         column_titles = self.window_labels or [
             str(i) for i in range(-(self.K // 2), self.K // 2 + self.K % 2)
@@ -127,7 +128,7 @@ class PlotlyStatsVisualizer(BaseStatsVisualizer):
             self._plot_func(
                 x=x_range,
                 y=density,
-                cliponaxis=False,
+                **self._trace_kwargs,
                 mode="lines",
                 name=label,
                 line=dict(color=color, width=line_width, dash=line_style),
@@ -145,12 +146,12 @@ class PlotlyStatsVisualizer(BaseStatsVisualizer):
     def _render_kde_fallback(
         self, values, label, color, opacity, row, col, showlegend, legendgroup
     ):
-        y_jitter = np.random.normal(0, 0.02, values.size)
+        y_jitter = self._jitter_rng.normal(0, 0.02, values.size)
         self.fig.add_trace(
             self._plot_func(
                 x=values,
                 y=y_jitter,
-                cliponaxis=False,
+                **self._trace_kwargs,
                 mode="markers",
                 name=label,
                 marker=dict(color=color, size=8, opacity=opacity * 0.6),
@@ -164,9 +165,13 @@ class PlotlyStatsVisualizer(BaseStatsVisualizer):
         )
 
     def _do_remove_condition_traces(self, label: str):
-        self.fig.data = tuple(
-            tr for tr in self.fig.data if getattr(tr, "meta", {}).get("cond") != label
-        )
+        def belongs_to(trace) -> bool:
+            # Plotly leaves `meta` as None on traces that never set it, so guard
+            # against None rather than relying on getattr's default.
+            meta = getattr(trace, "meta", None) or {}
+            return isinstance(meta, dict) and meta.get("cond") == label
+
+        self.fig.data = tuple(tr for tr in self.fig.data if not belongs_to(tr))
 
     def _do_set_title(self, title: str):
         self.fig.update_layout(
@@ -189,8 +194,6 @@ class PlotlyStatsVisualizer(BaseStatsVisualizer):
         self.fig.show()
 
     def save(self, path, format=None, scale=None, **kwargs):
-        from pathlib import Path
-
         path = Path(path)
         fmt = format or path.suffix.lstrip(".").lower() or "png"
         if fmt == "html":

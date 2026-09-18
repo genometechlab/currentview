@@ -17,14 +17,16 @@ def _validate_inputs(files: dict, contig, pos) -> list[str]:
         errors.append("Please select a POD5 directory")
     if not contig:
         errors.append("Please select a valid contig")
-    if not pos:
+    if pos is None or pos == "":
         errors.append("Please select a target position")
     else:
+        # Positions are 0-based, matching pysam and the Python API, so 0 is a
+        # legal coordinate (the first base of the contig).
         try:
-            if int(pos) <= 0:
+            if int(pos) < 0:
                 raise ValueError
         except (ValueError, TypeError):
-            errors.append("Position must be a positive integer")
+            errors.append("Position must be a non-negative integer (0-based)")
     return errors
 
 
@@ -95,11 +97,16 @@ def register_condition_callbacks():
         Input("files-store", "data"),
     )
     def populate_contig(files):
-        bam_file = files.get("bam")
+        bam_file = (files or {}).get("bam")
         if not bam_file:
             return [], True
-        with pysam.AlignmentFile(bam_file) as af:
-            refs = [{"label": r, "value": r} for r in af.references]
+        try:
+            with pysam.AlignmentFile(bam_file) as af:
+                refs = [{"label": r, "value": r} for r in af.references]
+        except Exception:
+            # Unreadable / corrupt / unindexed BAM — leave the dropdown disabled
+            # rather than surfacing a raw callback traceback in the browser.
+            return [], True
         return refs, False
 
     @callback(

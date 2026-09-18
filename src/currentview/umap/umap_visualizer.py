@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Union
 
-import numpy as np
 import plotly.graph_objects as go
 
 from .umap_handler import ConditionUMAP
@@ -120,6 +118,13 @@ class UMAPVisualizer:
         for rec in records:
             if rec.embedding is None or rec.embedding.size == 0:
                 continue
+
+            if rec.embedding.ndim != 2 or rec.embedding.shape[1] < 2:
+                raise ValueError(
+                    f"UMAPVisualizer draws 2D scatter plots but the embedding for "
+                    f"'{rec.label}' has shape {rec.embedding.shape}. "
+                    f"Fit with UMAPConfig(n_components=2)."
+                )
 
             color = getattr(rec.style, "color", "#444")
             label = rec.label

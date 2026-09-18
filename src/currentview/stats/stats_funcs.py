@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Callable, Optional, Any
+from typing import Callable, Optional
 import numpy as np
 from scipy import stats
 
