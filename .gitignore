@@ -4,15 +4,12 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -22,23 +19,28 @@ wheels/
 *.egg
 
 # Virtual environments
-venv/
-ENV/
 env/
+venv/
+.venv/
+ENV/
 
 # IDE specific files
 .idea/
 .vscode/
+
+# Jupyter autosave copies (the notebooks themselves are tracked on purpose —
+# they are the worked examples the README points users to)
 .ipynb_checkpoints/
-*.swp
-*.swo
-*.ipynb*
+*-checkpoint.ipynb
+Untitled*.ipynb
+example*.ipynb
 
 # OS specific files
 .DS_Store
 Thumbs.db
 
-# Data files that shouldn't be tracked (customize as needed)
+# Data files that shouldn't be tracked.
+# example/example_data/ is force-added: it is the small demo dataset.
 *.fastq
 *.bam
 *.bam.bai
@@ -48,10 +50,6 @@ Thumbs.db
 *.fa
 *.fa.fai
 *.pod5
-*.pdf
 
-# Experimental folders
-**test**
-
-__pycache__/
+# Scratch output
 preliminary_test_data/
